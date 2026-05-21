@@ -276,18 +276,78 @@ lemma finite_large_primitive_bound :
   sorry_using [finite_chain_cut_bound, cut_capacity_le_tail_majorant, tail_majorant_bound]
 
 @[blueprint "lem:finite-truncation-principle"
-  (statement := /-- If the finite-support version of the problem holds with an
-  absolute constant, then the same absolute-constant bound holds for arbitrary
-  primitive sets supported in $[x,\infty)$. -/)
-  (proof := /-- The source invokes this limiting step at the beginning of the
-  proof. The asserted argument is to apply the finite bound to the truncations
-  $A\cap [x,X]$ and then let $X$ tend to infinity, using the convergence of the
-  nonnegative Erd\H{o}s sum over the primitive set. -/)
+  (statement := /-- If there is a real constant $C\geq 0$ such that every
+  primitive set supported in a finite interval $[x,X]$ with $2\leq x\leq X$
+  satisfies $f(A)\leq 1+C/\log x$, then there is a real constant $C\geq 0$ such
+  that every primitive set supported in $[x,\infty)$ with $x\geq 2$ satisfies
+  $f(A)\leq 1+C/\log x$. -/)
+  (proof := /-- Unpack \cref{def:erdos1196-finite-bound}.  Fix $x\geq 2$ and
+  a primitive set $A$ supported above $x$.  For each natural number $N$, put
+  $B=A\cap \{0,\ldots,N-1\}$.  By \cref{def:primitive-set}, $B$ is primitive,
+  and by \cref{def:supported-above,def:supported-in-interval} it is supported
+  in $[x,\max\{x,N\}]$.  The finite hypothesis therefore bounds
+  $f(B)$ by $1+C/\log x$.  By \cref{def:erdos-sum,def:erdos-weight}, this is
+  exactly the $N$th finite partial sum of the nonnegative series defining
+  $f(A)$.  Since all partial sums of this nonnegative real series are bounded by
+  $1+C/\log x$, the standard bounded-partial-sums theorem for nonnegative real
+  series gives $f(A)\leq 1+C/\log x$.  Together with the same nonnegative
+  constant $C$, this is precisely \cref{def:erdos1196-bound}. -/)
   (title := /-- Removing the finite truncation -/)
   (latexEnv := "lemma")]
 lemma finite_truncation_principle :
     (∃ C : ℝ, erdos1196_finite_bound C) -> ∃ C : ℝ, erdos1196_bound C := by
-  sorry
+  rintro ⟨C, hC_nonneg, hfinite⟩
+  refine ⟨C, hC_nonneg, ?_⟩
+  intro x hx A hA_primitive hA_supported
+  let f : ℕ → ℝ := fun n => A.indicator erdos_weight n
+  have hf_nonneg : ∀ n, 0 ≤ f n := by
+    intro n
+    by_cases hnA : n ∈ A
+    · have h2n : (2 : ℝ) ≤ (n : ℝ) := le_trans hx (hA_supported n hnA)
+      have hn_pos : 0 < (n : ℝ) := by linarith
+      have hlog_pos : 0 < Real.log (n : ℝ) := Real.log_pos (by linarith)
+      simp only [f, Set.indicator_of_mem hnA]
+      unfold erdos_weight
+      positivity
+    · simp [f, Set.indicator_of_notMem hnA]
+  have hpartial : ∀ N : ℕ, ∑ n ∈ Finset.range N, f n ≤ 1 + C / Real.log x := by
+    intro N
+    let B : Set ℕ := A ∩ (Finset.range N : Set ℕ)
+    have hB_primitive : primitive_set B := by
+      exact hA_primitive.subset (by intro n hn; exact hn.1)
+    have hB_supported : supported_in_interval B x (max x (N : ℝ)) := by
+      intro n hn
+      constructor
+      · exact hA_supported n hn.1
+      · exact le_trans (Nat.cast_le.mpr (Nat.le_of_lt (Finset.mem_range.mp hn.2)))
+          (le_max_right x (N : ℝ))
+    have hB_sum : erdos_sum B = ∑ n ∈ Finset.range N, f n := by
+      unfold erdos_sum
+      rw [tsum_eq_sum]
+      · refine Finset.sum_congr rfl ?_
+        intro n hn
+        by_cases hnA : n ∈ A
+        · have hnB : n ∈ B := ⟨hnA, hn⟩
+          simp [f, Set.indicator_of_mem hnB, Set.indicator_of_mem hnA]
+        · have hnB : n ∉ B := by
+            intro h
+            exact hnA h.1
+          simp [f, Set.indicator_of_notMem hnB, Set.indicator_of_notMem hnA]
+      · intro n hn
+        have hn_not_lt : ¬ n < N := by
+          intro hnlt
+          exact hn (Finset.mem_range.mpr hnlt)
+        have hnB : n ∉ B := by
+          intro h
+          exact hn_not_lt (Finset.mem_range.mp h.2)
+        simp [Set.indicator_of_notMem hnB]
+    have hB_bound := hfinite x (max x (N : ℝ)) hx (le_max_left x (N : ℝ)) B
+      hB_primitive hB_supported
+    simpa [hB_sum] using hB_bound
+  have hf_summable : Summable f := summable_of_sum_range_le hf_nonneg hpartial
+  have hsum_le : (∑' n : ℕ, f n) ≤ 1 + C / Real.log x :=
+    hf_summable.tsum_le_of_sum_range_le hpartial
+  simpa [erdos_sum, f] using hsum_le
 
 @[blueprint "thm:erdos-sarkozy-szemeredi-1196"
   (statement := /-- There is an absolute constant $C$ such that, for every real
