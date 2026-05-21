@@ -414,27 +414,57 @@ lemma mertens_von_mangoldt_reciprocal :
             |Real.log (N : ℝ) - Real.log t| := abs_add_le _ _
       _ ≤ Cnat + Real.log (2 : ℝ) := add_le_add hnat' hlogdiff
 
+@[blueprint "lem:zeta-log-derivative-geometric-bound"
+  (statement := /-- For every $u>0$, the logarithmic derivative of the Riemann
+  zeta function at the real point $1+u$ satisfies
+  $-\zeta'(1+u)/\zeta(1+u)\leq \log 2/(2^u-1)$.  In the Lean statement the
+  complex logarithmic derivative is compared through its real part. -/)
+  (proof := /-- Define the Dirichlet eta function by
+  $\eta(s)=(1-2^{1-s})\zeta(s)$.  Differentiating the identity gives
+  $\zeta'(1+u)/\zeta(1+u)+\log 2/(2^u-1)=\eta'(1+u)/\eta(1+u)$.  Hence the
+  desired inequality is equivalent to the non-negativity of this logarithmic
+  derivative.  For $s>1$ the Mellin representation
+  $\eta(s)=\Gamma(s)^{-1}\int_0^\infty x^{s-1}(e^x+1)^{-1}\,dx$ can be written
+  as $\eta(s)=\mathbb E h(X_s)$, where $h(x)=(1+e^{-x})^{-1}$ and $X_s$ has
+  the gamma distribution of shape $s$ and scale $1$.  If $t>s>1$, then
+  $X_t$ has the same distribution as $X_s+Y_{t-s}$ for an independent gamma
+  variable $Y_{t-s}$, and $h$ is increasing; therefore $\eta(t)\geq\eta(s)$.
+  Thus $\eta$ is non-decreasing on $(1,\infty)$, so its logarithmic derivative
+  is non-negative there, proving the displayed comparison. -/)
+  (title := /-- Zeta logarithmic-derivative comparison -/)
+  (latexEnv := "lemma")]
+lemma zeta_log_derivative_geometric_bound :
+    ∀ u : ℝ, 0 < u ->
+      ((- deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+          riemannZeta ((1 + u : ℝ) : ℂ)).re) ≤
+        Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) := by
+  sorry
+
 @[blueprint "lem:von-mangoldt-dirichlet-series-upper-bound"
   (statement := /-- For every $u>0$, the von Mangoldt Dirichlet series satisfies
   $\sum_q \Lambda(q)q^{-1-u}\leq 1/u$. -/)
   (proof := /-- The source proves this from the identity
-  $\sum_q\Lambda(q)q^{-1-u}=-\zeta'(1+u)/\zeta(1+u)$, the comparison
-  $-\zeta'(1+u)/\zeta(1+u)\leq \log 2/(2^u-1)$, and the elementary inequality
-  $\log 2/(2^u-1)\leq 1/u$. -/)
+  $\sum_q\Lambda(q)q^{-1-u}=-\zeta'(1+u)/\zeta(1+u)$.  Apply
+  \cref{lem:zeta-log-derivative-geometric-bound} to bound the logarithmic
+  derivative by $\log 2/(2^u-1)$.  Finally,
+  $(2^u-1)/\log 2=u\int_0^1 2^{tu}\,dt\geq u$, since $2^{tu}\geq 1$ on
+  $[0,1]$; rearranging gives $\log 2/(2^u-1)\leq 1/u$. -/)
   (title := /-- Dirichlet-series upper bound -/)
   (latexEnv := "lemma")]
 lemma von_mangoldt_dirichlet_series_upper_bound :
     ∀ u : ℝ, 0 < u -> mangoldt_dirichlet_series u ≤ 1 / u := by
-  sorry
+  sorry_using [zeta_log_derivative_geometric_bound]
 
 @[blueprint "lem:mangoldt-tail-upper-bound"
   (statement := /-- There is an absolute constant $C$ such that, for every
-  natural $m\geq 1$ and every real $y\geq 2$,
+  natural $m\geq 1$ and every real $y\geq 2$, the von Mangoldt tail series is
+  summable and
   $\sum_{q\geq y}\Lambda(q)/(q\log^2(mq))\leq
   1/\log(my)+C/\log^2(my)$. -/)
   (proof := /-- Apply partial summation to the reciprocal von Mangoldt sum in
   \cref{lem:mertens-von-mangoldt-reciprocal} with the decreasing function
-  $t\mapsto \log^{-2}(mt)$. The boundary term and the integral give
+  $t\mapsto \log^{-2}(mt)$.  This proves convergence of the improper tail sum.
+  The boundary term and the integral give
   $1/\log(my)$, while the uniform Mertens error contributes
   $O(\log^{-2}(my))$, yielding the displayed one-sided estimate after enlarging
   the absolute constant. -/)
@@ -442,9 +472,31 @@ lemma von_mangoldt_dirichlet_series_upper_bound :
   (latexEnv := "lemma")]
 lemma mangoldt_tail_upper_bound :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ m : ℕ, 1 ≤ m -> ∀ y : ℝ, 2 ≤ y ->
-      mangoldt_tail_sum m y ≤
-        1 / Real.log ((m : ℝ) * y) + C / (Real.log ((m : ℝ) * y)) ^ 2 := by
+      Summable (fun q : ℕ => if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) ∧
+        mangoldt_tail_sum m y ≤
+          1 / Real.log ((m : ℝ) * y) + C / (Real.log ((m : ℝ) * y)) ^ 2 := by
   sorry_using [mertens_von_mangoldt_reciprocal]
+
+@[blueprint "lem:mangoldt-tail-finite-sum-le"
+  (statement := /-- Let $m\geq 1$, let $y\geq 2$, and let $S$ be a finite set of
+  natural numbers.  The contribution of $S$ to the von Mangoldt tail is bounded
+  above by the full tail:
+  $\sum_{q\in S}1_{q\geq y}\Lambda(q)/(q\log^2(mq))\leq
+  \sum_{q\geq y}\Lambda(q)/(q\log^2(mq))$. -/)
+  (proof := /-- By \cref{lem:mangoldt-tail-upper-bound}, the non-negative tail
+  series defining \cref{def:mangoldt-tail-sum} is summable for the stated
+  values of $m$ and $y$.  The von Mangoldt function is non-negative, and the
+  remaining factors in the tail summand are non-negative; hence every summand in
+  the tail is non-negative.  The standard finite-partial-sum comparison for a
+  summable non-negative real series then gives the asserted bound for the finite
+  set $S$. -/)
+  (title := /-- Finite tails are bounded by the full von Mangoldt tail -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_tail_finite_sum_le (m : ℕ) (hm : 1 ≤ m) (y : ℝ) (hy : 2 ≤ y)
+    (s : Finset ℕ) :
+    (∑ q ∈ s, if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) ≤
+      mangoldt_tail_sum m y := by
+  sorry_using [mangoldt_tail_upper_bound]
 
 @[blueprint "lem:mangoldt-subinvariant-bound"
   (statement := /-- For every natural $n\geq 2$,
@@ -487,13 +539,16 @@ lemma finite_chain_cut_bound (A : Set ℕ) (x X : ℝ) (hx : 2 ≤ x)
   (proof := /-- Discard the upper restriction $r\leq X$ in the cut capacity and
   write $r=nq$. The condition $r/q<x$ becomes $n<x$, and the condition
   $r\geq x$ forces $q\geq x/n$. Combining this with the original restriction
-  $q\geq 2$ gives the lower threshold $q\geq\max(2,x/n)$, which is precisely the
-  summation defining the tail majorant. -/)
+  $q\geq 2$ gives the lower threshold $q\geq\max(2,x/n)$.  For each fixed
+  $n$ with $1\leq n<x$, \cref{lem:mangoldt-tail-finite-sum-le} bounds the
+  resulting finite set of $q$-contributions by the full tail in
+  \cref{def:mangoldt-tail-sum}.  Summing these inequalities over $n$ gives
+  exactly the majorant in \cref{def:tail-majorant}. -/)
   (title := /-- Reindexing the cut capacity -/)
   (latexEnv := "lemma")]
 lemma cut_capacity_le_tail_majorant (x X : ℝ) (hx : 2 ≤ x) :
     cut_capacity x X ≤ tail_majorant x := by
-  sorry
+  sorry_using [mangoldt_tail_finite_sum_le]
 
 @[blueprint "lem:tail-majorant-bound"
   (statement := /-- There is an absolute constant $C$ such that, for every
