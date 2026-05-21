@@ -152,18 +152,267 @@ lemma von_mangoldt_divisor_sum (n : ℕ) :
   simpa using (ArithmeticFunction.vonMangoldt_sum (n := n))
 
 @[blueprint "lem:mertens-von-mangoldt-reciprocal"
-  (statement := /-- There is an absolute constant $C$ such that, for every
-  $t\geq 1$, the reciprocal von Mangoldt sum satisfies
-  $|\sum_{q\leq t}\Lambda(q)/q-\log t|\leq C$. -/)
-  (proof := /-- This is the Mertens estimate for the reciprocal von Mangoldt
-  sum invoked in the partial summation proof of the tail estimate. The source
-  cites Mertens' theorem for this input. -/)
+  (statement := /-- There is a real constant $C\geq 0$ such that, for every
+  real number $t\geq 1$, the reciprocal von Mangoldt partial sum satisfies
+  $|\sum_{1\leq q\leq t}\Lambda(q)/q-\log t|\leq C$. -/)
+  (proof := /-- By \cref{def:mangoldt-reciprocal-partial-sum}, the
+  unconditional sum is first reduced to the finite sum over
+  $1\leq q\leq\lfloor t\rfloor$. For a natural number $n\geq 1$, the
+  arithmetic-function convolution identity $\Lambda*\zeta=\log$ gives
+  $\sum_{m\leq n}\log m=\sum_{q\leq n}\Lambda(q)\lfloor n/q\rfloor$.
+  The inequalities $\lfloor n/q\rfloor\leq n/q$ and
+  $n/q-1\leq\lfloor n/q\rfloor$, together with nonnegativity of
+  $\Lambda(q)$, compare this weighted divisor sum with
+  $n\sum_{q\leq n}\Lambda(q)/q$ up to the Chebyshev sum
+  $\sum_{q\leq n}\Lambda(q)$. Mathlib's Chebyshev bound
+  $\sum_{q\leq n}\Lambda(q)\leq (\log 4+4)n$, the elementary inequality
+  $\log(n!)\leq n\log n$, and the logarithmic Stirling lower bound for
+  $\log(n!)$ show that
+  $|\sum_{q\leq n}\Lambda(q)/q-\log n|$ is bounded uniformly in
+  $n\geq 1$. Finally, for real $t\geq 1$, put
+  $n=\lfloor t\rfloor$. Since $n\leq t<n+1\leq 2n$, the difference between
+  $\log t$ and $\log n$ is at most $\log 2$, so enlarging the constant gives
+  the stated real-variable bound. -/)
   (title := /-- Mertens estimate for reciprocal von Mangoldt sums -/)
   (latexEnv := "lemma")]
 lemma mertens_von_mangoldt_reciprocal :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ t : ℝ, 1 ≤ t ->
       |mangoldt_reciprocal_partial_sum t - Real.log t| ≤ C := by
-  sorry
+  classical
+  let c0 : ℝ := Real.log (2 * Real.pi) / 2
+  have htsum : ∀ t : ℝ, 0 ≤ t ->
+      mangoldt_reciprocal_partial_sum t =
+        ∑ q ∈ Finset.Icc 1 ⌊t⌋₊, ArithmeticFunction.vonMangoldt q / (q : ℝ) := by
+    intro t ht
+    rw [mangoldt_reciprocal_partial_sum]
+    calc
+      (∑' q : ℕ,
+          if 1 ≤ q ∧ (q : ℝ) ≤ t then ArithmeticFunction.vonMangoldt q / (q : ℝ) else 0)
+          = ∑ q ∈ Finset.Icc 1 ⌊t⌋₊,
+              if 1 ≤ q ∧ (q : ℝ) ≤ t then ArithmeticFunction.vonMangoldt q / (q : ℝ) else 0 := by
+            refine tsum_eq_sum (L := SummationFilter.unconditional ℕ)
+              (s := Finset.Icc 1 ⌊t⌋₊)
+              (f := fun q : ℕ =>
+                if 1 ≤ q ∧ (q : ℝ) ≤ t then ArithmeticFunction.vonMangoldt q / (q : ℝ) else 0) ?_
+            intro q hq
+            by_cases hcond : 1 ≤ q ∧ (q : ℝ) ≤ t
+            · exfalso
+              exact hq (Finset.mem_Icc.mpr ⟨hcond.1, Nat.le_floor hcond.2⟩)
+            · simp [hcond]
+      _ = ∑ q ∈ Finset.Icc 1 ⌊t⌋₊, ArithmeticFunction.vonMangoldt q / (q : ℝ) := by
+            refine Finset.sum_congr rfl ?_
+            intro q hq
+            rcases Finset.mem_Icc.mp hq with ⟨hq1, hqfloor⟩
+            have hqt : (q : ℝ) ≤ t := by
+              exact (Nat.cast_le.mpr hqfloor).trans (Nat.floor_le ht)
+            simp [hq1, hqt]
+  have hsumlog : ∀ n : ℕ,
+      (∑ m ∈ Finset.Ioc 0 n, Real.log (m : ℝ)) = Real.log (n.factorial : ℝ) := by
+    intro n
+    rw [← Real.log_prod]
+    · congr 1
+      rw [← Finset.Ico_succ_succ_eq_Ioc (0 : ℕ) n]
+      simpa [Order.succ_eq_add_one] using (show (∏ x ∈ Finset.Ico 1 (n + 1), (x : ℝ)) = (n.factorial : ℝ) by
+        rw [← Nat.cast_prod]
+        norm_num [Finset.prod_Ico_id_eq_factorial])
+    · intro m hm
+      have hmpos : 0 < m := (Finset.mem_Ioc.mp hm).1
+      exact_mod_cast (ne_of_gt hmpos)
+  have hB : ∀ n : ℕ,
+      (∑ m ∈ Finset.Ioc 0 n, Real.log (m : ℝ)) =
+        ∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q * ((n / q : ℕ) : ℝ) := by
+    intro n
+    simpa [ArithmeticFunction.vonMangoldt_mul_zeta] using
+      (ArithmeticFunction.sum_Ioc_mul_zeta_eq_sum (ArithmeticFunction.vonMangoldt : ArithmeticFunction ℝ) n)
+  have hfloor_upper : ∀ n q : ℕ, ((n / q : ℕ) : ℝ) ≤ (n : ℝ) / (q : ℝ) := by
+    intro n q
+    exact Nat.cast_div_le
+  have hfloor_lower : ∀ n q : ℕ, (n : ℝ) / (q : ℝ) - 1 ≤ ((n / q : ℕ) : ℝ) := by
+    intro n q
+    by_cases hq : q = 0
+    · subst q
+      norm_num
+    · have hlt : (n : ℝ) / (q : ℝ) < (⌊(n : ℝ) / (q : ℝ)⌋₊ : ℝ) + 1 :=
+        Nat.lt_floor_add_one ((n : ℝ) / (q : ℝ))
+      rw [Nat.floor_div_natCast] at hlt
+      rw [Nat.floor_natCast] at hlt
+      linarith
+  have hpsi_le : ∀ n : ℕ,
+      (∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q) ≤
+        (Real.log 4 + 4) * (n : ℝ) := by
+    intro n
+    simpa [Chebyshev.psi, Nat.floor_natCast] using
+      (Chebyshev.psi_le_const_mul_self (x := (n : ℝ)) (by positivity))
+  have hlogfac_upper : ∀ n : ℕ,
+      Real.log (n.factorial : ℝ) ≤ (n : ℝ) * Real.log (n : ℝ) := by
+    intro n
+    by_cases hn : n = 0
+    · subst n
+      norm_num
+    · have hfac : (n.factorial : ℝ) ≤ (n ^ n : ℕ) := by
+        exact_mod_cast (Nat.factorial_le_pow n)
+      have hpos : 0 < (n.factorial : ℝ) := by positivity
+      have hlog := Real.log_le_log hpos hfac
+      simpa [Nat.cast_pow, Real.log_pow] using hlog
+  have hlogfac_lower : ∀ n : ℕ, 1 ≤ n ->
+      (n : ℝ) * Real.log (n : ℝ) - (1 + |c0|) * (n : ℝ) ≤
+        Real.log (n.factorial : ℝ) := by
+    intro n hn
+    have hn0 : n ≠ 0 := Nat.ne_of_gt (Nat.lt_of_lt_of_le Nat.zero_lt_one hn)
+    have hs := Stirling.le_log_factorial_stirling (n := n) hn0
+    have hlognonneg : 0 ≤ Real.log (n : ℝ) := by
+      exact Real.log_nonneg (by exact_mod_cast hn)
+    have hnnonneg : 0 ≤ (n : ℝ) := by positivity
+    have hc : -|c0| * (n : ℝ) ≤ c0 := by
+      by_cases hc0 : 0 ≤ c0
+      · have hleft : -|c0| * (n : ℝ) ≤ 0 := by
+          nlinarith [abs_nonneg c0, hnnonneg]
+        exact hleft.trans hc0
+      · have hc0lt : c0 < 0 := lt_of_not_ge hc0
+        have habs : |c0| = -c0 := abs_of_neg hc0lt
+        have hn1 : (1 : ℝ) ≤ n := by exact_mod_cast hn
+        rw [habs]
+        nlinarith
+    have hc' : -|Real.log (2 * Real.pi) / 2| * (n : ℝ) ≤ Real.log (2 * Real.pi) / 2 := by
+      simpa [c0] using hc
+    nlinarith
+  have hB_le_nA : ∀ n : ℕ,
+      (∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q * ((n / q : ℕ) : ℝ)) ≤
+        (n : ℝ) * (∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q / (q : ℝ)) := by
+    intro n
+    rw [Finset.mul_sum]
+    refine Finset.sum_le_sum ?_
+    intro q hq
+    have hqpos_nat : 0 < q := (Finset.mem_Ioc.mp hq).1
+    have hqpos : 0 < (q : ℝ) := by exact_mod_cast hqpos_nat
+    have hΛ : 0 ≤ ArithmeticFunction.vonMangoldt q := ArithmeticFunction.vonMangoldt_nonneg
+    calc
+      ArithmeticFunction.vonMangoldt q * ((n / q : ℕ) : ℝ)
+          ≤ ArithmeticFunction.vonMangoldt q * ((n : ℝ) / (q : ℝ)) := by
+            exact mul_le_mul_of_nonneg_left (hfloor_upper n q) hΛ
+      _ = (n : ℝ) * (ArithmeticFunction.vonMangoldt q / (q : ℝ)) := by
+            field_simp [hqpos.ne']
+  have hnA_le_B_psi : ∀ n : ℕ,
+      (n : ℝ) * (∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q / (q : ℝ)) ≤
+        (∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q * ((n / q : ℕ) : ℝ)) +
+          ∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q := by
+    intro n
+    rw [Finset.mul_sum, ← Finset.sum_add_distrib]
+    refine Finset.sum_le_sum ?_
+    intro q hq
+    have hqpos_nat : 0 < q := (Finset.mem_Ioc.mp hq).1
+    have hqpos : 0 < (q : ℝ) := by exact_mod_cast hqpos_nat
+    have hΛ : 0 ≤ ArithmeticFunction.vonMangoldt q := ArithmeticFunction.vonMangoldt_nonneg
+    have hdiv_le : (n : ℝ) / (q : ℝ) ≤ ((n / q : ℕ) : ℝ) + 1 := by
+      linarith [hfloor_lower n q]
+    calc
+      (n : ℝ) * (ArithmeticFunction.vonMangoldt q / (q : ℝ))
+          = ArithmeticFunction.vonMangoldt q * ((n : ℝ) / (q : ℝ)) := by
+            field_simp [hqpos.ne']
+      _ ≤ ArithmeticFunction.vonMangoldt q * (((n / q : ℕ) : ℝ) + 1) := by
+            exact mul_le_mul_of_nonneg_left hdiv_le hΛ
+      _ = ArithmeticFunction.vonMangoldt q * ((n / q : ℕ) : ℝ) +
+            ArithmeticFunction.vonMangoldt q := by
+            ring
+  let K1 : ℝ := 1 + |c0|
+  let K2 : ℝ := Real.log 4 + 4
+  let Cnat : ℝ := max K1 K2
+  have hK1_nonneg : 0 ≤ K1 := by
+    dsimp [K1]
+    positivity
+  have hK2_nonneg : 0 ≤ K2 := by
+    dsimp [K2]
+    have hlog4 : 0 ≤ Real.log (4 : ℝ) := Real.log_nonneg (by norm_num)
+    nlinarith
+  have hCnat_nonneg : 0 ≤ Cnat := by
+    exact hK1_nonneg.trans (le_max_left K1 K2)
+  have hK1_le_Cnat : K1 ≤ Cnat := le_max_left K1 K2
+  have hK2_le_Cnat : K2 ≤ Cnat := le_max_right K1 K2
+  have hnat_ioc : ∀ n : ℕ, 1 ≤ n ->
+      |(∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q / (q : ℝ)) -
+        Real.log (n : ℝ)| ≤ Cnat := by
+    intro n hn
+    set A : ℝ := ∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q / (q : ℝ)
+    set B : ℝ := ∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q * ((n / q : ℕ) : ℝ)
+    set P : ℝ := ∑ q ∈ Finset.Ioc 0 n, ArithmeticFunction.vonMangoldt q
+    have hnpos_nat : 0 < n := Nat.lt_of_lt_of_le Nat.zero_lt_one hn
+    have hnpos : 0 < (n : ℝ) := by exact_mod_cast hnpos_nat
+    have hB_eq : B = Real.log (n.factorial : ℝ) := by
+      dsimp [B]
+      exact (hB n).symm.trans (hsumlog n)
+    have hB_le : B ≤ (n : ℝ) * A := by
+      simpa [A, B] using hB_le_nA n
+    have hnA_le : (n : ℝ) * A ≤ B + P := by
+      simpa [A, B, P] using hnA_le_B_psi n
+    have hP_le : P ≤ K2 * (n : ℝ) := by
+      dsimp [P, K2]
+      exact hpsi_le n
+    have hA_upper : A - Real.log (n : ℝ) ≤ Cnat := by
+      have hmul : (n : ℝ) * A ≤ (n : ℝ) * (Real.log (n : ℝ) + K2) := by
+        have hfac := hlogfac_upper n
+        rw [hB_eq] at hnA_le
+        nlinarith
+      have hA_le : A ≤ Real.log (n : ℝ) + K2 := le_of_mul_le_mul_left hmul hnpos
+      nlinarith
+    have hA_lower : -Cnat ≤ A - Real.log (n : ℝ) := by
+      have hmul : (n : ℝ) * (Real.log (n : ℝ) - K1) ≤ (n : ℝ) * A := by
+        have hfac := hlogfac_lower n hn
+        rw [hB_eq] at hB_le
+        dsimp [K1]
+        nlinarith
+      have hlower : Real.log (n : ℝ) - K1 ≤ A := le_of_mul_le_mul_left hmul hnpos
+      nlinarith
+    exact abs_le.mpr ⟨hA_lower, hA_upper⟩
+  have hIoc_eq_Icc : ∀ n : ℕ, Finset.Ioc 0 n = Finset.Icc 1 n := by
+    intro n
+    ext q
+    simp [Finset.mem_Ioc, Finset.mem_Icc, Nat.succ_le_iff]
+  refine ⟨Cnat + Real.log 2, ?_, ?_⟩
+  · have hlog2_nonneg : 0 ≤ Real.log (2 : ℝ) := Real.log_nonneg (by norm_num)
+    nlinarith
+  · intro t ht
+    have ht0 : 0 ≤ t := by linarith
+    let N : ℕ := ⌊t⌋₊
+    have hN : 1 ≤ N := by
+      dsimp [N]
+      exact (Nat.one_le_floor_iff t).mpr ht
+    have hpartial := htsum t ht0
+    have hnat := hnat_ioc N hN
+    have hnat' :
+        |(∑ q ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt q / (q : ℝ)) -
+          Real.log (N : ℝ)| ≤ Cnat := by
+      simpa [hIoc_eq_Icc N] using hnat
+    have hNpos_nat : 0 < N := Nat.lt_of_lt_of_le Nat.zero_lt_one hN
+    have hNpos : 0 < (N : ℝ) := by exact_mod_cast hNpos_nat
+    have htpos : 0 < t := by linarith
+    have hN_le_t : (N : ℝ) ≤ t := by
+      dsimp [N]
+      exact Nat.floor_le ht0
+    have ht_lt_N_add_one : t < (N : ℝ) + 1 := by
+      dsimp [N]
+      simpa using (Nat.lt_floor_add_one t)
+    have ht_le_twoN : t ≤ 2 * (N : ℝ) := by
+      have hN_one : (1 : ℝ) ≤ (N : ℝ) := by exact_mod_cast hN
+      linarith
+    have hlogN_le_logt : Real.log (N : ℝ) ≤ Real.log t := Real.log_le_log hNpos hN_le_t
+    have hlogt_le_log2N : Real.log t ≤ Real.log (2 * (N : ℝ)) :=
+      Real.log_le_log htpos ht_le_twoN
+    have hlog2N : Real.log (2 * (N : ℝ)) = Real.log (2 : ℝ) + Real.log (N : ℝ) := by
+      rw [Real.log_mul] <;> positivity
+    have hlogdiff : |Real.log (N : ℝ) - Real.log t| ≤ Real.log (2 : ℝ) := by
+      rw [abs_of_nonpos (sub_nonpos.mpr hlogN_le_logt), neg_sub]
+      rw [hlog2N] at hlogt_le_log2N
+      linarith
+    rw [hpartial]
+    calc
+      |(∑ q ∈ Finset.Icc 1 ⌊t⌋₊, ArithmeticFunction.vonMangoldt q / (q : ℝ)) - Real.log t|
+          = |((∑ q ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt q / (q : ℝ)) - Real.log (N : ℝ)) +
+              (Real.log (N : ℝ) - Real.log t)| := by
+            dsimp [N]
+            ring_nf
+      _ ≤ |(∑ q ∈ Finset.Icc 1 N, ArithmeticFunction.vonMangoldt q / (q : ℝ)) - Real.log (N : ℝ)| +
+            |Real.log (N : ℝ) - Real.log t| := abs_add_le _ _
+      _ ≤ Cnat + Real.log (2 : ℝ) := add_le_add hnat' hlogdiff
 
 @[blueprint "lem:von-mangoldt-dirichlet-series-upper-bound"
   (statement := /-- For every $u>0$, the von Mangoldt Dirichlet series satisfies
