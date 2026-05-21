@@ -455,19 +455,657 @@ lemma von_mangoldt_dirichlet_series_upper_bound :
     ∀ u : ℝ, 0 < u -> mangoldt_dirichlet_series u ≤ 1 / u := by
   sorry_using [zeta_log_derivative_geometric_bound]
 
+@[blueprint "lem:mangoldt-tail-range-eq-ico"
+  (statement := /-- For every natural cutoff $N$, natural parameter $m$, and
+  real threshold $y$, the thresholded range sum of the von Mangoldt tail
+  summand is the same as the contiguous sum over
+  $\lceil y\rceil\leq q<N$. -/)
+  (proof := /-- Rewrite the thresholded range sum as a filtered range sum and
+  use the defining universal property of the natural ceiling to identify the
+  filter with the interval $[\lceil y\rceil,N)$. -/)
+  (title := /-- Thresholded range sums as interval sums -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_tail_range_eq_ico (m N : ℕ) (y : ℝ) :
+    (∑ q ∈ Finset.range N,
+      if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) =
+      ∑ q ∈ Finset.Ico ⌈y⌉₊ N, mangoldt_tail_term m q := by
+  rw [← Finset.sum_filter]
+  apply Finset.sum_congr
+  · ext q
+    simp [Nat.ceil_le, and_comm]
+  · intro q hq
+    rfl
+
+@[blueprint "lem:mangoldt-reciprocal-partial-sum-nat"
+  (statement := /-- At a natural cutoff $n$, the real-variable reciprocal von
+  Mangoldt partial sum is exactly the finite sum
+  $\sum_{1\leq q\leq n}\Lambda(q)/q$. -/)
+  (proof := /-- Expand \cref{def:mangoldt-reciprocal-partial-sum}. The
+  unconditional sum has support contained in the finite interval
+  $1\leq q\leq n$, and on that interval the indicator condition is true. -/)
+  (title := /-- Natural cutoffs for reciprocal Mangoldt sums -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_reciprocal_partial_sum_nat (n : ℕ) :
+    mangoldt_reciprocal_partial_sum (n : ℝ) =
+      ∑ q ∈ Finset.Icc 1 n, ArithmeticFunction.vonMangoldt q / (q : ℝ) := by
+  rw [mangoldt_reciprocal_partial_sum]
+  calc
+    (∑' q : ℕ,
+        if 1 ≤ q ∧ (q : ℝ) ≤ (n : ℝ) then
+          ArithmeticFunction.vonMangoldt q / (q : ℝ)
+        else 0) =
+        ∑ q ∈ Finset.Icc 1 n,
+          if 1 ≤ q ∧ (q : ℝ) ≤ (n : ℝ) then
+            ArithmeticFunction.vonMangoldt q / (q : ℝ)
+          else 0 := by
+      refine tsum_eq_sum (L := SummationFilter.unconditional ℕ)
+        (s := Finset.Icc 1 n)
+        (f := fun q : ℕ =>
+          if 1 ≤ q ∧ (q : ℝ) ≤ (n : ℝ) then
+            ArithmeticFunction.vonMangoldt q / (q : ℝ)
+          else 0) ?_
+      intro q hq
+      by_cases hcond : 1 ≤ q ∧ (q : ℝ) ≤ (n : ℝ)
+      · exfalso
+        exact hq (Finset.mem_Icc.mpr ⟨hcond.1, Nat.cast_le.mp hcond.2⟩)
+      · exact if_neg hcond
+    _ = ∑ q ∈ Finset.Icc 1 n, ArithmeticFunction.vonMangoldt q / (q : ℝ) := by
+      refine Finset.sum_congr rfl ?_
+      intro q hq
+      rcases Finset.mem_Icc.mp hq with ⟨hq1, hqn⟩
+      have hqr : (q : ℝ) ≤ (n : ℝ) := by
+        exact_mod_cast hqn
+      simp [hq1, hqr]
+
+@[blueprint "lem:real-sub-div-square-le-inv-sub-inv"
+  (statement := /-- If $0<a\leq b$, then
+  $(b-a)/b^2\leq 1/a-1/b$. -/)
+  (proof := /-- Clear the positive denominators $a$ and $b$; the resulting
+  polynomial inequality is immediate from $a\leq b$. -/)
+  (title := /-- A reciprocal-difference algebra inequality -/)
+  (latexEnv := "lemma")]
+lemma real_sub_div_square_le_inv_sub_inv {a b : ℝ} (ha : 0 < a) (hab : a ≤ b) :
+    (b - a) / b ^ 2 ≤ 1 / a - 1 / b := by
+  have hb : 0 < b := lt_of_lt_of_le ha hab
+  field_simp [ha.ne', hb.ne']
+  nlinarith
+
+@[blueprint "lem:mangoldt-log-increment-pointwise-le"
+  (statement := /-- If $m\geq 1$ and $r\geq 2$, then the weighted logarithmic
+  increment from $r$ to $r+1$ is bounded by the corresponding telescoping
+  reciprocal-log difference. -/)
+  (proof := /-- Use \cref{lem:real-sub-div-square-le-inv-sub-inv} with
+  $a=\log(mr)$ and $b=\log(m(r+1))$.  Positivity and monotonicity of the
+  logarithm apply because $mr\geq 2$ and $m(r+1)\geq mr$. -/)
+  (title := /-- Pointwise logarithmic-increment comparison -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_log_increment_pointwise_le (m r : ℕ) (hm : 1 ≤ m) (hr : 2 ≤ r) :
+    (Real.log ((r + 1 : ℕ) : ℝ) - Real.log (r : ℝ)) /
+        (Real.log (((m * (r + 1) : ℕ) : ℝ))) ^ 2 ≤
+      1 / Real.log (((m * r : ℕ) : ℝ)) -
+        1 / Real.log (((m * (r + 1) : ℕ) : ℝ)) := by
+  have hmr_two : 2 ≤ m * r := by
+    exact Nat.mul_le_mul hm hr
+  have hmr_pos_log : 0 < Real.log (((m * r : ℕ) : ℝ)) := by
+    apply Real.log_pos
+    exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hmr_two)
+  have hmr_le : (m * r : ℕ) ≤ m * (r + 1) := by
+    exact Nat.mul_le_mul_left m (Nat.le_succ r)
+  have hlog_le : Real.log (((m * r : ℕ) : ℝ)) ≤
+      Real.log (((m * (r + 1) : ℕ) : ℝ)) := by
+    apply Real.log_le_log
+    · exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hmr_two)
+    · exact_mod_cast hmr_le
+  have hm_pos : 0 < (m : ℝ) := by
+    exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_one hm)
+  have hr_pos : 0 < (r : ℝ) := by
+    exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hr)
+  have hr_succ_pos : 0 < ((r + 1 : ℕ) : ℝ) := by positivity
+  have hlogdiff :
+      Real.log (((m * (r + 1) : ℕ) : ℝ)) - Real.log (((m * r : ℕ) : ℝ)) =
+        Real.log ((r + 1 : ℕ) : ℝ) - Real.log (r : ℝ) := by
+    rw [Nat.cast_mul, Nat.cast_mul]
+    rw [Real.log_mul hm_pos.ne' hr_succ_pos.ne', Real.log_mul hm_pos.ne' hr_pos.ne']
+    ring
+  have hcore := real_sub_div_square_le_inv_sub_inv hmr_pos_log hlog_le
+  rw [hlogdiff] at hcore
+  simpa [Nat.cast_mul] using hcore
+
+@[blueprint "lem:log-increment-sum-ico-two"
+  (statement := /-- For every natural $r\geq 1$, the logarithmic increments
+  from $2$ through $r$ telescope:
+  $\sum_{2\leq q<r+1}(\log q-\log(q-1))=\log r$. -/)
+  (proof := /-- Reindex by $q=i+1$ and apply the standard telescoping identity
+  for $\sum_{1\leq i<r}(\log(i+1)-\log i)$, using $\log 1=0$. -/)
+  (title := /-- Telescoping logarithmic increments -/)
+  (latexEnv := "lemma")]
+lemma log_increment_sum_ico_two (r : ℕ) (hr : 1 ≤ r) :
+    (∑ q ∈ Finset.Ico 2 (r + 1),
+      (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ))) = Real.log (r : ℝ) := by
+  rw [show (2 : ℕ) = 1 + 1 by rfl]
+  rw [← Finset.sum_Ico_add
+    (f := fun q : ℕ => Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ))
+    (a := 1) (b := r) (c := 1)]
+  have hsum := Finset.sum_Ico_sub (m := 1) (n := r)
+    (f := fun i : ℕ => Real.log (i : ℝ)) hr
+  simpa [Nat.add_comm, Nat.add_assoc, Nat.sub_add_cancel, Real.log_one] using hsum
+
+@[blueprint "lem:mangoldt-reciprocal-sum-ico-two"
+  (statement := /-- For every natural $r\geq 1$, the sum of
+  $\Lambda(q)/q$ over $2\leq q<r+1$ is the reciprocal von Mangoldt partial sum
+  at the natural cutoff $r$. -/)
+  (proof := /-- Use \cref{lem:mangoldt-reciprocal-partial-sum-nat}.  The
+  interval $2\leq q<r+1$ is $1<q\leq r$, and the omitted $q=1$ term is zero
+  because $\Lambda(1)=0$. -/)
+  (title := /-- Reciprocal Mangoldt sums from two -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_reciprocal_sum_ico_two (r : ℕ) (hr : 1 ≤ r) :
+    (∑ q ∈ Finset.Ico 2 (r + 1), ArithmeticFunction.vonMangoldt q / (q : ℝ)) =
+      mangoldt_reciprocal_partial_sum (r : ℝ) := by
+  rw [mangoldt_reciprocal_partial_sum_nat]
+  have hI : Finset.Ico 2 (r + 1) = Finset.Ioc 1 r := by
+    simpa [Nat.succ_eq_add_one] using (Finset.Ico_succ_succ_eq_Ioc (1 : ℕ) r)
+  rw [hI]
+  rw [Finset.Icc_eq_cons_Ioc hr]
+  simp
+
+@[blueprint "lem:mangoldt-mertens-error-partial-bound"
+  (statement := /-- Assume the reciprocal von Mangoldt Mertens error is bounded
+  by $D$.  Then for every interval $n\leq q<k$ with $n\geq 2$, the partial sum
+  of
+  $\Lambda(q)/q-(\log q-\log(q-1))$ has absolute value at most $2D$. -/)
+  (proof := /-- The interval sum is the difference of the two endpoint errors
+  $\sum_{q\leq r}\Lambda(q)/q-\log r$ at $r=k-1$ and $r=n-1$.  Use
+  \cref{lem:mangoldt-reciprocal-sum-ico-two} and
+  \cref{lem:log-increment-sum-ico-two} to identify these endpoint errors with
+  the real-variable reciprocal partial sums minus $\log r$, then apply the
+  assumed Mertens bound and the triangle inequality. -/)
+  (title := /-- Bounded partial sums of the Mertens error -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_mertens_error_partial_bound (D : ℝ) (hD_nonneg : 0 ≤ D)
+    (hD : ∀ t : ℝ, 1 ≤ t ->
+      |mangoldt_reciprocal_partial_sum t - Real.log t| ≤ D)
+    (n k : ℕ) (hn : 2 ≤ n) :
+    |∑ q ∈ Finset.Ico n k,
+      (ArithmeticFunction.vonMangoldt q / (q : ℝ) -
+        (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ)))| ≤ 2 * D := by
+  let e : ℕ → ℝ := fun q =>
+    ArithmeticFunction.vonMangoldt q / (q : ℝ) -
+      (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ))
+  have hendpoint : ∀ r : ℕ, 1 ≤ r -> |∑ q ∈ Finset.Ico 2 (r + 1), e q| ≤ D := by
+    intro r hr
+    have hrec := mangoldt_reciprocal_sum_ico_two r hr
+    have hlog := log_increment_sum_ico_two r hr
+    have hsum : (∑ q ∈ Finset.Ico 2 (r + 1), e q) =
+        mangoldt_reciprocal_partial_sum (r : ℝ) - Real.log (r : ℝ) := by
+      dsimp [e]
+      rw [Finset.sum_sub_distrib]
+      rw [hrec, hlog]
+    rw [hsum]
+    exact hD (r : ℝ) (by exact_mod_cast hr)
+  by_cases hkn : k ≤ n
+  · rw [Finset.Ico_eq_empty_of_le hkn]
+    simp
+    nlinarith
+  · have hnk : n < k := not_le.mp hkn
+    have hk_pred_one : 1 ≤ k - 1 := by omega
+    have hn_pred_one : 1 ≤ n - 1 := by omega
+    have hk_sum := hendpoint (k - 1) hk_pred_one
+    have hn_sum := hendpoint (n - 1) hn_pred_one
+    have hk_sum' : |∑ q ∈ Finset.Ico 2 k, e q| ≤ D := by
+      simpa [Nat.sub_add_cancel (by omega : 1 ≤ k)] using hk_sum
+    have hn_sum' : |∑ q ∈ Finset.Ico 2 n, e q| ≤ D := by
+      simpa [Nat.sub_add_cancel (by omega : 1 ≤ n)] using hn_sum
+    have hconsec := Finset.sum_Ico_consecutive (f := e) (m := 2) (n := n) (k := k) hn hnk.le
+    have hinterval : (∑ q ∈ Finset.Ico n k, e q) =
+        (∑ q ∈ Finset.Ico 2 k, e q) - (∑ q ∈ Finset.Ico 2 n, e q) := by
+      linarith
+    rw [show (∑ q ∈ Finset.Ico n k,
+      (ArithmeticFunction.vonMangoldt q / (q : ℝ) -
+        (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ)))) =
+        ∑ q ∈ Finset.Ico n k, e q by rfl]
+    rw [hinterval]
+    calc
+      |(∑ q ∈ Finset.Ico 2 k, e q) - (∑ q ∈ Finset.Ico 2 n, e q)| ≤
+          |∑ q ∈ Finset.Ico 2 k, e q| + |∑ q ∈ Finset.Ico 2 n, e q| := by
+        simpa [sub_eq_add_neg] using
+          abs_add_le (∑ q ∈ Finset.Ico 2 k, e q) (-(∑ q ∈ Finset.Ico 2 n, e q))
+      _ ≤ D + D := by linarith
+      _ = 2 * D := by ring
+
+@[blueprint "lem:mangoldt-mertens-error-weighted-bound"
+  (statement := /-- Assume the reciprocal von Mangoldt Mertens error is bounded
+  by $D$.  Then, for every $m\geq 1$, $y\geq 2$, and cutoff $N$, the weighted
+  interval sum of the Mertens error over $\lceil y\rceil\leq q<N$ is at most
+  $4D/\log^2(my)$. -/)
+  (proof := /-- Apply summation by parts to the error sequence with weight
+  $\log^{-2}(mq)$.  The partial sums are bounded by
+  \cref{lem:mangoldt-mertens-error-partial-bound}; the weight is nonnegative
+  and decreasing on the interval because $mq\geq my\geq 2$.  The resulting
+  endpoint and variation terms are each bounded by $2D/\log^2(my)$. -/)
+  (title := /-- Weighted Mertens-error bound -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_mertens_error_weighted_bound (D : ℝ) (hD_nonneg : 0 ≤ D)
+    (hD : ∀ t : ℝ, 1 ≤ t ->
+      |mangoldt_reciprocal_partial_sum t - Real.log t| ≤ D)
+    (m N : ℕ) (hm : 1 ≤ m) (y : ℝ) (hy : 2 ≤ y) :
+    (∑ q ∈ Finset.Ico ⌈y⌉₊ N,
+      (ArithmeticFunction.vonMangoldt q / (q : ℝ) -
+        (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ))) /
+          (Real.log (((m * q : ℕ) : ℝ))) ^ 2) ≤
+      4 * D / (Real.log ((m : ℝ) * y)) ^ 2 := by
+  let n : ℕ := ⌈y⌉₊
+  let e : ℕ → ℝ := fun q =>
+    ArithmeticFunction.vonMangoldt q / (q : ℝ) -
+      (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ))
+  let w : ℕ → ℝ := fun q => 1 / (Real.log (((m * q : ℕ) : ℝ))) ^ 2
+  have hm_real : (1 : ℝ) ≤ (m : ℝ) := by
+    exact_mod_cast hm
+  have hy_nonneg : 0 ≤ y := by linarith
+  have hmy_two : (2 : ℝ) ≤ (m : ℝ) * y := by
+    calc
+      (2 : ℝ) ≤ 1 * y := by simpa using hy
+      _ ≤ (m : ℝ) * y := by
+        exact mul_le_mul_of_nonneg_right hm_real hy_nonneg
+  have hLpos : 0 < Real.log ((m : ℝ) * y) := by
+    exact Real.log_pos (by linarith)
+  have hyn : y ≤ (n : ℝ) := by
+    simpa [n] using Nat.le_ceil y
+  have hn : 2 ≤ n := by
+    have h2n : (2 : ℝ) ≤ (n : ℝ) := hy.trans hyn
+    exact_mod_cast h2n
+  rw [show ⌈y⌉₊ = n by rfl]
+  by_cases hN : n < N
+  · let g : ℕ → ℝ := fun q => if n ≤ q then e q else 0
+    have hG_eq : ∀ k : ℕ, (∑ q ∈ Finset.range k, g q) = ∑ q ∈ Finset.Ico n k, e q := by
+      intro k
+      rw [← Finset.sum_filter]
+      apply Finset.sum_congr
+      · ext q
+        simp [Finset.mem_filter, Finset.mem_range, Finset.mem_Ico, and_comm]
+      · intro q hq
+        simp [g, (Finset.mem_Ico.mp hq).1]
+    have hG_bound : ∀ k : ℕ, |∑ q ∈ Finset.range k, g q| ≤ 2 * D := by
+      intro k
+      rw [hG_eq k]
+      exact mangoldt_mertens_error_partial_bound D hD_nonneg hD n k hn
+    have htarget :
+        (∑ q ∈ Finset.Ico n N,
+          (ArithmeticFunction.vonMangoldt q / (q : ℝ) -
+            (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ))) /
+              (Real.log (((m * q : ℕ) : ℝ))) ^ 2) =
+          ∑ q ∈ Finset.range N, w q * g q := by
+      symm
+      dsimp [g]
+      simp_rw [mul_ite, mul_zero]
+      rw [← Finset.sum_filter]
+      apply Finset.sum_congr
+      · ext q
+        simp [Finset.mem_filter, Finset.mem_range, Finset.mem_Ico, and_comm]
+      · intro q hq
+        dsimp [w, e]
+        ring
+    rw [htarget]
+    have hbp := Finset.sum_range_by_parts (f := w) (g := g) (n := N)
+    have hbp' : ∑ i ∈ Finset.range N, w i * g i =
+        w (N - 1) * (∑ i ∈ Finset.range N, g i) -
+          ∑ i ∈ Finset.range (N - 1),
+            (w (i + 1) - w i) * (∑ j ∈ Finset.range (i + 1), g j) := by
+      simpa only [smul_eq_mul] using hbp
+    rw [hbp']
+    have hLsq_pos : 0 < (Real.log ((m : ℝ) * y)) ^ 2 := sq_pos_of_pos hLpos
+    have htwoD_nonneg : 0 ≤ 2 * D := by positivity
+    have hfourD_nonneg : 0 ≤ 4 * D := by positivity
+    have hN_pred_ge : n ≤ N - 1 := Nat.le_pred_of_lt hN
+    have hN_pred_two : 2 ≤ N - 1 := hn.trans hN_pred_ge
+    have hw_le_L : ∀ q : ℕ, n ≤ q -> w q ≤ 1 / (Real.log ((m : ℝ) * y)) ^ 2 := by
+      intro q hnq
+      have hq_real : y ≤ (q : ℝ) := hyn.trans (by exact_mod_cast hnq)
+      have harg : (m : ℝ) * y ≤ (((m * q : ℕ) : ℝ)) := by
+        rw [Nat.cast_mul]
+        exact mul_le_mul_of_nonneg_left hq_real (by positivity)
+      have hlog : Real.log ((m : ℝ) * y) ≤ Real.log (((m * q : ℕ) : ℝ)) :=
+        Real.log_le_log (by linarith) harg
+      dsimp [w]
+      gcongr
+    have hw_nonneg : ∀ q : ℕ, n ≤ q -> 0 ≤ w q := by
+      intro q hnq
+      dsimp [w]
+      positivity
+    have hboundary : w (N - 1) * (∑ i ∈ Finset.range N, g i) ≤
+        2 * D / (Real.log ((m : ℝ) * y)) ^ 2 := by
+      have hG_le : (∑ i ∈ Finset.range N, g i) ≤ 2 * D :=
+        (le_abs_self _).trans (hG_bound N)
+      have hwN_nonneg : 0 ≤ w (N - 1) := hw_nonneg (N - 1) hN_pred_ge
+      have hwN_le := hw_le_L (N - 1) hN_pred_ge
+      calc
+        w (N - 1) * (∑ i ∈ Finset.range N, g i) ≤ w (N - 1) * (2 * D) := by
+          exact mul_le_mul_of_nonneg_left hG_le hwN_nonneg
+        _ ≤ (1 / (Real.log ((m : ℝ) * y)) ^ 2) * (2 * D) := by
+          exact mul_le_mul_of_nonneg_right hwN_le htwoD_nonneg
+        _ = 2 * D / (Real.log ((m : ℝ) * y)) ^ 2 := by ring
+    have hvar_point : ∀ i ∈ Finset.range (N - 1),
+        -((w (i + 1) - w i) * (∑ j ∈ Finset.range (i + 1), g j)) ≤
+          2 * D * (if n ≤ i then w i - w (i + 1) else 0) := by
+      intro i hi
+      by_cases hni : n ≤ i
+      · have hi_tail : n ≤ i + 1 := hni.trans (Nat.le_succ i)
+        have hG_le : (∑ j ∈ Finset.range (i + 1), g j) ≤ 2 * D :=
+          (le_abs_self _).trans (hG_bound (i + 1))
+        have hw_mono : w (i + 1) ≤ w i := by
+          have harg : (((m * i : ℕ) : ℝ)) ≤ (((m * (i + 1) : ℕ) : ℝ)) := by
+            exact_mod_cast Nat.mul_le_mul_left m (Nat.le_succ i)
+          have hi_two : 2 ≤ i := hn.trans hni
+          have hlog_pos_i : 0 < Real.log (((m * i : ℕ) : ℝ)) := by
+            have htwo : 2 ≤ m * i := Nat.mul_le_mul hm hi_two
+            apply Real.log_pos
+            exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two htwo)
+          have hlog_le : Real.log (((m * i : ℕ) : ℝ)) ≤
+              Real.log (((m * (i + 1) : ℕ) : ℝ)) :=
+            Real.log_le_log (by exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two (Nat.mul_le_mul hm hi_two))) harg
+          dsimp [w]
+          gcongr
+        have hdiff_nonneg : 0 ≤ w i - w (i + 1) := sub_nonneg.mpr hw_mono
+        calc
+          -((w (i + 1) - w i) * (∑ j ∈ Finset.range (i + 1), g j)) =
+              (w i - w (i + 1)) * (∑ j ∈ Finset.range (i + 1), g j) := by ring
+          _ ≤ (w i - w (i + 1)) * (2 * D) := by
+            exact mul_le_mul_of_nonneg_left hG_le hdiff_nonneg
+          _ = 2 * D * (if n ≤ i then w i - w (i + 1) else 0) := by simp [hni, mul_comm, mul_left_comm, mul_assoc]
+      · have hG_zero : (∑ j ∈ Finset.range (i + 1), g j) = 0 := by
+          rw [hG_eq (i + 1)]
+          rw [Finset.Ico_eq_empty_of_le]
+          · simp
+          · omega
+        simp [hni, hG_zero]
+    have hvariation :
+        -∑ i ∈ Finset.range (N - 1),
+          (w (i + 1) - w i) * (∑ j ∈ Finset.range (i + 1), g j) ≤
+          2 * D / (Real.log ((m : ℝ) * y)) ^ 2 := by
+      calc
+        -∑ i ∈ Finset.range (N - 1),
+          (w (i + 1) - w i) * (∑ j ∈ Finset.range (i + 1), g j) =
+            ∑ i ∈ Finset.range (N - 1),
+              -((w (i + 1) - w i) * (∑ j ∈ Finset.range (i + 1), g j)) := by
+          rw [Finset.sum_neg_distrib]
+        _ ≤ ∑ i ∈ Finset.range (N - 1),
+              2 * D * (if n ≤ i then w i - w (i + 1) else 0) := by
+          exact Finset.sum_le_sum hvar_point
+        _ = 2 * D * (∑ i ∈ Finset.Ico n (N - 1), (w i - w (i + 1))) := by
+          rw [← Finset.mul_sum]
+          congr 1
+          rw [← Finset.sum_filter]
+          apply Finset.sum_congr
+          · ext i
+            simp [Finset.mem_filter, Finset.mem_range, Finset.mem_Ico, and_comm]
+          · intro i hi
+            simp [(Finset.mem_Ico.mp hi).1]
+        _ = 2 * D * (w n - w (N - 1)) := by
+          have hsum := Finset.sum_Ico_sub (m := n) (n := N - 1) (f := w) hN_pred_ge
+          have hsum' : (∑ i ∈ Finset.Ico n (N - 1), (w i - w (i + 1))) = w n - w (N - 1) := by
+            calc
+              (∑ i ∈ Finset.Ico n (N - 1), (w i - w (i + 1))) =
+                  - (∑ i ∈ Finset.Ico n (N - 1), (w (i + 1) - w i)) := by
+                rw [← Finset.sum_neg_distrib]
+                apply Finset.sum_congr rfl
+                intro i hi
+                ring
+              _ = -(w (N - 1) - w n) := by rw [hsum]
+              _ = w n - w (N - 1) := by ring
+          rw [hsum']
+        _ ≤ 2 * D * w n := by
+          have hwN_nonneg : 0 ≤ w (N - 1) := hw_nonneg (N - 1) hN_pred_ge
+          nlinarith [htwoD_nonneg]
+        _ ≤ 2 * D / (Real.log ((m : ℝ) * y)) ^ 2 := by
+          have hwn_le := hw_le_L n le_rfl
+          calc
+            2 * D * w n ≤ 2 * D * (1 / (Real.log ((m : ℝ) * y)) ^ 2) := by
+              exact mul_le_mul_of_nonneg_left hwn_le htwoD_nonneg
+            _ = 2 * D / (Real.log ((m : ℝ) * y)) ^ 2 := by ring
+    calc
+      w (N - 1) * (∑ i ∈ Finset.range N, g i) -
+          ∑ i ∈ Finset.range (N - 1),
+            (w (i + 1) - w i) * (∑ j ∈ Finset.range (i + 1), g j) ≤
+          2 * D / (Real.log ((m : ℝ) * y)) ^ 2 +
+            2 * D / (Real.log ((m : ℝ) * y)) ^ 2 := by
+        linarith
+      _ = 4 * D / (Real.log ((m : ℝ) * y)) ^ 2 := by ring
+  · rw [Finset.Ico_eq_empty_of_le (not_lt.mp hN)]
+    simp
+    positivity
+
+@[blueprint "lem:mangoldt-log-increment-weighted-bound"
+  (statement := /-- Let $m\geq 1$, $y\geq 2$, and $N$ be natural.  With
+  $n=\lceil y\rceil$, the weighted logarithmic-increment sum over
+  $n\leq q<N$ is bounded by
+  $1/\log(my)+\log(2)/\log^2(my)$. -/)
+  (proof := /-- The first increment is at most $\log 2$ times the initial
+  weight.  For later increments, apply
+  \cref{lem:mangoldt-log-increment-pointwise-le} to compare
+  $(\log q-\log(q-1))/\log^2(mq)$ with the telescoping difference
+  $1/\log(m(q-1))-1/\log(mq)$.  Since $\lceil y\rceil\geq y$, the endpoint
+  discrepancy is absorbed by the displayed $\log 2$ error term. -/)
+  (title := /-- Weighted logarithmic increments -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_log_increment_weighted_bound (m N : ℕ) (hm : 1 ≤ m) (y : ℝ)
+    (hy : 2 ≤ y) :
+    (∑ q ∈ Finset.Ico ⌈y⌉₊ N,
+      (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ)) /
+        (Real.log (((m * q : ℕ) : ℝ))) ^ 2) ≤
+      1 / Real.log ((m : ℝ) * y) +
+        Real.log 2 / (Real.log ((m : ℝ) * y)) ^ 2 := by
+  let n : ℕ := ⌈y⌉₊
+  have hm_real : (1 : ℝ) ≤ (m : ℝ) := by
+    exact_mod_cast hm
+  have hy_nonneg : 0 ≤ y := by linarith
+  have hmy_two : (2 : ℝ) ≤ (m : ℝ) * y := by
+    calc
+      (2 : ℝ) ≤ 1 * y := by simpa using hy
+      _ ≤ (m : ℝ) * y := by
+        exact mul_le_mul_of_nonneg_right hm_real hy_nonneg
+  have hLpos : 0 < Real.log ((m : ℝ) * y) := by
+    exact Real.log_pos (by linarith)
+  have hyn : y ≤ (n : ℝ) := by
+    simpa [n] using Nat.le_ceil y
+  have hn : 2 ≤ n := by
+    have h2n : (2 : ℝ) ≤ (n : ℝ) := hy.trans hyn
+    exact_mod_cast h2n
+  by_cases hN : n < N
+  · rw [show ⌈y⌉₊ = n by rfl]
+    rw [← Finset.add_sum_Ioo_eq_sum_Ico
+      (f := fun q : ℕ =>
+        (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ)) /
+          (Real.log (((m * q : ℕ) : ℝ))) ^ 2) hN]
+    have hn_real : (2 : ℝ) ≤ (n : ℝ) := by
+      exact_mod_cast hn
+    have hnum : Real.log (n : ℝ) - Real.log ((n - 1 : ℕ) : ℝ) ≤ Real.log 2 := by
+      have hnpos : 0 < n := by omega
+      have hn1pos : 0 < n - 1 := by omega
+      have hn_ne : (n : ℝ) ≠ 0 := by
+        exact_mod_cast (ne_of_gt hnpos)
+      have hn1_ne : ((n - 1 : ℕ) : ℝ) ≠ 0 := by
+        exact_mod_cast (ne_of_gt hn1pos)
+      rw [← Real.log_div hn_ne hn1_ne]
+      apply Real.log_le_log
+      · positivity
+      · field_simp [hn1_ne]
+        rw [Nat.cast_sub (by omega : 1 ≤ n)] at *
+        norm_num at *
+        nlinarith
+    have hlog_mn : Real.log ((m : ℝ) * y) ≤ Real.log (((m * n : ℕ) : ℝ)) := by
+      have hm_nonneg : 0 ≤ (m : ℝ) := by positivity
+      have harg : (m : ℝ) * y ≤ (((m * n : ℕ) : ℝ)) := by
+        rw [Nat.cast_mul]
+        exact mul_le_mul_of_nonneg_left hyn hm_nonneg
+      exact Real.log_le_log (by linarith) harg
+    have hlog_mn_pos : 0 < Real.log (((m * n : ℕ) : ℝ)) := hLpos.trans_le hlog_mn
+    have hfirst :
+        (Real.log (n : ℝ) - Real.log ((n - 1 : ℕ) : ℝ)) /
+            (Real.log (((m * n : ℕ) : ℝ))) ^ 2 ≤
+          Real.log 2 / (Real.log ((m : ℝ) * y)) ^ 2 := by
+      have hstep₁ :
+          (Real.log (n : ℝ) - Real.log ((n - 1 : ℕ) : ℝ)) /
+              (Real.log (((m * n : ℕ) : ℝ))) ^ 2 ≤
+            Real.log 2 / (Real.log (((m * n : ℕ) : ℝ))) ^ 2 := by
+        gcongr
+      have hstep₂ :
+          Real.log 2 / (Real.log (((m * n : ℕ) : ℝ))) ^ 2 ≤
+            Real.log 2 / (Real.log ((m : ℝ) * y)) ^ 2 := by
+        gcongr
+      exact hstep₁.trans hstep₂
+    let F : ℕ → ℝ := fun r => 1 / Real.log (((m * r : ℕ) : ℝ))
+    have htel :
+        (∑ x ∈ Finset.Ioo n N, (F (x - 1) - F x)) = F n - F (N - 1) := by
+      rw [← Finset.Ico_succ_left_eq_Ioo]
+      rw [show Order.succ n = n + 1 by rfl]
+      rw [show N = N - 1 + 1 by omega]
+      rw [← Finset.sum_Ico_add
+        (f := fun x : ℕ => F (x - 1) - F x) (a := n) (b := N - 1) (c := 1)]
+      have hsum := Finset.sum_Ico_sub (m := n) (n := N - 1) (f := F)
+        (Nat.le_pred_of_lt hN)
+      have hsum' :
+          (∑ i ∈ Finset.Ico n (N - 1), (F i - F (i + 1))) = F n - F (N - 1) := by
+        calc
+          (∑ i ∈ Finset.Ico n (N - 1), (F i - F (i + 1))) =
+              - (∑ i ∈ Finset.Ico n (N - 1), (F (i + 1) - F i)) := by
+            rw [← Finset.sum_neg_distrib]
+            apply Finset.sum_congr rfl
+            intro i hi
+            ring
+          _ = -(F (N - 1) - F n) := by rw [hsum]
+          _ = F n - F (N - 1) := by ring
+      simpa [Nat.add_comm, Nat.add_assoc, Nat.sub_add_cancel] using hsum'
+    have htail_point : ∀ x ∈ Finset.Ioo n N,
+        (Real.log (x : ℝ) - Real.log ((x - 1 : ℕ) : ℝ)) /
+            (Real.log (((m * x : ℕ) : ℝ))) ^ 2 ≤ F (x - 1) - F x := by
+      intro x hx
+      have hx_left : n < x := (Finset.mem_Ioo.mp hx).1
+      have hx_pred_ge : 2 ≤ x - 1 := by omega
+      have hx_one_le : 1 ≤ x := by omega
+      have h := mangoldt_log_increment_pointwise_le m (x - 1) hm hx_pred_ge
+      dsimp [F]
+      simpa [Nat.sub_add_cancel hx_one_le] using h
+    have htail_le :
+        (∑ x ∈ Finset.Ioo n N,
+          (Real.log (x : ℝ) - Real.log ((x - 1 : ℕ) : ℝ)) /
+            (Real.log (((m * x : ℕ) : ℝ))) ^ 2) ≤ F n - F (N - 1) := by
+      calc
+        (∑ x ∈ Finset.Ioo n N,
+          (Real.log (x : ℝ) - Real.log ((x - 1 : ℕ) : ℝ)) /
+            (Real.log (((m * x : ℕ) : ℝ))) ^ 2) ≤
+            ∑ x ∈ Finset.Ioo n N, (F (x - 1) - F x) := by
+          exact Finset.sum_le_sum htail_point
+        _ = F n - F (N - 1) := htel
+    have hN_pred_ge : n ≤ N - 1 := Nat.le_pred_of_lt hN
+    have hN_pred_two : 2 ≤ N - 1 := hn.trans hN_pred_ge
+    have hlog_N_pred_pos : 0 < Real.log (((m * (N - 1) : ℕ) : ℝ)) := by
+      have htwo : 2 ≤ m * (N - 1) := Nat.mul_le_mul hm hN_pred_two
+      apply Real.log_pos
+      exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two htwo)
+    have hF_N_nonneg : 0 ≤ F (N - 1) := by
+      dsimp [F]
+      positivity
+    have htail :
+        (∑ x ∈ Finset.Ioo n N,
+          (Real.log (x : ℝ) - Real.log ((x - 1 : ℕ) : ℝ)) /
+            (Real.log (((m * x : ℕ) : ℝ))) ^ 2) ≤
+          1 / Real.log ((m : ℝ) * y) := by
+      have hFn : F n ≤ 1 / Real.log ((m : ℝ) * y) := by
+        dsimp [F]
+        gcongr
+      linarith
+    linarith
+  · rw [show ⌈y⌉₊ = n by rfl]
+    rw [Finset.Ico_eq_empty_of_le (not_lt.mp hN)]
+    simp
+    positivity
+
+@[blueprint "lem:mangoldt-tail-range-sum-bound"
+  (statement := /-- There is a real constant $C\geq 0$ such that, for every
+  natural $m\geq 1$, every real $y\geq 2$, and every natural cutoff $N$, the
+  finite thresholded range sum of the von Mangoldt tail summand up to $N$ is at
+  most $1/\log(my)+C/\log^2(my)$. -/)
+  (proof := /-- Rewrite the thresholded range sum using
+  \cref{lem:mangoldt-tail-range-eq-ico}.  Decompose $\Lambda(q)/q$ into the
+  logarithmic increment $\log q-\log(q-1)$ plus the reciprocal-Mertens error.
+  The logarithmic-increment contribution is bounded by
+  \cref{lem:mangoldt-log-increment-weighted-bound}.  Choose the Mertens
+  constant from \cref{lem:mertens-von-mangoldt-reciprocal} and apply
+  \cref{lem:mangoldt-mertens-error-weighted-bound} to the error contribution.
+  Adding the two estimates gives the stated finite range bound after taking the
+  constant $\log 2+4D$. -/)
+  (title := /-- Finite range form of the Mangoldt tail bound -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_tail_range_sum_bound :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ m : ℕ, 1 ≤ m -> ∀ y : ℝ, 2 ≤ y -> ∀ N : ℕ,
+      (∑ q ∈ Finset.range N,
+        if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) ≤
+        1 / Real.log ((m : ℝ) * y) + C / (Real.log ((m : ℝ) * y)) ^ 2 := by
+  obtain ⟨D, hD_nonneg, hD⟩ := mertens_von_mangoldt_reciprocal
+  refine ⟨Real.log 2 + 4 * D, by positivity, ?_⟩
+  intro m hm y hy N
+  have hm_real : (1 : ℝ) ≤ (m : ℝ) := by
+    exact_mod_cast hm
+  have hy_nonneg : 0 ≤ y := by linarith
+  have hmy_two : (2 : ℝ) ≤ (m : ℝ) * y := by
+    calc
+      (2 : ℝ) ≤ 1 * y := by simpa using hy
+      _ ≤ (m : ℝ) * y := by
+        exact mul_le_mul_of_nonneg_right hm_real hy_nonneg
+  have hLpos : 0 < Real.log ((m : ℝ) * y) := by
+    exact Real.log_pos (by linarith)
+  rw [mangoldt_tail_range_eq_ico]
+  let n : ℕ := ⌈y⌉₊
+  have hn : 2 ≤ n := by
+    have hyn : y ≤ (n : ℝ) := by
+      simpa [n] using Nat.le_ceil y
+    have h2n : (2 : ℝ) ≤ (n : ℝ) := hy.trans hyn
+    exact_mod_cast h2n
+  have hsplit :
+      (∑ q ∈ Finset.Ico ⌈y⌉₊ N, mangoldt_tail_term m q) =
+        (∑ q ∈ Finset.Ico ⌈y⌉₊ N,
+          (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ)) /
+            (Real.log (((m * q : ℕ) : ℝ))) ^ 2) +
+        (∑ q ∈ Finset.Ico ⌈y⌉₊ N,
+          (ArithmeticFunction.vonMangoldt q / (q : ℝ) -
+            (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ))) /
+              (Real.log (((m * q : ℕ) : ℝ))) ^ 2) := by
+    rw [← Finset.sum_add_distrib]
+    apply Finset.sum_congr rfl
+    intro q hq
+    rw [mangoldt_tail_term]
+    ring
+  have hmain := mangoldt_log_increment_weighted_bound m N hm y hy
+  have herror := mangoldt_mertens_error_weighted_bound D hD_nonneg hD m N hm y hy
+  rw [hsplit]
+  calc
+    (∑ q ∈ Finset.Ico ⌈y⌉₊ N,
+        (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ)) /
+          (Real.log (((m * q : ℕ) : ℝ))) ^ 2) +
+      (∑ q ∈ Finset.Ico ⌈y⌉₊ N,
+        (ArithmeticFunction.vonMangoldt q / (q : ℝ) -
+          (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ))) /
+            (Real.log (((m * q : ℕ) : ℝ))) ^ 2) ≤
+        (1 / Real.log ((m : ℝ) * y) +
+          Real.log 2 / (Real.log ((m : ℝ) * y)) ^ 2) +
+          4 * D / (Real.log ((m : ℝ) * y)) ^ 2 := by
+      exact add_le_add hmain herror
+    _ = 1 / Real.log ((m : ℝ) * y) +
+        (Real.log 2 + 4 * D) / (Real.log ((m : ℝ) * y)) ^ 2 := by
+      ring
+
 @[blueprint "lem:mangoldt-tail-upper-bound"
-  (statement := /-- There is an absolute constant $C$ such that, for every
-  natural $m\geq 1$ and every real $y\geq 2$, the von Mangoldt tail series is
-  summable and
+  (statement := /-- There is a real constant $C\geq 0$, independent of $m$ and
+  $y$, such that, for every natural $m\geq 1$ and every real $y\geq 2$, the von
+  Mangoldt tail series is summable and
   $\sum_{q\geq y}\Lambda(q)/(q\log^2(mq))\leq
   1/\log(my)+C/\log^2(my)$. -/)
-  (proof := /-- Apply partial summation to the reciprocal von Mangoldt sum in
-  \cref{lem:mertens-von-mangoldt-reciprocal} with the decreasing function
-  $t\mapsto \log^{-2}(mt)$.  This proves convergence of the improper tail sum.
-  The boundary term and the integral give
-  $1/\log(my)$, while the uniform Mertens error contributes
-  $O(\log^{-2}(my))$, yielding the displayed one-sided estimate after enlarging
-  the absolute constant. -/)
+  (proof := /-- Choose the constant supplied by
+  \cref{lem:mangoldt-tail-range-sum-bound}.  For fixed $m\geq 1$ and
+  $y\geq 2$, the tail summands are non-negative, so the uniform finite-range
+  bound implies summability of the corresponding series.  The standard
+  comparison of a non-negative real series with its bounded partial sums then
+  gives the same bound for the t-sum defining the von Mangoldt tail. -/)
   (title := /-- Upper von Mangoldt tail estimate -/)
   (latexEnv := "lemma")]
 lemma mangoldt_tail_upper_bound :
@@ -475,7 +1113,21 @@ lemma mangoldt_tail_upper_bound :
       Summable (fun q : ℕ => if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) ∧
         mangoldt_tail_sum m y ≤
           1 / Real.log ((m : ℝ) * y) + C / (Real.log ((m : ℝ) * y)) ^ 2 := by
-  sorry_using [mertens_von_mangoldt_reciprocal]
+  obtain ⟨C, hC, hbound⟩ := mangoldt_tail_range_sum_bound
+  refine ⟨C, hC, ?_⟩
+  intro m hm y hy
+  have hnonneg : ∀ q : ℕ, 0 ≤
+      (if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) := by
+    intro q
+    split_ifs
+    · exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+    · norm_num
+  have hsumm : Summable (fun q : ℕ =>
+      if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) :=
+    summable_of_sum_range_le hnonneg (hbound m hm y hy)
+  refine ⟨hsumm, ?_⟩
+  simpa [mangoldt_tail_sum] using
+    hsumm.tsum_le_of_sum_range_le (hbound m hm y hy)
 
 @[blueprint "lem:mangoldt-tail-finite-sum-le"
   (statement := /-- Let $m\geq 1$, let $y\geq 2$, and let $S$ be a finite set of
