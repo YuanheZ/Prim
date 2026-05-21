@@ -414,23 +414,54 @@ lemma mertens_von_mangoldt_reciprocal :
             |Real.log (N : ℝ) - Real.log t| := abs_add_le _ _
       _ ≤ Cnat + Real.log (2 : ℝ) := add_le_add hnat' hlogdiff
 
+@[blueprint "lem:eta-log-derivative-nonnegative"
+  (statement := /-- For every $u>0$, the eta-factor contribution to the
+  logarithmic derivative at $1+u$ is non-negative:
+  $$0\leq \operatorname{Re}\frac{\zeta'(1+u)}{\zeta(1+u)}+
+  \frac{\log 2}{2^u-1}.$$
+  This is the formal form, after substituting the defining identity
+  $\eta(s)=(1-2^{1-s})\zeta(s)$, of the assertion that the Dirichlet eta
+  function has non-negative logarithmic derivative on $(1,\infty)$. -/)
+  (proof := /-- Let $s>1$ and define
+  $\eta(s)=(1-2^{1-s})\zeta(s)$.  The Mellin representation gives
+  $$\eta(s)=\Gamma(s)^{-1}\int_0^\infty x^{s-1}(e^x+1)^{-1}\,dx.$$
+  Equivalently, if $X_s$ is gamma distributed with shape $s$ and scale $1$ and
+  $h(x)=(1+e^{-x})^{-1}$, then $\eta(s)=\mathbb E h(X_s)$.  For
+  $t>s>1$, write $X_t$ in distribution as $X_s+Y_{t-s}$ with $Y_{t-s}$ an
+  independent gamma variable of shape $t-s$.  Since $h$ is increasing and
+  $Y_{t-s}$ is non-negative, $\eta(t)\geq \eta(s)$.  Thus $\eta$ is
+  non-decreasing on $(1,\infty)$.  The same Mellin representation shows that
+  $\eta$ is differentiable and strictly positive there; applying the one-sided
+  difference-quotient characterization of the derivative of a non-decreasing
+  differentiable real function gives $\eta'(s)\geq 0$, and hence
+  $\eta'(s)/\eta(s)\geq 0$.  Differentiating
+  $\eta(s)=(1-2^{1-s})\zeta(s)$ and dividing by $\eta(s)$ gives
+  $$\frac{\zeta'(s)}{\zeta(s)}+\frac{\log 2}{2^{s-1}-1}
+    =\frac{\eta'(s)}{\eta(s)}.$$
+  Taking $s=1+u$ and then real parts yields the asserted inequality. -/)
+  (title := /-- Eta logarithmic-derivative nonnegativity -/)
+  (latexEnv := "lemma")]
+lemma eta_log_derivative_nonnegative :
+    ∀ u : ℝ, 0 < u ->
+      0 ≤ ((deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+          riemannZeta ((1 + u : ℝ) : ℂ)).re +
+        Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1)) := by
+  sorry
+
 @[blueprint "lem:zeta-log-derivative-geometric-bound"
   (statement := /-- For every $u>0$, the logarithmic derivative of the Riemann
   zeta function at the real point $1+u$ satisfies
   $-\zeta'(1+u)/\zeta(1+u)\leq \log 2/(2^u-1)$.  In the Lean statement the
   complex logarithmic derivative is compared through its real part. -/)
-  (proof := /-- Define the Dirichlet eta function by
-  $\eta(s)=(1-2^{1-s})\zeta(s)$.  Differentiating the identity gives
-  $\zeta'(1+u)/\zeta(1+u)+\log 2/(2^u-1)=\eta'(1+u)/\eta(1+u)$.  Hence the
-  desired inequality is equivalent to the non-negativity of this logarithmic
-  derivative.  For $s>1$ the Mellin representation
-  $\eta(s)=\Gamma(s)^{-1}\int_0^\infty x^{s-1}(e^x+1)^{-1}\,dx$ can be written
-  as $\eta(s)=\mathbb E h(X_s)$, where $h(x)=(1+e^{-x})^{-1}$ and $X_s$ has
-  the gamma distribution of shape $s$ and scale $1$.  If $t>s>1$, then
-  $X_t$ has the same distribution as $X_s+Y_{t-s}$ for an independent gamma
-  variable $Y_{t-s}$, and $h$ is increasing; therefore $\eta(t)\geq\eta(s)$.
-  Thus $\eta$ is non-decreasing on $(1,\infty)$, so its logarithmic derivative
-  is non-negative there, proving the displayed comparison. -/)
+  (proof := /-- Fix $u>0$.  By
+  \cref{lem:eta-log-derivative-nonnegative},
+  $$0\leq \operatorname{Re}\frac{\zeta'(1+u)}{\zeta(1+u)}+
+  \frac{\log 2}{2^u-1}.$$
+  Since real part is additive and commutes with negation, this inequality is
+  equivalent to
+  $$\operatorname{Re}\left(-\frac{\zeta'(1+u)}{\zeta(1+u)}\right)
+  \leq \frac{\log 2}{2^u-1},$$
+  which is the desired comparison. -/)
   (title := /-- Zeta logarithmic-derivative comparison -/)
   (latexEnv := "lemma")]
 lemma zeta_log_derivative_geometric_bound :
@@ -438,7 +469,7 @@ lemma zeta_log_derivative_geometric_bound :
       ((- deriv riemannZeta ((1 + u : ℝ) : ℂ) /
           riemannZeta ((1 + u : ℝ) : ℂ)).re) ≤
         Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) := by
-  sorry
+  sorry_using [eta_log_derivative_nonnegative]
 
 @[blueprint "lem:von-mangoldt-dirichlet-series-upper-bound"
   (statement := /-- For every $u>0$, the von Mangoldt Dirichlet series satisfies
