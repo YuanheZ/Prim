@@ -138,16 +138,18 @@ def erdos1196_finite_bound (C : ℝ) : Prop :=
         erdos_sum A ≤ 1 + C / Real.log x
 
 @[blueprint "lem:von-mangoldt-divisor-sum"
-  (statement := /-- For every natural number $n$, the von Mangoldt function
-  satisfies $\sum_{q\mid n}\Lambda(q)=\log n$. -/)
-  (proof := /-- This is exactly the standard divisor-sum identity for the von
-  Mangoldt function, with the sum taken over the finite set of positive divisors
-  of $n$. -/)
+  (statement := /-- For every $n\in\mathbb{N}$, the sum of the von Mangoldt
+  function over the finite divisor set $\operatorname{divisors}(n)$ satisfies
+  $\sum_{q\in\operatorname{divisors}(n)}\Lambda(q)=\log n$; in particular,
+  the case $n=0$ uses the empty finite divisor set convention. -/)
+  (proof := /-- Apply the standard divisor-sum identity for the von Mangoldt
+  function in Mathlib, which states exactly that the finite sum over
+  $\operatorname{divisors}(n)$ is $\log n$ for every $n\in\mathbb{N}$. -/)
   (title := /-- Divisor sum of the von Mangoldt function -/)
   (latexEnv := "lemma")]
 lemma von_mangoldt_divisor_sum (n : ℕ) :
     (∑ q ∈ n.divisors, ArithmeticFunction.vonMangoldt q) = Real.log (n : ℝ) := by
-  sorry
+  simpa using (ArithmeticFunction.vonMangoldt_sum (n := n))
 
 @[blueprint "lem:mertens-von-mangoldt-reciprocal"
   (statement := /-- There is an absolute constant $C$ such that, for every
