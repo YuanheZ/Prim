@@ -1,0 +1,18 @@
+# Ignore everything
+*
+
+# Track these
+!.gitignore
+!OpenCLean/
+!OpenCLean/**
+!lakefile.toml
+!lake-manifest.json
+!lean-toolchain
+
+# CI workflow + verifier
+!.github/
+!.github/workflows/
+!.github/workflows/verify-blueprint.yml
+!.github/workflows/warmup-cache.yml
+!.scripts/
+!.scripts/verify_blueprint.py
