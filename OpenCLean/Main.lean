@@ -3873,20 +3873,29 @@ lemma tail_majorant_bound :
   exact le_trans htail_le_main halg
 
 @[blueprint "lem:finite-large-primitive-bound"
-  (statement := /-- There is an absolute constant $C$ for which the finite
-  version of the Erd\H{o}s--S\'ark\"ozy--Szemer\'edi bound holds: every primitive
-  set supported in $[x,X]$ with $2\leq x\leq X$ has Erd\H{o}s sum at most
+  (statement := /-- There exists a real constant $C\geq 0$ such that, for all
+  real numbers $x$ and $X$ with $2\leq x\leq X$, every primitive set
+  $A\subseteq\mathbb{N}$ supported in $[x,X]$ has Erd\H{o}s sum at most
   $1+C/\log x$. -/)
-  (proof := /-- Choose the constant supplied by \cref{lem:tail-majorant-bound}.
-  For a primitive set supported in $[x,X]$, first apply
-  \cref{lem:finite-chain-cut-bound} to bound its Erd\H{o}s sum by the cut
-  capacity. Then apply \cref{lem:cut-capacity-le-tail-majorant} and finally the
-  estimate from \cref{lem:tail-majorant-bound}. -/)
+  (proof := /-- Choose the nonnegative constant supplied by
+  \cref{lem:tail-majorant-bound}.  To prove \cref{def:erdos1196-finite-bound},
+  fix real numbers $x$ and $X$ with $2\leq x\leq X$ and a primitive set
+  $A\subseteq\mathbb{N}$ supported in $[x,X]$.  By
+  \cref{lem:finite-chain-cut-bound}, the Erd\H{o}s sum of $A$ is at most
+  \cref{def:cut-capacity}.  The latter is at most \cref{def:tail-majorant} by
+  \cref{lem:cut-capacity-le-tail-majorant}, and this is at most
+  $1+C/\log x$ by \cref{lem:tail-majorant-bound}. -/)
   (title := /-- Finite large primitive-set bound -/)
   (latexEnv := "lemma")]
 lemma finite_large_primitive_bound :
     ∃ C : ℝ, erdos1196_finite_bound C := by
-  sorry_using [finite_chain_cut_bound, cut_capacity_le_tail_majorant, tail_majorant_bound]
+  obtain ⟨C, hC_nonneg, hC_bound⟩ := tail_majorant_bound
+  refine ⟨C, hC_nonneg, ?_⟩
+  intro x X hx _ A hprim hsupp
+  calc
+    erdos_sum A ≤ cut_capacity x X := finite_chain_cut_bound A x X hx hprim hsupp
+    _ ≤ tail_majorant x := cut_capacity_le_tail_majorant x X hx
+    _ ≤ 1 + C / Real.log x := hC_bound x hx
 
 @[blueprint "lem:finite-truncation-principle"
   (statement := /-- If there is a real constant $C\geq 0$ such that every
