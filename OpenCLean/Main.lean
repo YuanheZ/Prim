@@ -474,7 +474,167 @@ lemma dirichlet_eta_mellin_transform :
       dirichlet_eta_real s =
         (1 / Real.Gamma s) *
           ∫ x : ℝ in Set.Ioi (0 : ℝ), x ^ (s - 1) / (Real.exp x + 1) := by
-  sorry
+  intro s hs
+  let S : ℂ := s
+  have hgeom :
+      ∀ t ∈ Set.Ioi (0 : ℝ),
+        HasSum (fun n : ℕ => ((-1 : ℂ) ^ n) * Real.exp (-(n + 1 : ℝ) * t))
+          ((1 : ℂ) / (Real.exp t + 1)) := by
+    intro t ht
+    have htpos : 0 < t := ht
+    have hnorm : ‖(-((Real.exp (-t) : ℝ) : ℂ))‖ < 1 := by
+      rw [norm_neg, Complex.norm_real, Real.norm_eq_abs, Real.abs_exp, Real.exp_neg]
+      bound
+    convert
+      ((hasSum_geometric_of_norm_lt_one (ξ := -((Real.exp (-t) : ℝ) : ℂ)) hnorm).mul_left
+        ((Real.exp (-t) : ℝ) : ℂ)) using 1
+    · ext n
+      rw [show -(↑n + 1) * t = -t + ↑n * (-t) by ring]
+      simp [Real.exp_add, Real.exp_nat_mul, mul_comm, mul_left_comm, mul_assoc]
+      rw [show -(↑t * ↑n : ℂ) = ↑n * (-↑t) by ring, Complex.exp_nat_mul]
+      ring
+    · rw [Real.exp_neg]
+      let E : ℂ := ↑(Real.exp t)
+      have hE : E ≠ 0 := by
+        dsimp [E]
+        exact_mod_cast Real.exp_ne_zero t
+      have hE1 : E + 1 ≠ 0 := by
+        dsimp [E]
+        norm_cast
+        positivity
+      have halg : 1 / (E + 1) = E⁻¹ * (1 - -E⁻¹)⁻¹ := by
+        rw [sub_neg_eq_add]
+        field_simp [hE, hE1]
+      simpa [E] using halg
+  have hsum :
+      Summable (fun n : ℕ => ‖((-1 : ℂ) ^ n)‖ / ((n + 1 : ℝ)) ^ S.re) := by
+    convert (Real.summable_one_div_nat_add_rpow 1 s).2 hs using 1
+    ext n
+    simp [S, abs_of_nonneg (show 0 ≤ (n : ℝ) + 1 by positivity)]
+  have hs0 : 0 < S.re := by
+    dsimp [S]
+    exact lt_trans zero_lt_one hs
+  have hp : ∀ n : ℕ, ((-1 : ℂ) ^ n) = 0 ∨ 0 < (n + 1 : ℝ) := by
+    intro n
+    right
+    positivity
+  have hmellin :
+      HasSum
+        (fun n : ℕ => Complex.Gamma S * ((-1 : ℂ) ^ n) / ((n + 1 : ℝ) : ℂ) ^ S)
+        (mellin (fun t : ℝ => (1 : ℂ) / (Real.exp t + 1)) S) := by
+    exact hasSum_mellin hp hs0 hgeom hsum
+  have hmellin_real :
+      mellin (fun t : ℝ => (1 : ℂ) / (Real.exp t + 1)) S =
+        ((∫ x : ℝ in Set.Ioi (0 : ℝ), x ^ (s - 1) / (Real.exp x + 1) : ℝ) : ℂ) := by
+    rw [mellin]
+    simp only [smul_eq_mul]
+    rw [← integral_complex_ofReal]
+    refine MeasureTheory.setIntegral_congr_fun measurableSet_Ioi ?_
+    intro x hx
+    have hxpos : 0 < x := hx
+    have hpow : (x : ℂ) ^ (S - 1) = ((x ^ (s - 1) : ℝ) : ℂ) := by
+      dsimp [S]
+      symm
+      simpa using (Complex.ofReal_cpow (x := x) hxpos.le (s - 1))
+    simpa [hpow, div_eq_mul_inv]
+  have hcomplex :
+      mellin (fun t : ℝ => (1 : ℂ) / (Real.exp t + 1)) S =
+        Complex.Gamma S * (((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - S)) * riemannZeta S) := by
+    have hs1 : 1 < S.re := by
+      simpa [S] using hs
+    have hf : Summable (fun n : ℕ => 1 / (((n + 1 : ℕ) : ℂ) ^ S)) := by
+      simpa using
+        (summable_nat_add_iff (f := fun n : ℕ => 1 / ((n : ℂ) ^ S)) 1).2
+          (Complex.summable_one_div_nat_cpow.mpr hs1)
+    have hzeta_nat : riemannZeta S = ∑' n : ℕ, 1 / (((n + 1 : ℕ) : ℂ) ^ S) := by
+      simpa using zeta_eq_tsum_one_div_nat_add_one_cpow (s := S) hs1
+    have hg : Summable (fun n : ℕ => ((-1 : ℂ) ^ n) / (((n + 1 : ℕ) : ℂ) ^ S)) := by
+      apply Summable.of_norm
+      convert hsum using 1
+      ext n
+      have hbase : (((n + 1 : ℕ) : ℂ)) = ((((n + 1 : ℕ) : ℝ) : ℂ)) := by
+        norm_num
+      rw [hbase, norm_div, Complex.norm_cpow_eq_rpow_re_of_pos (x := ((n + 1 : ℕ) : ℝ))
+        (by positivity) S]
+      simp [S, Nat.cast_add, Nat.cast_one, div_eq_mul_inv]
+    have hinj_even : Function.Injective (fun n : ℕ => 2 * n) := by
+      exact mul_right_injective₀ (by norm_num : (2 : ℕ) ≠ 0)
+    have hinj_odd : Function.Injective (fun n : ℕ => 2 * n + 1) := by
+      intro a b h
+      exact hinj_even (Nat.succ.inj h)
+    have heven_scaled :
+        (∑' n : ℕ, 1 / (((2 * n + 2 : ℕ) : ℂ) ^ S)) =
+          (2 : ℂ) ^ (-S) * riemannZeta S := by
+      rw [hzeta_nat]
+      rw [← tsum_mul_left]
+      congr 1
+      ext n
+      rw [show (2 * n + 2 : ℕ) = 2 * (n + 1) by ring]
+      rw [show (((2 * (n + 1) : ℕ) : ℂ) ^ S) =
+          (2 : ℂ) ^ S * (((n + 1 : ℕ) : ℂ) ^ S) by
+        simpa using (Complex.natCast_mul_natCast_cpow 2 (n + 1) S)]
+      rw [Complex.cpow_neg]
+      field_simp [Complex.natCast_add_one_cpow_ne_zero 1 S,
+        Complex.natCast_add_one_cpow_ne_zero n S]
+    have hzeta_split :
+        (∑' n : ℕ, 1 / (((2 * n + 1 : ℕ) : ℂ) ^ S)) +
+          (∑' n : ℕ, 1 / (((2 * n + 2 : ℕ) : ℂ) ^ S)) = riemannZeta S := by
+      rw [hzeta_nat]
+      simpa [Nat.add_assoc] using
+        (tsum_even_add_odd
+          (f := fun k : ℕ => 1 / (((k + 1 : ℕ) : ℂ) ^ S))
+          (hf.comp_injective hinj_even) (hf.comp_injective hinj_odd))
+    have heta_split :
+        (∑' n : ℕ, ((-1 : ℂ) ^ n) / (((n + 1 : ℕ) : ℂ) ^ S)) =
+          (∑' n : ℕ, 1 / (((2 * n + 1 : ℕ) : ℂ) ^ S)) -
+            (∑' n : ℕ, 1 / (((2 * n + 2 : ℕ) : ℂ) ^ S)) := by
+      rw [← tsum_even_add_odd
+        (f := fun k : ℕ => ((-1 : ℂ) ^ k) / (((k + 1 : ℕ) : ℂ) ^ S))
+        (hg.comp_injective hinj_even) (hg.comp_injective hinj_odd)]
+      rw [sub_eq_add_neg, ← tsum_neg]
+      congr 1
+      · apply tsum_congr
+        intro n
+        simp [pow_mul]
+      · apply tsum_congr
+        intro n
+        rw [show (2 * n + 1 + 1 : ℕ) = 2 * n + 2 by ring]
+        simp [pow_succ, pow_mul, div_eq_mul_inv]
+    have htwo : (2 : ℂ) ^ ((1 : ℂ) - S) = 2 * (2 : ℂ) ^ (-S) := by
+      rw [show ((1 : ℂ) - S) = 1 + (-S) by ring]
+      rw [Complex.cpow_add _ _ (by norm_num : (2 : ℂ) ≠ 0), Complex.cpow_one]
+    have heta_tsum :
+        (∑' n : ℕ, ((-1 : ℂ) ^ n) / (((n + 1 : ℕ) : ℂ) ^ S)) =
+          ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - S)) * riemannZeta S := by
+      rw [heta_split]
+      rw [show (∑' n : ℕ, 1 / (((2 * n + 1 : ℕ) : ℂ) ^ S)) -
+          (∑' n : ℕ, 1 / (((2 * n + 2 : ℕ) : ℂ) ^ S)) =
+          ((∑' n : ℕ, 1 / (((2 * n + 1 : ℕ) : ℂ) ^ S)) +
+            (∑' n : ℕ, 1 / (((2 * n + 2 : ℕ) : ℂ) ^ S))) -
+            2 * (∑' n : ℕ, 1 / (((2 * n + 2 : ℕ) : ℂ) ^ S)) by ring]
+      rw [hzeta_split, heven_scaled, htwo]
+      ring
+    rw [← hmellin.tsum_eq]
+    rw [← heta_tsum]
+    rw [← tsum_mul_left]
+    congr 1
+    ext n
+    simp [div_eq_mul_inv]
+    ring
+  have hInt :
+      (∫ x : ℝ in Set.Ioi (0 : ℝ), x ^ (s - 1) / (Real.exp x + 1)) =
+        Real.Gamma s * dirichlet_eta_real s := by
+    have hcomplex' :
+        ((∫ x : ℝ in Set.Ioi (0 : ℝ), x ^ (s - 1) / (Real.exp x + 1) : ℝ) : ℂ) =
+          Complex.Gamma S * (((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - S)) * riemannZeta S) := by
+      exact hmellin_real.symm.trans hcomplex
+    have hre := congrArg Complex.re hcomplex'
+    rw [dirichlet_eta_real]
+    simp [S, Complex.Gamma_ofReal, Complex.mul_re] at hre ⊢
+    linarith
+  have hγ : Real.Gamma s ≠ 0 := (Real.Gamma_pos_of_pos (lt_trans zero_lt_one hs)).ne'
+  rw [hInt]
+  field_simp [hγ]
 
 @[blueprint "lem:gamma-logistic-expectation-eq-mellin-integral"
   (statement := /-- For every real $s>1$, the expectation of
