@@ -483,18 +483,25 @@ lemma dirichlet_eta_mellin_transform :
   $$
     \Gamma(s)^{-1}\int_0^\infty {x^{s-1}\over e^x+1}\,dx.
   $$ -/)
-  (proof := /-- Fix $s>1$.  The measure `ProbabilityTheory.gammaMeasure s 1`
-  is the measure with density
-  $\Gamma(s)^{-1}x^{s-1}e^{-x}$ on $[0,\infty)$ and density zero on the
-  negative half-line.  The integrability follows from the exponential decay at
-  infinity and from $s>1$ at the origin.  On $(0,\infty)$ one has
+  (proof := /-- Fix $s>1$.  Unfold `ProbabilityTheory.gammaMeasure` and apply
+  the Bochner-integral formula for a measure defined by `withDensity`, with
+  density `ProbabilityTheory.gammaPDF s 1`.  The density is measurable and
+  finite because it is `ENNReal.ofReal` of the real gamma density.  Rewrite the
+  right-hand side as the integral over the whole real line of the indicator of
+  $(0,\infty)$ times the integrand
+  $\Gamma(s)^{-1}x^{s-1}/(e^x+1)$.  It remains to compare the two integrands
+  pointwise.  For $x>0$, `ProbabilityTheory.gammaPDF_of_nonneg` gives the
+  density
+  $\Gamma(s)^{-1}x^{s-1}e^{-x}$, and the identity
   $$
     {1\over 1+e^{-x}}\,\Gamma(s)^{-1}x^{s-1}e^{-x}
-      = \Gamma(s)^{-1}{x^{s-1}\over e^x+1}.
+      = \Gamma(s)^{-1}{x^{s-1}\over e^x+1}
   $$
-  The possible endpoint $x=0$ has Lebesgue measure zero, and therefore does not
-  affect the Bochner integral.  Pulling out the constant $\Gamma(s)^{-1}$ gives
-  the asserted identity. -/)
+  follows by clearing the nonzero denominators, using positivity of
+  $\Gamma(s)$ and of $e^x$.  For $x<0$, `ProbabilityTheory.gammaPDF_of_neg`
+  gives density zero; for $x=0$, the factor $0^{s-1}$ is zero because
+  $s-1>0$.  Hence the whole-line integral is exactly the indicated integral on
+  $(0,\infty)$, with the constant $\Gamma(s)^{-1}$ pulled out. -/)
   (title := /-- Gamma expectation as a Mellin integral -/)
   (latexEnv := "lemma")]
 lemma gamma_logistic_expectation_eq_mellin_integral :
@@ -502,7 +509,45 @@ lemma gamma_logistic_expectation_eq_mellin_integral :
       (∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure s 1)) =
         (1 / Real.Gamma s) *
           ∫ x : ℝ in Set.Ioi (0 : ℝ), x ^ (s - 1) / (Real.exp x + 1) := by
-  sorry
+  intro s hs
+  rw [ProbabilityTheory.gammaMeasure, integral_withDensity_eq_integral_toReal_smul]
+  · rw [← MeasureTheory.integral_const_mul,
+      ← MeasureTheory.integral_indicator (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))]
+    apply MeasureTheory.integral_congr_ae
+    filter_upwards with x
+    by_cases hx : 0 < x
+    · have hnonneg :
+          0 ≤ 1 ^ s / Real.Gamma s * x ^ (s - 1) * Real.exp (-(1 * x)) := by
+        simpa [ProbabilityTheory.gammaPDFReal, if_pos hx.le] using
+          ProbabilityTheory.gammaPDFReal_nonneg (a := s) (r := 1) (by linarith) (by norm_num) x
+      have hpdf :
+          (ProbabilityTheory.gammaPDF s 1 x).toReal =
+            1 ^ s / Real.Gamma s * x ^ (s - 1) * Real.exp (-(1 * x)) := by
+        rw [ProbabilityTheory.gammaPDF_of_nonneg hx.le]
+        exact ENNReal.toReal_ofReal hnonneg
+      have hGamma_ne : Real.Gamma s ≠ 0 := (Real.Gamma_pos_of_pos (by linarith : 0 < s)).ne'
+      rw [hpdf]
+      simp [Set.mem_Ioi, hx, Real.exp_neg, div_eq_mul_inv]
+      field_simp [hGamma_ne, Real.exp_ne_zero]
+    · have hxle : x ≤ 0 := le_of_not_gt hx
+      rcases lt_or_eq_of_le hxle with hxlt | hxeq
+      · have hpdf : ProbabilityTheory.gammaPDF s 1 x = 0 := ProbabilityTheory.gammaPDF_of_neg hxlt
+        simp [hpdf, Set.mem_Ioi, hx]
+      · subst x
+        have hsne : s - 1 ≠ 0 := by linarith
+        have hnonneg :
+            0 ≤ 1 ^ s / Real.Gamma s * (0 : ℝ) ^ (s - 1) * Real.exp (-(1 * 0)) := by
+          simp [Real.zero_rpow hsne]
+        have hpdf :
+            (ProbabilityTheory.gammaPDF s 1 0).toReal =
+              1 ^ s / Real.Gamma s * (0 : ℝ) ^ (s - 1) * Real.exp (-(1 * 0)) := by
+          rw [ProbabilityTheory.gammaPDF_of_nonneg le_rfl]
+          exact ENNReal.toReal_ofReal hnonneg
+        simp [hpdf, Set.mem_Ioi, hx, Real.zero_rpow hsne]
+  · simpa [ProbabilityTheory.gammaPDF] using
+      ENNReal.measurable_ofReal.comp (ProbabilityTheory.measurable_gammaPDFReal s 1)
+  · filter_upwards with x
+    simp [ProbabilityTheory.gammaPDF]
 
 @[blueprint "lem:dirichlet-eta-gamma-expectation"
   (statement := /-- For every real $s>1$, the eta value of
