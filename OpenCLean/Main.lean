@@ -1319,19 +1319,234 @@ lemma finite_chain_cut_bound (A : Set ℕ) (x X : ℝ) (hx : 2 ≤ x)
   (statement := /-- For every $x\geq 2$ and every real $X$, the finite cut
   capacity is bounded above by the reindexed tail majorant depending only on
   $x$. -/)
-  (proof := /-- Discard the upper restriction $r\leq X$ in the cut capacity and
-  write $r=nq$. The condition $r/q<x$ becomes $n<x$, and the condition
-  $r\geq x$ forces $q\geq x/n$. Combining this with the original restriction
-  $q\geq 2$ gives the lower threshold $q\geq\max(2,x/n)$.  For each fixed
-  $n$ with $1\leq n<x$, \cref{lem:mangoldt-tail-finite-sum-le} bounds the
-  resulting finite set of $q$-contributions by the full tail in
-  \cref{def:mangoldt-tail-sum}.  Summing these inequalities over $n$ gives
-  exactly the majorant in \cref{def:tail-majorant}. -/)
+  (proof := /-- It suffices to bound each finite partial sum in
+  \cref{def:cut-capacity}.  For every contributing divisor $q\mid r$, put
+  $n=r/q$. Then $n<x$, and the condition $r\geq x$ gives $q\geq x/n$; together
+  with the non-triviality forced by $r\geq x>n$, this gives
+  $q\geq\max\{2,x/n\}$.  The summand is therefore the corresponding
+  $n^{-1}$ multiple of the tail term from \cref{def:mangoldt-tail-term}.  Thus
+  the finite partial sum embeds into a finite sum over pairs $(n,q)$ with
+  $1\leq n<x$.  For each such $n$,
+  \cref{lem:mangoldt-tail-finite-sum-le} bounds the finite $q$-sum by the full
+  tail in \cref{def:mangoldt-tail-sum}.  Summing over the finitely many
+  admissible $n$ gives the corresponding finite form of
+  \cref{def:tail-majorant}, and hence the desired t-sum inequality. -/)
   (title := /-- Reindexing the cut capacity -/)
   (latexEnv := "lemma")]
 lemma cut_capacity_le_tail_majorant (x X : ℝ) (hx : 2 ≤ x) :
     cut_capacity x X ≤ tail_majorant x := by
-  sorry_using [mangoldt_tail_finite_sum_le]
+  rw [cut_capacity]
+  apply tsum_le_of_sum_le'
+  · rw [tail_majorant]
+    apply tsum_nonneg
+    intro n
+    split_ifs with hn
+    · apply mul_nonneg
+      · positivity
+      · rw [mangoldt_tail_sum]
+        apply tsum_nonneg
+        intro q
+        split_ifs
+        · rw [mangoldt_tail_term]
+          exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+        · norm_num
+    · norm_num
+  · intro s
+    let M : ℕ := ⌈X⌉₊ + 1
+    let ns : Finset ℕ := (Finset.range ⌈x⌉₊).filter (fun n => 1 ≤ n ∧ (n : ℝ) < x)
+    let qs : Finset ℕ := Finset.range M
+    let pairs : Finset (ℕ × ℕ) := ns.product qs
+    let pairTerm : ℕ × ℕ → ℝ := fun p =>
+      (1 / (p.1 : ℝ)) *
+        (if max (2 : ℝ) (x / (p.1 : ℝ)) ≤ (p.2 : ℝ) then
+          mangoldt_tail_term p.1 p.2 else 0)
+    have hpair_nonneg : ∀ p, 0 ≤ pairTerm p := by
+      intro p
+      simp only [pairTerm]
+      apply mul_nonneg
+      · positivity
+      · split_ifs
+        · rw [mangoldt_tail_term]
+          exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+        · norm_num
+    have hD_sum (r : ℕ) :
+        (Real.log (r : ℝ) ^ 2)⁻¹ * (r : ℝ)⁻¹ *
+            (∑ q ∈ r.divisors,
+              if ((r / q : ℕ) : ℝ) < x then ArithmeticFunction.vonMangoldt q else 0) =
+          ∑ q ∈ r.divisors.filter (fun q => ((r / q : ℕ) : ℝ) < x),
+            (Real.log (r : ℝ) ^ 2)⁻¹ * (r : ℝ)⁻¹ *
+              ArithmeticFunction.vonMangoldt q := by
+      rw [Finset.mul_sum]
+      simpa [mul_ite] using
+        (Finset.sum_filter (s := r.divisors)
+          (p := fun q : ℕ => ((r / q : ℕ) : ℝ) < x)
+          (f := fun q : ℕ =>
+            (Real.log (r : ℝ) ^ 2)⁻¹ * (r : ℝ)⁻¹ *
+              ArithmeticFunction.vonMangoldt q)).symm
+    have hterm (r q : ℕ) (hrx : x ≤ (r : ℝ))
+        (hq : q ∈ r.divisors.filter (fun q => ((r / q : ℕ) : ℝ) < x)) :
+        (Real.log (r : ℝ) ^ 2)⁻¹ * (r : ℝ)⁻¹ *
+            ArithmeticFunction.vonMangoldt q = pairTerm (r / q, q) := by
+      have hqdiv : q ∣ r := (Nat.mem_divisors.mp (Finset.mem_filter.mp hq).1).1
+      have hqpos : 0 < q := Nat.pos_of_mem_divisors (Finset.mem_filter.mp hq).1
+      have hprod : (r / q) * q = r := Nat.div_mul_cancel hqdiv
+      have hcast : (((r / q) * q : ℕ) : ℝ) = (r : ℝ) := by exact_mod_cast hprod
+      have hnlt : ((r / q : ℕ) : ℝ) < x := (Finset.mem_filter.mp hq).2
+      have hrpos : 0 < r := by
+        have : (0 : ℝ) < (r : ℝ) := by linarith
+        exact_mod_cast this
+      have hqle : q ≤ r := Nat.le_of_dvd hrpos hqdiv
+      have hnpos : 0 < r / q := Nat.div_pos hqle hqpos
+      have hqtwo : (2 : ℝ) ≤ (q : ℝ) := by
+        by_contra hnot
+        have hq_lt_two : q < 2 := by exact_mod_cast lt_of_not_ge hnot
+        have hq_le_one : q ≤ 1 := Nat.lt_succ_iff.mp hq_lt_two
+        have hq_eq_one : q = 1 := Nat.le_antisymm hq_le_one hqpos
+        have hr_eq : r / q = r := by simp [hq_eq_one]
+        rw [hr_eq] at hnlt
+        linarith
+      have hxdiv : x / ((r / q : ℕ) : ℝ) ≤ (q : ℝ) := by
+        have hnpos_real : 0 < ((r / q : ℕ) : ℝ) := by exact_mod_cast hnpos
+        rw [div_le_iff₀ hnpos_real]
+        calc
+          x ≤ (r : ℝ) := hrx
+          _ = (q : ℝ) * ((r / q : ℕ) : ℝ) := by
+            rw [← hcast]
+            simp [Nat.cast_mul, mul_comm]
+      have hthresh : max (2 : ℝ) (x / ((r / q : ℕ) : ℝ)) ≤ (q : ℝ) :=
+        max_le hqtwo hxdiv
+      simp only [pairTerm]
+      rw [if_pos hthresh, mangoldt_tail_term]
+      rw [← hcast]
+      simp only [Nat.cast_mul]
+      ring_nf
+    have hmem_pair (r q : ℕ) (hr : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X)
+        (hq : q ∈ r.divisors.filter (fun q => ((r / q : ℕ) : ℝ) < x)) :
+        (r / q, q) ∈ pairs := by
+      have hqdiv : q ∣ r := (Nat.mem_divisors.mp (Finset.mem_filter.mp hq).1).1
+      have hqpos : 0 < q := Nat.pos_of_mem_divisors (Finset.mem_filter.mp hq).1
+      have hnlt : ((r / q : ℕ) : ℝ) < x := (Finset.mem_filter.mp hq).2
+      have hrpos : 0 < r := by
+        have : (0 : ℝ) < (r : ℝ) := by linarith
+        exact_mod_cast this
+      have hqle : q ≤ r := Nat.le_of_dvd hrpos hqdiv
+      have hnpos : 0 < r / q := Nat.div_pos hqle hqpos
+      have hnone : 1 ≤ r / q := Nat.succ_le_of_lt hnpos
+      have hnltceil : r / q < ⌈x⌉₊ := by
+        exact_mod_cast (lt_of_lt_of_le hnlt (Nat.le_ceil x))
+      have hq_le_X : (q : ℝ) ≤ X := by
+        have hqr : (q : ℝ) ≤ (r : ℝ) := by exact_mod_cast hqle
+        linarith
+      have hq_le_ceil : q ≤ ⌈X⌉₊ := by
+        exact_mod_cast (le_trans hq_le_X (Nat.le_ceil X))
+      have hq_lt_M : q < M := by
+        dsimp [M]
+        omega
+      simp [pairs, ns, qs, hnltceil, hnone, hnlt, hq_lt_M]
+    have hper (r : ℕ) :
+        (if x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X then
+          1 / ((r : ℝ) * Real.log (r : ℝ) ^ 2) *
+            ∑ q ∈ r.divisors,
+              if ((r / q : ℕ) : ℝ) < x then ArithmeticFunction.vonMangoldt q else 0
+        else 0) ≤
+          ∑ p ∈ pairs.filter (fun p => p.1 * p.2 = r), pairTerm p := by
+      by_cases hr : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X
+      · rw [if_pos hr]
+        calc
+          1 / ((r : ℝ) * Real.log (r : ℝ) ^ 2) *
+              (∑ q ∈ r.divisors,
+                if ((r / q : ℕ) : ℝ) < x then ArithmeticFunction.vonMangoldt q else 0)
+              = (Real.log (r : ℝ) ^ 2)⁻¹ * (r : ℝ)⁻¹ *
+                  (∑ q ∈ r.divisors,
+                    if ((r / q : ℕ) : ℝ) < x then ArithmeticFunction.vonMangoldt q else 0) := by
+                ring_nf
+          _ = ∑ q ∈ r.divisors.filter (fun q => ((r / q : ℕ) : ℝ) < x),
+                (Real.log (r : ℝ) ^ 2)⁻¹ * (r : ℝ)⁻¹ *
+                  ArithmeticFunction.vonMangoldt q := hD_sum r
+          _ = ∑ q ∈ r.divisors.filter (fun q => ((r / q : ℕ) : ℝ) < x),
+                pairTerm (r / q, q) := by
+              apply Finset.sum_congr rfl
+              intro q hq
+              exact hterm r q hr.1 hq
+          _ = ∑ p ∈ (r.divisors.filter (fun q => ((r / q : ℕ) : ℝ) < x)).image
+                (fun q => (r / q, q)), pairTerm p := by
+              rw [Finset.sum_image]
+              intro a _ b _ hab
+              exact Prod.ext_iff.mp hab |>.2
+          _ ≤ ∑ p ∈ pairs.filter (fun p => p.1 * p.2 = r), pairTerm p := by
+              apply Finset.sum_le_sum_of_subset_of_nonneg
+              · intro p hp
+                rcases Finset.mem_image.mp hp with ⟨q, hq, rfl⟩
+                have hqdiv : q ∣ r := (Nat.mem_divisors.mp (Finset.mem_filter.mp hq).1).1
+                have hprod : (r / q) * q = r := Nat.div_mul_cancel hqdiv
+                simp [hmem_pair r q hr hq, hprod]
+              · intro p _ _
+                exact hpair_nonneg p
+      · rw [if_neg hr]
+        exact Finset.sum_nonneg (fun p _ => hpair_nonneg p)
+    have hsum_le :
+        (∑ i ∈ s,
+          if x ≤ (i : ℝ) ∧ (i : ℝ) ≤ X then
+            1 / ((i : ℝ) * Real.log (i : ℝ) ^ 2) *
+              ∑ q ∈ i.divisors,
+                if ((i / q : ℕ) : ℝ) < x then ArithmeticFunction.vonMangoldt q else 0
+          else 0) ≤ ∑ p ∈ pairs, pairTerm p := by
+      calc
+        (∑ i ∈ s,
+          if x ≤ (i : ℝ) ∧ (i : ℝ) ≤ X then
+            1 / ((i : ℝ) * Real.log (i : ℝ) ^ 2) *
+              ∑ q ∈ i.divisors,
+                if ((i / q : ℕ) : ℝ) < x then ArithmeticFunction.vonMangoldt q else 0
+          else 0)
+            ≤ ∑ i ∈ s, ∑ p ∈ pairs.filter (fun p => p.1 * p.2 = i), pairTerm p := by
+              apply Finset.sum_le_sum
+              intro i _
+              exact hper i
+        _ = ∑ p ∈ pairs.filter (fun p => p.1 * p.2 ∈ s), pairTerm p := by
+          exact Finset.sum_fiberwise_eq_sum_filter pairs s
+            (fun p : ℕ × ℕ => p.1 * p.2) pairTerm
+        _ ≤ ∑ p ∈ pairs, pairTerm p := by
+          apply Finset.sum_le_sum_of_subset_of_nonneg
+          · intro p hp
+            exact (Finset.mem_filter.mp hp).1
+          · intro p _ _
+            exact hpair_nonneg p
+    have htail_eq : tail_majorant x =
+        ∑ n ∈ ns,
+          if 1 ≤ n ∧ (n : ℝ) < x then
+            (1 / (n : ℝ)) * mangoldt_tail_sum n (max (2 : ℝ) (x / (n : ℝ)))
+          else 0 := by
+      rw [tail_majorant]
+      exact tsum_eq_sum (s := ns) (fun n hn => by
+        split_ifs with h
+        · exfalso
+          apply hn
+          simp [ns]
+          constructor
+          · have hltceil : n < ⌈x⌉₊ := by
+              exact_mod_cast (lt_of_lt_of_le h.2 (Nat.le_ceil x))
+            simpa using hltceil
+          · exact h
+        · rfl)
+    have hfinite_tail_le : (∑ p ∈ pairs, pairTerm p) ≤ tail_majorant x := by
+      rw [htail_eq]
+      change (∑ p ∈ ns ×ˢ qs, pairTerm p) ≤
+        ∑ n ∈ ns,
+          if 1 ≤ n ∧ (n : ℝ) < x then
+            (1 / (n : ℝ)) * mangoldt_tail_sum n (max (2 : ℝ) (x / (n : ℝ)))
+          else 0
+      rw [Finset.sum_product]
+      apply Finset.sum_le_sum
+      intro n hn
+      have hnmem : n < ⌈x⌉₊ ∧ 1 ≤ n ∧ (n : ℝ) < x := by simpa [ns] using hn
+      have hnprop : 1 ≤ n ∧ (n : ℝ) < x := hnmem.2
+      rw [if_pos hnprop]
+      simp only [pairTerm]
+      rw [← Finset.mul_sum]
+      exact mul_le_mul_of_nonneg_left
+        (mangoldt_tail_finite_sum_le n hnprop.1 (max (2 : ℝ) (x / (n : ℝ)))
+          (le_max_left _ _) qs) (by positivity)
+    exact hsum_le.trans hfinite_tail_le
 
 @[blueprint "lem:tail-majorant-bound"
   (statement := /-- There is a real constant $C\geq 0$ such that, for every
