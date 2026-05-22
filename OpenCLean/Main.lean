@@ -3972,11 +3972,10 @@ lemma finite_truncation_principle :
   simpa [erdos_sum, f] using hsum_le
 
 @[blueprint "thm:erdos-sarkozy-szemeredi-1196"
-  (statement := /-- There is an absolute constant $C$ such that, for every real
-  $x\geq 2$ and every primitive set $A\subseteq\mathbb{N}$ contained in
-  $[x,\infty)$, one has
-  $f(A)\leq 1+C/\log x$. Equivalently,
-  $f(A)\leq 1+O(1/\log x)$ uniformly for primitive sets supported above $x$. -/)
+  (statement := /-- There exists a nonnegative real constant $C$ such that, for
+  every real number $x$ with $2\leq x$ and every primitive set
+  $A\subseteq\mathbb{N}$ contained in $[x,\infty)$, the Erd\H{o}s sum satisfies
+  $f(A)\leq 1+C/\log x$. -/)
   (proof := /-- The finite theorem \cref{lem:finite-large-primitive-bound}
   supplies an absolute constant for all primitive sets supported in finite
   intervals $[x,X]$. Applying the limiting principle
@@ -3986,4 +3985,4 @@ lemma finite_truncation_principle :
   (latexEnv := "theorem")]
 theorem erdos_sarkozy_szemeredi_1196 :
     ∃ C : ℝ, erdos1196_bound C := by
-  sorry_using [finite_large_primitive_bound, finite_truncation_principle]
+  exact finite_truncation_principle finite_large_primitive_bound
