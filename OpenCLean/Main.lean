@@ -1004,7 +1004,12 @@ lemma gamma_logistic_expectation_monotone :
   (latexEnv := "lemma")]
 lemma dirichlet_eta_monotone :
     MonotoneOn dirichlet_eta_real (Set.Ioi (1 : ℝ)) := by
-  sorry_using [dirichlet_eta_gamma_expectation, gamma_logistic_expectation_monotone]
+  intro s hs t ht hst
+  rw [dirichlet_eta_gamma_expectation s hs, dirichlet_eta_gamma_expectation t ht]
+  exact gamma_logistic_expectation_monotone
+    (show s ∈ Set.Ioi (0 : ℝ) from show (0 : ℝ) < s from lt_trans zero_lt_one hs)
+    (show t ∈ Set.Ioi (0 : ℝ) from show (0 : ℝ) < t from lt_trans zero_lt_one ht)
+    hst
 
 @[blueprint "lem:dirichlet-eta-log-derivative-nonnegative"
   (statement := /-- For every real $s>1$, the logarithmic derivative of the
