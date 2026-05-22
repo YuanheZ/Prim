@@ -1016,19 +1016,21 @@ lemma dirichlet_eta_monotone :
   real Dirichlet eta function is non-negative:
   $0\leq \eta'(s)/\eta(s)$. -/)
   (proof := /-- Fix $s>1$.  By \cref{lem:dirichlet-eta-monotone}, the function
-  $\eta$ is non-decreasing on $(1,\infty)$.  The representation in
-  \cref{lem:dirichlet-eta-gamma-expectation}, with its exponentially decaying
-  gamma density, justifies differentiability at $s$ by differentiating under
-  the integral sign on compact subintervals of $(1,\infty)$.  Hence the
-  one-sided difference-quotient characterization of the derivative of a
-  monotone differentiable function gives $\eta'(s)\geq 0$.  By
-  \cref{lem:dirichlet-eta-positive}, $\eta(s)>0$.  Dividing the non-negative
-  derivative by this positive value gives $\eta'(s)/\eta(s)\geq 0$. -/)
+  $\eta$ is non-decreasing on the open half-line $(1,\infty)$.  Since $s$ lies
+  in this open half-line, the derivative within $(1,\infty)$ at $s$ is the
+  ordinary derivative at $s$, and the standard non-negativity theorem for the
+  derivative of a monotone function on a set gives $\eta'(s)\geq 0$.  By
+  \cref{lem:dirichlet-eta-positive}, one has $\eta(s)>0$.  Dividing the
+  non-negative derivative by this positive value gives
+  $\eta'(s)/\eta(s)\geq 0$. -/)
   (title := /-- Non-negativity of the eta logarithmic derivative -/)
   (latexEnv := "lemma")]
 lemma dirichlet_eta_log_derivative_nonnegative :
     ∀ s : ℝ, 1 < s -> 0 ≤ deriv dirichlet_eta_real s / dirichlet_eta_real s := by
-  sorry_using [dirichlet_eta_positive, dirichlet_eta_gamma_expectation, dirichlet_eta_monotone]
+  intro s hs
+  refine div_nonneg ?_ (le_of_lt (dirichlet_eta_positive s hs))
+  simpa [derivWithin_of_isOpen isOpen_Ioi (show s ∈ Set.Ioi (1 : ℝ) from hs)] using
+    (dirichlet_eta_monotone.derivWithin_nonneg (x := s))
 
 @[blueprint "lem:dirichlet-eta-zeta-log-derivative"
   (statement := /-- For every real number $u$ with $u>0$, the logarithmic
