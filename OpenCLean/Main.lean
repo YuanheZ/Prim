@@ -729,7 +729,9 @@ lemma dirichlet_eta_gamma_expectation :
     ∀ s : ℝ, 1 < s ->
       dirichlet_eta_real s =
         ∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure s 1) := by
-  sorry_using [dirichlet_eta_mellin_transform, gamma_logistic_expectation_eq_mellin_integral]
+  intro s hs
+  exact (dirichlet_eta_mellin_transform s hs).trans
+    (gamma_logistic_expectation_eq_mellin_integral s hs).symm
 
 @[blueprint "lem:gamma-logistic-expectation-mono-of-shape-le"
   (statement := /-- For all real numbers $a$ and $b$ with $0<a\leq b$, the
