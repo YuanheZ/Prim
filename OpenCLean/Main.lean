@@ -426,16 +426,31 @@ noncomputable def dirichlet_eta_real (s : ℝ) : ℝ :=
 @[blueprint "lem:dirichlet-eta-positive"
   (statement := /-- For every real $s>1$, the real Dirichlet eta value
   $\eta(s)$ of \cref{def:dirichlet-eta-real} is strictly positive. -/)
-  (proof := /-- Fix $s>1$.  By \cref{def:dirichlet-eta-real},
-  $\eta(s)$ is the alternating Euler transform $(1-2^{1-s})\zeta(s)$.  Since
-  $\zeta(s)=\sum_{n\geq 1}n^{-s}$ is a convergent series with positive first
-  term and since $0<2^{1-s}<1$, the product $(1-2^{1-s})\zeta(s)$ is strictly
-  positive.  Hence $\eta(s)>0$. -/)
+  (proof := /-- Fix a real number $s$ with $1<s$.  By
+  \cref{def:dirichlet-eta-real} and the real-base complex-power identity, the
+  factor $2^{1-s}$ in the complex expression is the real number $2^{1-s}$.
+  Since $1-s<0$ and $2>1$, one has $2^{1-s}<1$, and therefore
+  $1-2^{1-s}>0$.  The standard positivity theorem for the Riemann zeta function
+  on the half-line $s>1$ gives $\operatorname{Re}\zeta(s)>0$.  The complex
+  power factor is real, so the real part of $(1-2^{1-s})\zeta(s)$ is
+  $(1-2^{1-s})\operatorname{Re}\zeta(s)$, a product of two strictly positive
+  real numbers. -/)
   (title := /-- Positivity of eta on the half-line $s>1$ -/)
   (latexEnv := "lemma")]
 lemma dirichlet_eta_positive :
     ∀ s : ℝ, 1 < s -> 0 < dirichlet_eta_real s := by
-  sorry
+  intro s hs
+  unfold dirichlet_eta_real
+  have hpow : (2 : ℂ) ^ ((1 : ℂ) - (s : ℂ)) = (((2 : ℝ) ^ (1 - s) : ℝ) : ℂ) := by
+    symm
+    simpa using (Complex.ofReal_cpow (x := (2 : ℝ)) (by norm_num) (1 - s))
+  have hfactor_pos : 0 < (1 : ℝ) - (2 : ℝ) ^ (1 - s) := by
+    have hlt : (2 : ℝ) ^ (1 - s) < 1 :=
+      Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) (by linarith)
+    linarith
+  have hzeta_pos : 0 < (riemannZeta (s : ℂ)).re := riemannZeta_re_pos_of_one_lt hs
+  rw [hpow]
+  simpa [Complex.mul_re] using mul_pos hfactor_pos hzeta_pos
 
 @[blueprint "lem:dirichlet-eta-monotone"
   (statement := /-- The real Dirichlet eta function of
