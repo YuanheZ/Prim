@@ -1234,10 +1234,11 @@ lemma eta_log_derivative_nonnegative :
   exact dirichlet_eta_log_derivative_nonnegative (1 + u) (by linarith)
 
 @[blueprint "lem:zeta-log-derivative-geometric-bound"
-  (statement := /-- For every $u>0$, the logarithmic derivative of the Riemann
-  zeta function at the real point $1+u$ satisfies
-  $-\zeta'(1+u)/\zeta(1+u)\leq \log 2/(2^u-1)$.  In the Lean statement the
-  complex logarithmic derivative is compared through its real part. -/)
+  (statement := /-- For every real number $u>0$, the real part of the negative
+  logarithmic derivative of the Riemann zeta function at the complex point
+  $1+u$ satisfies
+  $$\operatorname{Re}\left(-\frac{\zeta'(1+u)}{\zeta(1+u)}\right)
+  \leq \frac{\log 2}{2^u-1}.$$ -/)
   (proof := /-- Fix $u>0$.  By
   \cref{lem:eta-log-derivative-nonnegative},
   $$0\leq \operatorname{Re}\frac{\zeta'(1+u)}{\zeta(1+u)}+
@@ -1254,7 +1255,13 @@ lemma zeta_log_derivative_geometric_bound :
       ((- deriv riemannZeta ((1 + u : ℝ) : ℂ) /
           riemannZeta ((1 + u : ℝ) : ℂ)).re) ≤
         Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) := by
-  sorry_using [eta_log_derivative_nonnegative]
+  intro u hu
+  simpa [neg_div] using
+    (show - ((deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+          riemannZeta ((1 + u : ℝ) : ℂ)).re) ≤
+        Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) from by
+      have h := eta_log_derivative_nonnegative u hu
+      linarith)
 
 @[blueprint "lem:von-mangoldt-dirichlet-series-upper-bound"
   (statement := /-- For every $u>0$, the von Mangoldt Dirichlet series satisfies
