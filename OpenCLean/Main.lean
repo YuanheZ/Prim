@@ -414,6 +414,89 @@ lemma mertens_von_mangoldt_reciprocal :
             |Real.log (N : ℝ) - Real.log t| := abs_add_le _ _
       _ ≤ Cnat + Real.log (2 : ℝ) := add_le_add hnat' hlogdiff
 
+@[blueprint "def:dirichlet-eta-real"
+  (statement := /-- For a real parameter $s$, the real Dirichlet eta function is
+  the real value of $(1-2^{1-s})\zeta(s)$ on the real axis.  In Lean this is
+  represented as the real part of the corresponding complex expression. -/)
+  (title := /-- Real Dirichlet eta function -/)
+  (latexEnv := "definition")]
+noncomputable def dirichlet_eta_real (s : ℝ) : ℝ :=
+  (((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - (s : ℂ))) * riemannZeta (s : ℂ)).re
+
+@[blueprint "lem:dirichlet-eta-positive"
+  (statement := /-- For every real $s>1$, the real Dirichlet eta value
+  $\eta(s)$ of \cref{def:dirichlet-eta-real} is strictly positive. -/)
+  (proof := /-- Fix $s>1$.  By \cref{def:dirichlet-eta-real},
+  $\eta(s)$ is the alternating Euler transform $(1-2^{1-s})\zeta(s)$.  Since
+  $\zeta(s)=\sum_{n\geq 1}n^{-s}$ is a convergent series with positive first
+  term and since $0<2^{1-s}<1$, the product $(1-2^{1-s})\zeta(s)$ is strictly
+  positive.  Hence $\eta(s)>0$. -/)
+  (title := /-- Positivity of eta on the half-line $s>1$ -/)
+  (latexEnv := "lemma")]
+lemma dirichlet_eta_positive :
+    ∀ s : ℝ, 1 < s -> 0 < dirichlet_eta_real s := by
+  sorry
+
+@[blueprint "lem:dirichlet-eta-monotone"
+  (statement := /-- The real Dirichlet eta function of
+  \cref{def:dirichlet-eta-real} is non-decreasing on the open half-line
+  $(1,\infty)$. -/)
+  (proof := /-- Let $1<s\leq t$.  The Mellin representation gives
+  $$\eta(r)=\Gamma(r)^{-1}\int_0^\infty {x^{r-1}\over e^x+1}\,dx$$
+  for every $r>1$.  Equivalently, if $X_r$ has the gamma distribution with
+  shape $r$ and scale $1$, and if $h(x)=(1+e^{-x})^{-1}$, then
+  $\eta(r)=\mathbb E h(X_r)$.  Couple $X_t$ as $X_s+Y_{t-s}$, where
+  $Y_{t-s}$ is an independent gamma variable of shape $t-s$ and scale $1$;
+  when $t=s$ this variable is identically zero.  Since $Y_{t-s}\geq 0$ almost
+  surely and $h$ is increasing on $[0,\infty)$, one has
+  $h(X_s)\leq h(X_s+Y_{t-s})$ almost surely.  Taking expectations gives
+  $\eta(s)\leq\eta(t)$.  This proves monotonicity on $(1,\infty)$. -/)
+  (title := /-- Monotonicity of eta on the half-line $s>1$ -/)
+  (latexEnv := "lemma")]
+lemma dirichlet_eta_monotone :
+    MonotoneOn dirichlet_eta_real (Set.Ioi (1 : ℝ)) := by
+  sorry
+
+@[blueprint "lem:dirichlet-eta-log-derivative-nonnegative"
+  (statement := /-- For every real $s>1$, the logarithmic derivative of the
+  real Dirichlet eta function is non-negative:
+  $0\leq \eta'(s)/\eta(s)$. -/)
+  (proof := /-- Fix $s>1$.  By \cref{lem:dirichlet-eta-monotone}, the function
+  $\eta$ is non-decreasing on $(1,\infty)$.  The Mellin representation used in
+  that proof also gives differentiability at $s$, so the standard one-sided
+  difference-quotient characterization of the derivative of a monotone
+  differentiable function gives $\eta'(s)\geq 0$.  By
+  \cref{lem:dirichlet-eta-positive}, $\eta(s)>0$.  Dividing the non-negative
+  derivative by this positive value gives $\eta'(s)/\eta(s)\geq 0$. -/)
+  (title := /-- Non-negativity of the eta logarithmic derivative -/)
+  (latexEnv := "lemma")]
+lemma dirichlet_eta_log_derivative_nonnegative :
+    ∀ s : ℝ, 1 < s -> 0 ≤ deriv dirichlet_eta_real s / dirichlet_eta_real s := by
+  sorry_using [dirichlet_eta_positive, dirichlet_eta_monotone]
+
+@[blueprint "lem:dirichlet-eta-zeta-log-derivative"
+  (statement := /-- For every $u>0$, differentiating
+  $\eta(s)=(1-2^{1-s})\zeta(s)$ at $s=1+u$ identifies the eta logarithmic
+  derivative with the zeta logarithmic derivative plus the eta factor:
+  $$ {\eta'(1+u)\over\eta(1+u)}
+    = \operatorname{Re}{\zeta'(1+u)\over\zeta(1+u)}
+      + {\log 2\over 2^u-1}. $$ -/)
+  (proof := /-- By \cref{def:dirichlet-eta-real},
+  $\eta(s)=(1-2^{1-s})\zeta(s)$ on the real axis.  Differentiate this identity
+  at $s=1+u$, using $u>0$ to stay away from the pole of $\zeta$ at $1$.  After
+  division by $\eta(1+u)=(1-2^{-u})\zeta(1+u)$, the logarithmic derivative of
+  the factor $1-2^{1-s}$ is $(\log 2)/(2^{s-1}-1)$.  Substituting $s=1+u$ and
+  taking real parts gives the displayed identity. -/)
+  (title := /-- Eta-zeta logarithmic derivative identity -/)
+  (latexEnv := "lemma")]
+lemma dirichlet_eta_zeta_log_derivative :
+    ∀ u : ℝ, 0 < u ->
+      deriv dirichlet_eta_real (1 + u) / dirichlet_eta_real (1 + u) =
+        ((deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+          riemannZeta ((1 + u : ℝ) : ℂ)).re +
+        Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1)) := by
+  sorry
+
 @[blueprint "lem:eta-log-derivative-nonnegative"
   (statement := /-- For every $u>0$, the eta-factor contribution to the
   logarithmic derivative at $1+u$ is non-negative:
@@ -422,23 +505,15 @@ lemma mertens_von_mangoldt_reciprocal :
   This is the formal form, after substituting the defining identity
   $\eta(s)=(1-2^{1-s})\zeta(s)$, of the assertion that the Dirichlet eta
   function has non-negative logarithmic derivative on $(1,\infty)$. -/)
-  (proof := /-- Let $s>1$ and define
-  $\eta(s)=(1-2^{1-s})\zeta(s)$.  The Mellin representation gives
-  $$\eta(s)=\Gamma(s)^{-1}\int_0^\infty x^{s-1}(e^x+1)^{-1}\,dx.$$
-  Equivalently, if $X_s$ is gamma distributed with shape $s$ and scale $1$ and
-  $h(x)=(1+e^{-x})^{-1}$, then $\eta(s)=\mathbb E h(X_s)$.  For
-  $t>s>1$, write $X_t$ in distribution as $X_s+Y_{t-s}$ with $Y_{t-s}$ an
-  independent gamma variable of shape $t-s$.  Since $h$ is increasing and
-  $Y_{t-s}$ is non-negative, $\eta(t)\geq \eta(s)$.  Thus $\eta$ is
-  non-decreasing on $(1,\infty)$.  The same Mellin representation shows that
-  $\eta$ is differentiable and strictly positive there; applying the one-sided
-  difference-quotient characterization of the derivative of a non-decreasing
-  differentiable real function gives $\eta'(s)\geq 0$, and hence
-  $\eta'(s)/\eta(s)\geq 0$.  Differentiating
-  $\eta(s)=(1-2^{1-s})\zeta(s)$ and dividing by $\eta(s)$ gives
-  $$\frac{\zeta'(s)}{\zeta(s)}+\frac{\log 2}{2^{s-1}-1}
-    =\frac{\eta'(s)}{\eta(s)}.$$
-  Taking $s=1+u$ and then real parts yields the asserted inequality. -/)
+  (proof := /-- Fix $u>0$ and put $s=1+u$, so $s>1$.  By
+  \cref{lem:dirichlet-eta-log-derivative-nonnegative},
+  $0\leq \eta'(s)/\eta(s)$.  By
+  \cref{lem:dirichlet-eta-zeta-log-derivative}, this logarithmic derivative is
+  exactly
+  $$\operatorname{Re}\frac{\zeta'(1+u)}{\zeta(1+u)}
+    +\frac{\log 2}{2^u-1}.$$
+  Substituting this identity into the preceding non-negativity inequality gives
+  the asserted bound. -/)
   (title := /-- Eta logarithmic-derivative nonnegativity -/)
   (latexEnv := "lemma")]
 lemma eta_log_derivative_nonnegative :
@@ -446,7 +521,7 @@ lemma eta_log_derivative_nonnegative :
       0 ≤ ((deriv riemannZeta ((1 + u : ℝ) : ℂ) /
           riemannZeta ((1 + u : ℝ) : ℂ)).re +
         Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1)) := by
-  sorry
+  sorry_using [dirichlet_eta_log_derivative_nonnegative, dirichlet_eta_zeta_log_derivative]
 
 @[blueprint "lem:zeta-log-derivative-geometric-bound"
   (statement := /-- For every $u>0$, the logarithmic derivative of the Riemann
