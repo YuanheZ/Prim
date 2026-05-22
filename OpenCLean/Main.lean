@@ -2069,20 +2069,413 @@ lemma mangoldt_tail_finite_sum_le (m : ℕ) (hm : 1 ≤ m) (y : ℝ) (hy : 2 ≤
     · norm_num
   simpa [mangoldt_tail_sum] using hsumm.sum_le_tsum s (fun q _ => hnonneg q)
 
+@[blueprint "lem:mangoldt-dirichlet-series-summable-local"
+  (statement := /-- For every real number $u>0$, the real von Mangoldt
+  Dirichlet series defining $\sum_q\Lambda(q)q^{-1-u}$ is summable. -/)
+  (proof := /-- This is the real form of the Mathlib absolute convergence of
+  the von Mangoldt $L$-series in the half-plane $\operatorname{Re}s>1$,
+  specialized to $s=1+u$ and then transported along the coercion
+  $\mathbb{R}\to\mathbb{C}$. -/)
+  (title := /-- Summability of the real von Mangoldt Dirichlet series -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_dirichlet_series_summable_local :
+    ∀ u : ℝ, 0 < u ->
+      Summable (fun q : ℕ =>
+        ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + u)) := by
+  intro u hu
+  have hs : 1 < (((1 + u : ℝ) : ℂ).re) := by
+    simp
+    linarith
+  have hcomplex := ArithmeticFunction.LSeriesSummable_vonMangoldt
+    (s := ((1 + u : ℝ) : ℂ)) hs
+  rw [LSeriesSummable] at hcomplex
+  have hcomplex' : Summable (fun q : ℕ =>
+      ((ArithmeticFunction.vonMangoldt q /
+        Real.rpow (q : ℝ) (1 + u) : ℝ) : ℂ)) := by
+    refine hcomplex.congr ?_
+    intro q
+    by_cases hq : q = 0
+    · subst q
+      simp [LSeries.term_def, Real.zero_rpow (by linarith : (1 : ℝ) + u ≠ 0)]
+    · rw [LSeries.term_of_ne_zero hq]
+      rw [Complex.ofReal_div]
+      congr 1
+      exact (Complex.ofReal_cpow (Nat.cast_nonneg q) (1 + u)).symm
+  exact Complex.summable_ofReal.mp hcomplex'
+
+@[blueprint "lem:mangoldt-dirichlet-series-finite-threshold-bound-local"
+  (statement := /-- For every real number $u>0$ and every natural cutoff $N$,
+  the finite sum of $\Lambda(q)q^{-1-u}$ over natural $q<N$ with $q\geq 2$ is
+  at most $1/u$. -/)
+  (proof := /-- By
+  \cref{lem:mangoldt-dirichlet-series-summable-local}, the full real
+  von Mangoldt Dirichlet series is summable.  Its summands are non-negative, so
+  the finite thresholded sum is at most the full t-sum.  The latter is bounded
+  by $1/u$ by \cref{lem:von-mangoldt-dirichlet-series-upper-bound}. -/)
+  (title := /-- Finite thresholded Dirichlet sums -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_dirichlet_series_finite_threshold_bound_local :
+    ∀ u : ℝ, 0 < u -> ∀ N : ℕ,
+      (∑ q ∈ Finset.range N,
+        if (2 : ℝ) ≤ (q : ℝ) then
+          ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + u)
+        else 0) ≤ 1 / u := by
+  intro u hu N
+  have hsumm := mangoldt_dirichlet_series_summable_local u hu
+  have hnonneg : ∀ q : ℕ,
+      0 ≤ ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + u) := by
+    intro q
+    exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg
+      (Real.rpow_nonneg (Nat.cast_nonneg q) (1 + u))
+  calc
+    (∑ q ∈ Finset.range N,
+        if (2 : ℝ) ≤ (q : ℝ) then
+          ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + u)
+        else 0) ≤
+        ∑ q ∈ Finset.range N,
+          ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + u) := by
+      refine Finset.sum_le_sum ?_
+      intro q hq
+      split_ifs
+      · rfl
+      · exact hnonneg q
+    _ ≤ mangoldt_dirichlet_series u := by
+      simpa [mangoldt_dirichlet_series] using
+        hsumm.sum_le_tsum (Finset.range N) (fun q _ => hnonneg q)
+    _ ≤ 1 / u := von_mangoldt_dirichlet_series_upper_bound u hu
+
+@[blueprint "lem:log-square-integral-kernel-local"
+  (statement := /-- For every real number $r>0$,
+  $\int_0^\infty t e^{-rt}\,dt=1/r^2$. -/)
+  (proof := /-- This is the specialization of the Gamma-integral identity to
+  exponent $2$, together with the value $\Gamma(2)=1$. -/)
+  (title := /-- The logarithmic square integral kernel -/)
+  (latexEnv := "lemma")]
+lemma log_square_integral_kernel_local (r : ℝ) (hr : 0 < r) :
+    (∫ t : ℝ in Set.Ioi 0, t * Real.exp (-(r * t))) = 1 / r ^ 2 := by
+  have h := Real.integral_rpow_mul_exp_neg_mul_Ioi
+    (a := (2 : ℝ)) (r := r) (by norm_num) hr
+  calc
+    (∫ t : ℝ in Set.Ioi 0, t * Real.exp (-(r * t))) =
+        ∫ t : ℝ in Set.Ioi 0,
+          t ^ ((2 : ℝ) - 1) * Real.exp (-(r * t)) := by
+      apply MeasureTheory.setIntegral_congr_fun measurableSet_Ioi
+      intro t ht
+      norm_num [Real.rpow_one]
+    _ = (1 / r) ^ (2 : ℝ) * Real.Gamma 2 := h
+    _ = 1 / r ^ 2 := by
+      rw [Real.Gamma_two, Real.rpow_two]
+      field_simp [hr.ne']
+
+@[blueprint "lem:log-square-integral-kernel-integrable-local"
+  (statement := /-- For every real number $r>0$, the function
+  $t\mapsto t e^{-rt}$ is integrable on $(0,\infty)$. -/)
+  (proof := /-- Apply the standard exponential-polynomial integrability
+  criterion with exponent $v=-r$ and perturbation $r/2$.  The two required
+  exponential functions have negative rates on $(0,\infty)$, hence are
+  integrable there. -/)
+  (title := /-- Integrability of the logarithmic square kernel -/)
+  (latexEnv := "lemma")]
+lemma log_square_integral_kernel_integrable_local (r : ℝ) (hr : 0 < r) :
+    MeasureTheory.IntegrableOn (fun t : ℝ => t * Real.exp (-(r * t)))
+      (Set.Ioi 0) := by
+  have hhalf_ne : r / 2 ≠ 0 := by positivity
+  have hrate_pos : -r + r / 2 < 0 := by linarith
+  have hrate_neg : -r - r / 2 < 0 := by linarith
+  have hint_pos : MeasureTheory.Integrable
+      (fun t : ℝ => Real.exp ((-r + r / 2) * t))
+      (MeasureTheory.volume.restrict (Set.Ioi 0)) :=
+    integrableOn_exp_mul_Ioi hrate_pos 0
+  have hint_neg : MeasureTheory.Integrable
+      (fun t : ℝ => Real.exp ((-r - r / 2) * t))
+      (MeasureTheory.volume.restrict (Set.Ioi 0)) :=
+    integrableOn_exp_mul_Ioi hrate_neg 0
+  have h := ProbabilityTheory.integrable_pow_mul_exp_of_integrable_exp_mul
+    (μ := MeasureTheory.volume.restrict (Set.Ioi 0))
+    (X := fun t : ℝ => t) (v := -r) (t := r / 2)
+    hhalf_ne hint_pos hint_neg 1
+  simpa [pow_one, mul_comm, mul_left_comm, mul_assoc] using h
+
+@[blueprint "lem:mangoldt-tail-term-integral-local"
+  (statement := /-- If $m\geq 1$ and $q\geq 2$, then the von Mangoldt tail
+  summand is the integral of the Laplace kernel
+  $(\Lambda(q)/q)t(mq)^{-t}$ over $t>0$. -/)
+  (proof := /-- Since $mq\geq 2$, the logarithm of $mq$ is positive.  Apply
+  \cref{lem:log-square-integral-kernel-local} with
+  $r=\log(mq)$ and rewrite $(mq)^{-t}$ as $e^{-t\log(mq)}$.  Multiplying the
+  resulting identity by $\Lambda(q)/q$ gives the defining tail summand. -/)
+  (title := /-- Integral form of one von Mangoldt tail summand -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_tail_term_integral_local (m q : ℕ) (hm : 1 ≤ m) (hq : 2 ≤ q) :
+    mangoldt_tail_term m q =
+      ∫ t : ℝ in Set.Ioi 0,
+        (ArithmeticFunction.vonMangoldt q / (q : ℝ)) *
+          (t * Real.rpow (((m * q : ℕ) : ℝ)) (-t)) := by
+  have hmq_two : 2 ≤ m * q := Nat.mul_le_mul hm hq
+  have hmq_pos : 0 < (((m * q : ℕ) : ℝ)) := by
+    exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hmq_two)
+  have hlog_pos : 0 < Real.log (((m * q : ℕ) : ℝ)) := by
+    apply Real.log_pos
+    exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hmq_two)
+  have hkernel :
+      (∫ t : ℝ in Set.Ioi 0,
+        t * Real.rpow (((m * q : ℕ) : ℝ)) (-t)) =
+        1 / Real.log (((m * q : ℕ) : ℝ)) ^ 2 := by
+    have hfun : (fun t : ℝ => t * Real.rpow (((m * q : ℕ) : ℝ)) (-t)) =
+        fun t : ℝ => t * Real.exp (-(Real.log (((m * q : ℕ) : ℝ)) * t)) := by
+      funext t
+      change t * (((m * q : ℕ) : ℝ) ^ (-t)) =
+        t * Real.exp (-(Real.log (((m * q : ℕ) : ℝ)) * t))
+      rw [Real.rpow_def_of_pos hmq_pos]
+      ring_nf
+    rw [hfun]
+    exact log_square_integral_kernel_local
+      (Real.log (((m * q : ℕ) : ℝ))) hlog_pos
+  calc
+    mangoldt_tail_term m q =
+        (ArithmeticFunction.vonMangoldt q / (q : ℝ)) *
+          (1 / Real.log (((m * q : ℕ) : ℝ)) ^ 2) := by
+      rw [mangoldt_tail_term]
+      ring
+    _ = (ArithmeticFunction.vonMangoldt q / (q : ℝ)) *
+        (∫ t : ℝ in Set.Ioi 0,
+          t * Real.rpow (((m * q : ℕ) : ℝ)) (-t)) := by
+      rw [hkernel]
+    _ = ∫ t : ℝ in Set.Ioi 0,
+        (ArithmeticFunction.vonMangoldt q / (q : ℝ)) *
+          (t * Real.rpow (((m * q : ℕ) : ℝ)) (-t)) := by
+      rw [MeasureTheory.integral_const_mul]
+
+@[blueprint "lem:mangoldt-tail-integrand-factor-local"
+  (statement := /-- Let $n\geq 2$, let $N$ be a natural cutoff, and let $t$ be
+  real.  The finite integral-side von Mangoldt tail integrand factors as
+  $t n^{-t}$ times the corresponding finite Dirichlet sum with exponent
+  $1+t$. -/)
+  (proof := /-- Distribute the common factor $t n^{-t}$ across the finite sum.
+  For each selected $q\geq 2$, use $(nq)^{-t}=n^{-t}q^{-t}$ and
+  $q^{1+t}=q q^t$; unselected terms are both zero. -/)
+  (title := /-- Factoring the finite tail integrand -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_tail_integrand_factor_local (n N : ℕ) (t : ℝ) (hn : 2 ≤ n) :
+    (∑ q ∈ Finset.range N,
+      if (2 : ℝ) ≤ (q : ℝ) then
+        (ArithmeticFunction.vonMangoldt q / (q : ℝ)) *
+          (t * Real.rpow (((n * q : ℕ) : ℝ)) (-t))
+      else 0) =
+      t * Real.rpow (n : ℝ) (-t) *
+        (∑ q ∈ Finset.range N,
+          if (2 : ℝ) ≤ (q : ℝ) then
+            ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + t)
+          else 0) := by
+  rw [Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro q hq
+  by_cases hqcond : (2 : ℝ) ≤ (q : ℝ)
+  · have hn_pos : 0 < (n : ℝ) := by
+      exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hn)
+    have hq_nat : 2 ≤ q := by
+      exact_mod_cast hqcond
+    have hq_pos : 0 < (q : ℝ) := by
+      exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hq_nat)
+    simp [hqcond]
+    rw [Real.mul_rpow hn_pos.le hq_pos.le]
+    rw [Real.rpow_add hq_pos (1 : ℝ) t, Real.rpow_one]
+    rw [Real.rpow_neg hq_pos.le t]
+    field_simp [hq_pos.ne', (Real.rpow_pos_of_pos hq_pos t).ne']
+  · simp [hqcond]
+
+@[blueprint "lem:mangoldt-tail-range-subinvariant-local"
+  (statement := /-- For every natural number $n\geq 2$ and every natural
+  cutoff $N$, the finite thresholded von Mangoldt tail sum up to $N$ is at most
+  $1/\log n$. -/)
+  (proof := /-- Rewrite each selected summand by
+  \cref{lem:mangoldt-tail-term-integral-local}; the integrability needed to
+  exchange the finite sum with the integral follows from
+  \cref{lem:log-square-integral-kernel-integrable-local}.  By
+  \cref{lem:mangoldt-tail-integrand-factor-local}, the
+  resulting integrand is $t n^{-t}$ times a finite Dirichlet sum.  The finite
+  Dirichlet sum is at most $1/t$ for $t>0$ by
+  \cref{lem:mangoldt-dirichlet-series-finite-threshold-bound-local}.  The
+  integrand is therefore bounded by $n^{-t}$, whose integral over $t>0$ is
+  $1/\log n$. -/)
+  (title := /-- Finite sub-invariance bound for the von Mangoldt tail -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_tail_range_subinvariant_local (n N : ℕ) (hn : 2 ≤ n) :
+    (∑ q ∈ Finset.range N,
+      if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) ≤
+      1 / Real.log (n : ℝ) := by
+  have hm : 1 ≤ n := by omega
+  have hn_pos : 0 < (n : ℝ) := by
+    exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hn)
+  have hlog_pos : 0 < Real.log (n : ℝ) := by
+    apply Real.log_pos
+    exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hn)
+  let F : ℝ → ℝ := fun t =>
+    ∑ q ∈ Finset.range N,
+      if (2 : ℝ) ≤ (q : ℝ) then
+        (ArithmeticFunction.vonMangoldt q / (q : ℝ)) *
+          (t * Real.rpow (((n * q : ℕ) : ℝ)) (-t))
+      else 0
+  have hterm_int : ∀ q ∈ Finset.range N,
+      MeasureTheory.Integrable
+        (fun t : ℝ =>
+          if (2 : ℝ) ≤ (q : ℝ) then
+            (ArithmeticFunction.vonMangoldt q / (q : ℝ)) *
+              (t * Real.rpow (((n * q : ℕ) : ℝ)) (-t))
+          else 0)
+        (MeasureTheory.volume.restrict (Set.Ioi 0)) := by
+    intro q hq
+    by_cases hqcond : (2 : ℝ) ≤ (q : ℝ)
+    · have hq_nat : 2 ≤ q := by
+        exact_mod_cast hqcond
+      have hnq_two : 2 ≤ n * q := Nat.mul_le_mul hm hq_nat
+      have hnq_pos : 0 < (((n * q : ℕ) : ℝ)) := by
+        exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hnq_two)
+      have hlog_nq_pos : 0 < Real.log (((n * q : ℕ) : ℝ)) := by
+        apply Real.log_pos
+        exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hnq_two)
+      have hbase_int : MeasureTheory.IntegrableOn
+          (fun t : ℝ => t * Real.rpow (((n * q : ℕ) : ℝ)) (-t))
+          (Set.Ioi 0) := by
+        have h := log_square_integral_kernel_integrable_local
+          (Real.log (((n * q : ℕ) : ℝ))) hlog_nq_pos
+        have hfun : (fun t : ℝ => t * Real.rpow (((n * q : ℕ) : ℝ)) (-t)) =
+            fun t : ℝ => t * Real.exp (-(Real.log (((n * q : ℕ) : ℝ)) * t)) := by
+          funext t
+          change t * (((n * q : ℕ) : ℝ) ^ (-t)) =
+            t * Real.exp (-(Real.log (((n * q : ℕ) : ℝ)) * t))
+          rw [Real.rpow_def_of_pos hnq_pos]
+          ring_nf
+        rw [hfun]
+        exact h
+      simpa [hqcond] using
+        hbase_int.const_mul (ArithmeticFunction.vonMangoldt q / (q : ℝ))
+    · simpa [hqcond]
+  have hF_int : MeasureTheory.IntegrableOn F (Set.Ioi 0) := by
+    have hF_int' : MeasureTheory.Integrable
+        (∑ q ∈ Finset.range N, fun t : ℝ =>
+          if (2 : ℝ) ≤ (q : ℝ) then
+            (ArithmeticFunction.vonMangoldt q / (q : ℝ)) *
+              (t * Real.rpow (((n * q : ℕ) : ℝ)) (-t))
+          else 0)
+        (MeasureTheory.volume.restrict (Set.Ioi 0)) :=
+      MeasureTheory.integrable_finset_sum' (Finset.range N) hterm_int
+    dsimp [F, MeasureTheory.IntegrableOn]
+    convert hF_int' using 1
+    funext t
+    simp [Finset.sum_apply]
+  have hG_int : MeasureTheory.IntegrableOn
+      (fun t : ℝ => Real.exp (-(Real.log (n : ℝ) * t))) (Set.Ioi 0) := by
+    have hrate : -Real.log (n : ℝ) < 0 := by linarith
+    convert integrableOn_exp_mul_Ioi hrate 0 using 1
+    funext t
+    ring
+  have hsum_integral :
+      (∑ q ∈ Finset.range N,
+        if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) =
+        ∫ t : ℝ in Set.Ioi 0, F t := by
+    calc
+      (∑ q ∈ Finset.range N,
+        if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) =
+          ∑ q ∈ Finset.range N,
+            ∫ t : ℝ in Set.Ioi 0,
+              if (2 : ℝ) ≤ (q : ℝ) then
+                (ArithmeticFunction.vonMangoldt q / (q : ℝ)) *
+                  (t * Real.rpow (((n * q : ℕ) : ℝ)) (-t))
+              else 0 := by
+        apply Finset.sum_congr rfl
+        intro q hq
+        by_cases hqcond : (2 : ℝ) ≤ (q : ℝ)
+        · have hq_nat : 2 ≤ q := by
+            exact_mod_cast hqcond
+          simp [hqcond, mangoldt_tail_term_integral_local n q hm hq_nat]
+        · simp [hqcond]
+      _ = ∫ t : ℝ in Set.Ioi 0, F t := by
+        symm
+        dsimp [F]
+        exact MeasureTheory.integral_finset_sum (Finset.range N) hterm_int
+  have hpoint : ∀ t ∈ Set.Ioi (0 : ℝ),
+      F t ≤ Real.exp (-(Real.log (n : ℝ) * t)) := by
+    intro t ht
+    have htpos : 0 < t := ht
+    have hdir := mangoldt_dirichlet_series_finite_threshold_bound_local t htpos N
+    have hrpow_nonneg : 0 ≤ Real.rpow (n : ℝ) (-t) :=
+      Real.rpow_nonneg hn_pos.le (-t)
+    have hcoef_nonneg : 0 ≤ t * Real.rpow (n : ℝ) (-t) := by positivity
+    calc
+      F t = t * Real.rpow (n : ℝ) (-t) *
+          (∑ q ∈ Finset.range N,
+            if (2 : ℝ) ≤ (q : ℝ) then
+              ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + t)
+            else 0) := by
+        simpa [F] using mangoldt_tail_integrand_factor_local n N t hn
+      _ ≤ t * Real.rpow (n : ℝ) (-t) * (1 / t) := by
+        exact mul_le_mul_of_nonneg_left hdir hcoef_nonneg
+      _ = Real.rpow (n : ℝ) (-t) := by
+        field_simp [htpos.ne']
+      _ = Real.exp (-(Real.log (n : ℝ) * t)) := by
+        change ((n : ℝ) ^ (-t)) = Real.exp (-(Real.log (n : ℝ) * t))
+        rw [Real.rpow_def_of_pos hn_pos]
+        ring_nf
+  have hintegral_le :
+      (∫ t : ℝ in Set.Ioi 0, F t) ≤
+        ∫ t : ℝ in Set.Ioi 0, Real.exp (-(Real.log (n : ℝ) * t)) := by
+    exact MeasureTheory.setIntegral_mono_on hF_int hG_int measurableSet_Ioi hpoint
+  have hG_integral :
+      (∫ t : ℝ in Set.Ioi 0, Real.exp (-(Real.log (n : ℝ) * t))) =
+        1 / Real.log (n : ℝ) := by
+    have hrate : -Real.log (n : ℝ) < 0 := by linarith
+    have h := integral_exp_mul_Ioi (a := -Real.log (n : ℝ)) hrate 0
+    simpa [hlog_pos.ne'] using h
+  calc
+    (∑ q ∈ Finset.range N,
+      if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) =
+        ∫ t : ℝ in Set.Ioi 0, F t := hsum_integral
+    _ ≤ ∫ t : ℝ in Set.Ioi 0, Real.exp (-(Real.log (n : ℝ) * t)) := hintegral_le
+    _ = 1 / Real.log (n : ℝ) := hG_integral
+
 @[blueprint "lem:mangoldt-subinvariant-bound"
-  (statement := /-- For every natural $n\geq 2$,
-  $\log n\sum_{q\geq 2}\Lambda(q)/(q\log^2(nq))\leq 1$. This is the
-  non-asymptotic sub-invariance estimate for the doubly harmonic weight. -/)
-  (proof := /-- Use the integral identity
-  $1/\log^2 a=\int_0^\infty u a^{-u}\,du$, apply
-  \cref{lem:von-mangoldt-dirichlet-series-upper-bound} inside the integral, and
-  sum the resulting geometric series. The source then bounds the series
-  $\sum_{j\geq 1} x/(x+j)^2$ by $x/(x+1/2)\leq 1$, where $n=2^x$. -/)
+  (statement := /-- For every natural number $n$ with $n\geq 2$,
+  $\log n\sum_{q\in\mathbb{N},\ q\geq 2}
+  \Lambda(q)/(q\log^2(nq))\leq 1$. -/)
+  (proof := /-- Fix a natural number $n\geq 2$.  By
+  \cref{lem:mangoldt-tail-range-subinvariant-local}, every finite partial sum
+  of the non-negative tail summands is at most $1/\log n$.  Therefore the
+  corresponding real series is summable and its t-sum, which is
+  \cref{def:mangoldt-tail-sum} with threshold $2$, is also at most
+  $1/\log n$.  Since $\log n>0$, multiplying this inequality by $\log n$ gives
+  the asserted bound. -/)
   (title := /-- Non-asymptotic sub-invariance estimate -/)
   (latexEnv := "lemma")]
 lemma mangoldt_subinvariant_bound :
     ∀ n : ℕ, 2 ≤ n -> Real.log (n : ℝ) * mangoldt_tail_sum n 2 ≤ 1 := by
-  sorry_using [von_mangoldt_dirichlet_series_upper_bound]
+  intro n hn
+  have hlog_pos : 0 < Real.log (n : ℝ) := by
+    apply Real.log_pos
+    exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hn)
+  have hnonneg : ∀ q : ℕ, 0 ≤
+      (if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) := by
+    intro q
+    split_ifs
+    · exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+    · norm_num
+  have hbound : ∀ N : ℕ,
+      (∑ q ∈ Finset.range N,
+        if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) ≤
+        1 / Real.log (n : ℝ) := by
+    intro N
+    exact mangoldt_tail_range_subinvariant_local n N hn
+  have hsumm : Summable (fun q : ℕ =>
+      if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) :=
+    summable_of_sum_range_le hnonneg hbound
+  have htail : mangoldt_tail_sum n 2 ≤ 1 / Real.log (n : ℝ) := by
+    simpa [mangoldt_tail_sum] using hsumm.tsum_le_of_sum_range_le hbound
+  calc
+    Real.log (n : ℝ) * mangoldt_tail_sum n 2 ≤
+        Real.log (n : ℝ) * (1 / Real.log (n : ℝ)) := by
+      exact mul_le_mul_of_nonneg_left htail hlog_pos.le
+    _ = 1 := by
+      field_simp [hlog_pos.ne']
 
 @[blueprint "lem:finite-chain-cut-bound"
   (statement := /-- Let $2\leq x\leq X$, and let $A\subseteq\mathbb{N}$ be a
