@@ -2503,30 +2503,519 @@ noncomputable def finite_chain_initial_mass (x X : ℝ) (n : ℕ) : ℝ :=
   most the total finite initial mass $\sum_n b_{x,X}(n)$ from
   \cref{def:finite-chain-initial-mass}. -/)
   (proof := /-- Put $b(n)=b_{x,X}(n)$ as in
-  \cref{def:finite-chain-initial-mass}, and run the von Mangoldt downward chain
-  from the non-negative initial mass $b$.  The non-negativity follows from
-  \cref{lem:mangoldt-subinvariant-bound}: for $x\leq n\leq X$, the finite
-  incoming sum over $q$ with $nq\leq X$ is bounded by the full tail with
-  threshold $2$, and outside $[x,X]$ the mass is zero.  Since $b$ is supported
-  in $[x,X]$, no chain beginning in the support of $b$ can visit a state larger
-  than $X$.  Let $h_{b\searrow}(n)$ be the resulting hitting mass.  Descending
-  induction on the finite set of natural numbers not exceeding $X$ shows that
-  $h_{b\searrow}(n)=\nu_0(n)$ for every $n$ with $x\leq n\leq X$: after the
-  recursive formula for hitting mass is expanded, the subtracted finite
-  incoming term in the definition of $b(n)$ cancels exactly the contribution
-  from all parents $nq\leq X$.  Thus every element of $A$ has hitting mass equal
-  to its Erd\H{o}s weight, by \cref{def:supported-in-interval,def:erdos-weight}.
-  Each downward divisibility chain meets the primitive set $A$ at most once, by
-  \cref{def:primitive-set}; summing this pointwise chain inequality over the
-  initial mass gives
-  $\sum_{n\in A}\nu_0(n)\leq\sum_n b(n)$.  This is precisely the stated
-  inequality after expanding \cref{def:erdos-sum}. -/)
+  \cref{def:finite-chain-initial-mass}. First prove $b(n)\geq0$ for every
+  $n$. If $x\leq n\leq X$, then $n\geq2$; the finite incoming sum over $q$ with
+  $nq\leq X$ is bounded by $n^{-1}$ times the full tail at threshold $2$, using
+  \cref{lem:mangoldt-tail-finite-sum-le}, and
+  \cref{lem:mangoldt-subinvariant-bound} bounds this by
+  $(n\log n)^{-1}=\nu_0(n)$. Outside $[x,X]$ the mass is zero.
+  It remains to bound each finite partial sum of \cref{def:erdos-sum}. Fix a
+  finite set of indices $s$ and restrict to the finite interval
+  $R=\{n:x\leq n\leq X\}$. Let $H(n)$ be the indicator that $n$ is divisible by
+  some element of $A\cap s$. For each $r\in R$, the contribution of
+  $A\cap s$ at $r$ plus the $H$-weighted incoming contribution from factor pairs
+  $nq=r$ is at most $H(r)\nu_0(r)$. If $r\in A\cap s$, the incoming term
+  vanishes by \cref{def:primitive-set}; if $H(r)=0$, it vanishes by definition;
+  otherwise it is bounded by the full von Mangoldt divisor sum, which is
+  $\log r$ by \cref{lem:von-mangoldt-divisor-sum}. Summing these inequalities
+  over $r\in R$ and reindexing the fibers $(n,q)$ gives the partial-sum bound
+  by $\sum_{n\in R}H(n)b(n)$. Since $0\leq H(n)\leq1$ and $b(n)\geq0$, this is
+  at most $\sum_{n\in R}b(n)$, which is the stated t-sum because
+  \cref{def:supported-in-interval,def:finite-chain-initial-mass} gives finite
+  support. -/)
   (title := /-- Hitting mass bounds the finite Erd\H{o}s sum -/)
   (latexEnv := "lemma")]
 lemma finite_chain_erdos_le_initial_mass (A : Set ℕ) (x X : ℝ) (hx : 2 ≤ x)
     (hprim : primitive_set A) (hsupp : supported_in_interval A x X) :
     erdos_sum A ≤ ∑' n : ℕ, finite_chain_initial_mass x X n := by
-  sorry_using [mangoldt_subinvariant_bound]
+  classical
+  have hmass_nonneg : ∀ n : ℕ, 0 ≤ finite_chain_initial_mass x X n := by
+    intro n
+    rw [finite_chain_initial_mass]
+    by_cases hnint : x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X
+    · rw [if_pos hnint]
+      have hn_two : 2 ≤ n := by exact_mod_cast (le_trans hx hnint.1)
+      have hn_one : 1 ≤ n := by omega
+      have hlog_pos : 0 < Real.log (n : ℝ) := by
+        apply Real.log_pos
+        exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hn_two)
+      have hinner_le :
+          (∑' q : ℕ,
+            if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+              erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+                Real.log ((n * q : ℕ) : ℝ)
+            else 0) ≤ (1 / (n : ℝ)) * mangoldt_tail_sum n 2 := by
+        apply tsum_le_of_sum_le'
+        · apply mul_nonneg
+          · positivity
+          · rw [mangoldt_tail_sum]
+            apply tsum_nonneg
+            intro q
+            split_ifs
+            · rw [mangoldt_tail_term]
+              exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+            · norm_num
+        · intro s
+          have hpoint : ∀ q : ℕ,
+              (if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+                erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+                  Real.log ((n * q : ℕ) : ℝ)
+              else 0) ≤
+                (1 / (n : ℝ)) *
+                  (if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) := by
+            intro q
+            by_cases hqcond : 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X
+            · rw [if_pos hqcond]
+              have hqreal : (2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hqcond.1
+              rw [if_pos hqreal]
+              rw [erdos_weight, mangoldt_tail_term]
+              rw [Nat.cast_mul]
+              ring_nf
+              exact le_rfl
+            · rw [if_neg hqcond]
+              apply mul_nonneg
+              · positivity
+              · split_ifs
+                · rw [mangoldt_tail_term]
+                  exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+                · norm_num
+          calc
+            (∑ q ∈ s,
+              if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+                erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+                  Real.log ((n * q : ℕ) : ℝ)
+              else 0) ≤
+                ∑ q ∈ s,
+                  (1 / (n : ℝ)) *
+                    (if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) := by
+                apply Finset.sum_le_sum
+                intro q _
+                exact hpoint q
+            _ = (1 / (n : ℝ)) *
+                  ∑ q ∈ s,
+                    (if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) := by
+                rw [Finset.mul_sum]
+            _ ≤ (1 / (n : ℝ)) * mangoldt_tail_sum n 2 := by
+                exact mul_le_mul_of_nonneg_left
+                  (mangoldt_tail_finite_sum_le n hn_one 2 (by norm_num) s) (by positivity)
+      have htail_le : mangoldt_tail_sum n 2 ≤ 1 / Real.log (n : ℝ) := by
+        rw [le_div_iff₀ hlog_pos]
+        simpa [mul_comm] using mangoldt_subinvariant_bound n hn_two
+      have hscaled_le : (1 / (n : ℝ)) * mangoldt_tail_sum n 2 ≤ erdos_weight n := by
+        calc
+          (1 / (n : ℝ)) * mangoldt_tail_sum n 2 ≤
+              (1 / (n : ℝ)) * (1 / Real.log (n : ℝ)) := by
+              exact mul_le_mul_of_nonneg_left htail_le (by positivity)
+          _ = erdos_weight n := by
+              rw [erdos_weight]
+              ring_nf
+      linarith
+    · rw [if_neg hnint]
+  rw [erdos_sum]
+  apply tsum_le_of_sum_le'
+  · exact tsum_nonneg hmass_nonneg
+  · intro s
+    let M : ℕ := ⌈X⌉₊ + 1
+    let R : Finset ℕ := (Finset.range M).filter (fun n => x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X)
+    have hb_tsum_eq :
+        (∑' n : ℕ, finite_chain_initial_mass x X n) =
+          ∑ n ∈ R, finite_chain_initial_mass x X n := by
+      exact tsum_eq_sum (s := R) (fun n hn => by
+        have hnnot : ¬ (x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X) := by
+          intro hnx
+          apply hn
+          have hn_le_ceil : n ≤ ⌈X⌉₊ := by
+            exact_mod_cast (le_trans hnx.2 (Nat.le_ceil X))
+          have hn_lt_M : n < M := by
+            dsimp [M]
+            omega
+          simp [R, hn_lt_M, hnx]
+        rw [finite_chain_initial_mass, if_neg hnnot])
+    have hleft_eq :
+        (∑ i ∈ s, A.indicator erdos_weight i) =
+          ∑ n ∈ R, if n ∈ s ∧ n ∈ A then erdos_weight n else 0 := by
+      have hs_eq :
+          (∑ i ∈ s, A.indicator erdos_weight i) =
+            ∑ i ∈ s.filter (fun i => i ∈ A), erdos_weight i := by
+        rw [Finset.sum_filter]
+        apply Finset.sum_congr rfl
+        intro i hi
+        by_cases hiA : i ∈ A
+        · simp [Set.indicator_of_mem hiA, hiA]
+        · simp [Set.indicator_of_notMem hiA, hiA]
+      have hR_eq :
+          (∑ n ∈ R, if n ∈ s ∧ n ∈ A then erdos_weight n else 0) =
+            ∑ n ∈ R.filter (fun n => n ∈ s ∧ n ∈ A), erdos_weight n := by
+        exact (Finset.sum_filter (s := R)
+          (p := fun n => n ∈ s ∧ n ∈ A) (f := erdos_weight)).symm
+      rw [hs_eq, hR_eq]
+      symm
+      apply Finset.sum_bij (fun n hn => n)
+      · intro n hn
+        simp only [Finset.mem_filter] at hn ⊢
+        exact ⟨hn.2.1, hn.2.2⟩
+      · intro a ha b hb h
+        exact h
+      · intro b hb
+        simp only [Finset.mem_filter] at hb
+        have hB := hsupp b hb.2
+        have hb_le_ceil : b ≤ ⌈X⌉₊ := by
+          exact_mod_cast (le_trans hB.2 (Nat.le_ceil X))
+        have hb_lt_M : b < M := by
+          dsimp [M]
+          omega
+        refine ⟨b, ?_, rfl⟩
+        simp [R, hb_lt_M, hB, hb]
+      · intro n hn
+        rfl
+    have hmass_finite (n : ℕ) (hnR : n ∈ R) :
+        finite_chain_initial_mass x X n = erdos_weight n -
+          ∑ q ∈ Finset.range M,
+            if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+              erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+                Real.log ((n * q : ℕ) : ℝ)
+            else 0 := by
+      have hnR' : n < M ∧ x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X := by
+        simpa [R] using hnR
+      have hnint : x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X := hnR'.2
+      rw [finite_chain_initial_mass, if_pos hnint]
+      congr 1
+      exact tsum_eq_sum (s := Finset.range M) (fun q hq => by
+        have hqnot : ¬ (2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X) := by
+          intro hcond
+          apply hq
+          have hq_le_prod : q ≤ n * q := by
+            have hn_one : 1 ≤ n := by
+              have hn_two : 2 ≤ n := by exact_mod_cast (le_trans hx hnint.1)
+              omega
+            exact Nat.le_mul_of_pos_left q hn_one
+          have hq_le_X : (q : ℝ) ≤ X := by
+            have : ((q : ℕ) : ℝ) ≤ ((n * q : ℕ) : ℝ) := by
+              exact_mod_cast hq_le_prod
+            exact le_trans this hcond.2
+          have hq_le_ceil : q ≤ ⌈X⌉₊ := by
+            exact_mod_cast (le_trans hq_le_X (Nat.le_ceil X))
+          have hq_lt_M : q < M := by
+            dsimp [M]
+            omega
+          exact Finset.mem_range.mpr hq_lt_M
+        rw [if_neg hqnot])
+    have hfinite :
+        (∑ n ∈ R, if n ∈ s ∧ n ∈ A then erdos_weight n else 0) ≤
+          ∑ n ∈ R, finite_chain_initial_mass x X n := by
+      let shadow : ℕ → ℝ := fun n =>
+        if ∃ a : ℕ, a ∈ s ∧ a ∈ A ∧ a ∣ n then 1 else 0
+      let pairs : Finset (ℕ × ℕ) := R.product (Finset.range M)
+      let pairTerm : ℕ × ℕ → ℝ := fun p =>
+        if 2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X) then
+          shadow p.1 * (erdos_weight (p.1 * p.2) *
+            ArithmeticFunction.vonMangoldt p.2 / Real.log ((p.1 * p.2 : ℕ) : ℝ))
+        else 0
+      have hshadow_le_one : ∀ n, shadow n ≤ 1 := by
+        intro n
+        dsimp [shadow]
+        split_ifs <;> norm_num
+      have hfiber_bound : ∀ r ∈ R,
+          ∑ p ∈ pairs.filter (fun p => p.1 * p.2 = r), pairTerm p ≤ erdos_weight r := by
+        intro r hr
+        have hrR : r < M ∧ x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X := by
+          simpa [R] using hr
+        have hr_two : 2 ≤ r := by exact_mod_cast (le_trans hx hrR.2.1)
+        have hr_ne : r ≠ 0 := by omega
+        have hlog_pos : 0 < Real.log (r : ℝ) := by
+          apply Real.log_pos
+          exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hr_two)
+        let F : Finset (ℕ × ℕ) := pairs.filter (fun p => p.1 * p.2 = r)
+        let boundTerm : ℕ → ℝ := fun q =>
+          erdos_weight r * ArithmeticFunction.vonMangoldt q / Real.log (r : ℝ)
+        have hbound_nonneg : ∀ q, 0 ≤ boundTerm q := by
+          intro q
+          dsimp [boundTerm]
+          have hw : 0 ≤ erdos_weight r := by
+            rw [erdos_weight]
+            positivity
+          exact div_nonneg (mul_nonneg hw ArithmeticFunction.vonMangoldt_nonneg) hlog_pos.le
+        have hpoint : ∀ p ∈ F, pairTerm p ≤ boundTerm p.2 := by
+          intro p hp
+          have hp' := Finset.mem_filter.mp hp
+          have hprod : p.1 * p.2 = r := hp'.2
+          dsimp [pairTerm, boundTerm]
+          by_cases hcond : 2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X)
+          · rw [if_pos hcond, hprod]
+            simpa using
+              mul_le_mul_of_nonneg_right (hshadow_le_one p.1) (hbound_nonneg p.2)
+          · rw [if_neg hcond]
+            exact hbound_nonneg p.2
+        have hsum_le : (∑ p ∈ F, pairTerm p) ≤ ∑ p ∈ F, boundTerm p.2 := by
+          apply Finset.sum_le_sum
+          intro p hp
+          exact hpoint p hp
+        have hsum_image : (∑ p ∈ F, boundTerm p.2) =
+            ∑ q ∈ F.image Prod.snd, boundTerm q := by
+          symm
+          rw [Finset.sum_image]
+          intro a ha b hb hab
+          have ha' := Finset.mem_filter.mp ha
+          have hb' := Finset.mem_filter.mp hb
+          have hpa : a.1 * a.2 = r := ha'.2
+          have hpb : b.1 * b.2 = r := hb'.2
+          have ha2_pos : 0 < a.2 := by
+            by_contra hnot
+            have ha2z : a.2 = 0 := Nat.eq_zero_of_not_pos hnot
+            rw [ha2z] at hpa
+            simp at hpa
+            exact hr_ne hpa.symm
+          have hfst : a.1 = b.1 := by
+            apply Nat.mul_right_cancel ha2_pos
+            rw [hpa, hab, hpb]
+          exact Prod.ext hfst hab
+        have himage_subset : F.image Prod.snd ⊆ r.divisors := by
+          intro q hq
+          rcases Finset.mem_image.mp hq with ⟨p, hp, rfl⟩
+          have hp' := Finset.mem_filter.mp hp
+          have hprod : p.1 * p.2 = r := hp'.2
+          have hqdiv : p.2 ∣ r := by
+            refine ⟨p.1, ?_⟩
+            rw [mul_comm, hprod]
+          exact Nat.mem_divisors.mpr ⟨hqdiv, hr_ne⟩
+        have himage_le : (∑ q ∈ F.image Prod.snd, boundTerm q) ≤
+            ∑ q ∈ r.divisors, boundTerm q := by
+          apply Finset.sum_le_sum_of_subset_of_nonneg
+          · exact himage_subset
+          · intro q hq hqnot
+            exact hbound_nonneg q
+        have hdiv_eq : (∑ q ∈ r.divisors, boundTerm q) = erdos_weight r := by
+          dsimp [boundTerm]
+          calc
+            (∑ q ∈ r.divisors,
+              erdos_weight r * ArithmeticFunction.vonMangoldt q / Real.log (r : ℝ)) =
+                (erdos_weight r / Real.log (r : ℝ)) *
+                  ∑ q ∈ r.divisors, ArithmeticFunction.vonMangoldt q := by
+                rw [Finset.mul_sum]
+                apply Finset.sum_congr rfl
+                intro q hq
+                ring
+            _ = (erdos_weight r / Real.log (r : ℝ)) * Real.log (r : ℝ) := by
+                rw [von_mangoldt_divisor_sum]
+            _ = erdos_weight r := by
+                field_simp [hlog_pos.ne']
+        calc
+          (∑ p ∈ pairs.filter (fun p => p.1 * p.2 = r), pairTerm p) =
+              ∑ p ∈ F, pairTerm p := rfl
+          _ ≤ ∑ p ∈ F, boundTerm p.2 := hsum_le
+          _ = ∑ q ∈ F.image Prod.snd, boundTerm q := hsum_image
+          _ ≤ ∑ q ∈ r.divisors, boundTerm q := himage_le
+          _ = erdos_weight r := hdiv_eq
+      have hfiber_zero_active : ∀ r ∈ R, r ∈ s ∧ r ∈ A ->
+          ∑ p ∈ pairs.filter (fun p => p.1 * p.2 = r), pairTerm p = 0 := by
+        intro r hr hactive
+        apply Finset.sum_eq_zero
+        intro p hp
+        have hp' := Finset.mem_filter.mp hp
+        have hprod : p.1 * p.2 = r := hp'.2
+        dsimp [pairTerm]
+        by_cases hcond : 2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X)
+        · rw [if_pos hcond]
+          have hshadow_p1 : shadow p.1 = 0 := by
+            dsimp [shadow]
+            rw [if_neg]
+            intro hex
+            rcases hex with ⟨a, has, haA, hadiv⟩
+            have hadivr : a ∣ r := by
+              rcases hadiv with ⟨k, hk⟩
+              refine ⟨k * p.2, ?_⟩
+              rw [← hprod, hk, Nat.mul_assoc]
+            have har : a = r := hprim.eq haA hactive.2 hadivr
+            subst a
+            have hrR : r < M ∧ x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X := by
+              simpa [R] using hr
+            have hp2_gt_one : 1 < p.2 := by omega
+            have hp1_pos : 0 < p.1 := by
+              by_contra hp10
+              have hp1z : p.1 = 0 := Nat.eq_zero_of_not_pos hp10
+              rw [hp1z] at hprod
+              simp at hprod
+              have hr_two : 2 ≤ r := by exact_mod_cast (le_trans hx hrR.2.1)
+              omega
+            have hp1_lt_r : p.1 < r := by
+              rw [← hprod]
+              exact lt_mul_of_one_lt_right hp1_pos hp2_gt_one
+            exact not_le_of_gt hp1_lt_r (Nat.le_of_dvd hp1_pos hadiv)
+          rw [hshadow_p1]
+          ring
+        · rw [if_neg hcond]
+      have hshadow_factor_zero : ∀ r ∈ R, shadow r = 0 ->
+          ∑ p ∈ pairs.filter (fun p => p.1 * p.2 = r), pairTerm p = 0 := by
+        intro r hr hsr
+        apply Finset.sum_eq_zero
+        intro p hp
+        have hp' := Finset.mem_filter.mp hp
+        have hprod : p.1 * p.2 = r := hp'.2
+        dsimp [pairTerm]
+        by_cases hcond : 2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X)
+        · rw [if_pos hcond]
+          have hshadow_p1 : shadow p.1 = 0 := by
+            dsimp [shadow] at hsr ⊢
+            by_cases hex : ∃ a : ℕ, a ∈ s ∧ a ∈ A ∧ a ∣ p.1
+            · exfalso
+              have hexr : ∃ a : ℕ, a ∈ s ∧ a ∈ A ∧ a ∣ r := by
+                rcases hex with ⟨a, has, haA, hadiv⟩
+                refine ⟨a, has, haA, ?_⟩
+                rcases hadiv with ⟨k, hk⟩
+                refine ⟨k * p.2, ?_⟩
+                rw [← hprod, hk, Nat.mul_assoc]
+              rw [if_pos hexr] at hsr
+              norm_num at hsr
+            · rw [if_neg hex]
+          rw [hshadow_p1]
+          ring
+        · rw [if_neg hcond]
+      have hfiber : ∀ r ∈ R,
+          (if r ∈ s ∧ r ∈ A then erdos_weight r else 0) +
+            ∑ p ∈ pairs.filter (fun p => p.1 * p.2 = r), pairTerm p ≤
+              shadow r * erdos_weight r := by
+        intro r hr
+        by_cases hactive : r ∈ s ∧ r ∈ A
+        · have hsh : shadow r = 1 := by
+            dsimp [shadow]
+            rw [if_pos]
+            exact ⟨r, hactive.1, hactive.2, dvd_rfl⟩
+          rw [if_pos hactive, hfiber_zero_active r hr hactive, hsh]
+          linarith
+        · rw [if_neg hactive]
+          by_cases hshadow : shadow r = 0
+          · rw [hshadow_factor_zero r hr hshadow, hshadow]
+            norm_num
+          · have hsh : shadow r = 1 := by
+              dsimp [shadow] at hshadow ⊢
+              by_cases hex : ∃ a : ℕ, a ∈ s ∧ a ∈ A ∧ a ∣ r
+              · rw [if_pos hex]
+              · rw [if_neg hex] at hshadow
+                exfalso
+                exact hshadow rfl
+            rw [hsh]
+            simpa using hfiber_bound r hr
+      have hsum_fiber :
+          (∑ r ∈ R, ∑ p ∈ pairs.filter (fun p => p.1 * p.2 = r), pairTerm p) =
+            ∑ p ∈ pairs.filter (fun p => p.1 * p.2 ∈ R), pairTerm p := by
+        exact Finset.sum_fiberwise_eq_sum_filter pairs R
+          (fun p : ℕ × ℕ => p.1 * p.2) pairTerm
+      have hupper :
+          (∑ n ∈ R, if n ∈ s ∧ n ∈ A then erdos_weight n else 0) +
+              ∑ p ∈ pairs.filter (fun p => p.1 * p.2 ∈ R), pairTerm p ≤
+            ∑ n ∈ R, shadow n * erdos_weight n := by
+        calc
+          (∑ n ∈ R, if n ∈ s ∧ n ∈ A then erdos_weight n else 0) +
+              ∑ p ∈ pairs.filter (fun p => p.1 * p.2 ∈ R), pairTerm p =
+                ∑ n ∈ R,
+                  ((if n ∈ s ∧ n ∈ A then erdos_weight n else 0) +
+                    ∑ p ∈ pairs.filter (fun p => p.1 * p.2 = n), pairTerm p) := by
+                rw [Finset.sum_add_distrib, hsum_fiber]
+          _ ≤ ∑ n ∈ R, shadow n * erdos_weight n := by
+                apply Finset.sum_le_sum
+                intro n hn
+                exact hfiber n hn
+      have hpair_all_eq :
+          (∑ p ∈ pairs.filter (fun p => p.1 * p.2 ∈ R), pairTerm p) =
+            ∑ p ∈ pairs, pairTerm p := by
+        apply Finset.sum_subset
+        · intro p hp
+          exact (Finset.mem_filter.mp hp).1
+        · intro p hpairs hpnot
+          have hprod_not : p.1 * p.2 ∉ R := by
+            intro hpR
+            apply hpnot
+            simp [hpairs, hpR]
+          have hp : p.1 ∈ R ∧ p.2 ∈ Finset.range M := by
+            simpa [pairs] using hpairs
+          dsimp [pairTerm]
+          by_cases hcond : 2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X)
+          · exfalso
+            apply hprod_not
+            have hp1R : p.1 < M ∧ x ≤ (p.1 : ℝ) ∧ (p.1 : ℝ) ≤ X := by
+              simpa [R] using hp.1
+            have hp2one : 1 ≤ p.2 := by omega
+            have hp1_le_prod : p.1 ≤ p.1 * p.2 :=
+              Nat.le_mul_of_pos_right p.1 hp2one
+            have hxprod : x ≤ ((p.1 * p.2 : ℕ) : ℝ) := by
+              have : (p.1 : ℝ) ≤ ((p.1 * p.2 : ℕ) : ℝ) := by
+                exact_mod_cast hp1_le_prod
+              exact le_trans hp1R.2.1 this
+            have hprod_le_ceil : p.1 * p.2 ≤ ⌈X⌉₊ := by
+              exact_mod_cast (le_trans hcond.2 (Nat.le_ceil X))
+            have hprod_lt_M : p.1 * p.2 < M := by
+              dsimp [M]
+              omega
+            simp only [R, Finset.mem_filter, Finset.mem_range]
+            exact ⟨hprod_lt_M, by simpa [Nat.cast_mul] using hxprod,
+              by simpa [Nat.cast_mul] using hcond.2⟩
+          · rw [if_neg hcond]
+      have hpair_product :
+          (∑ p ∈ pairs, pairTerm p) =
+            ∑ n ∈ R, shadow n *
+              ∑ q ∈ Finset.range M,
+                if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+                  erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+                    Real.log ((n * q : ℕ) : ℝ)
+                else 0 := by
+        dsimp [pairs, pairTerm]
+        rw [Finset.sum_product]
+        apply Finset.sum_congr rfl
+        intro n hn
+        simp only [Prod.fst, Prod.snd]
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro q hq
+        by_cases hcond : 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X
+        · simp [hcond]
+        · simp [hcond]
+      have hshadow_bound :
+          (∑ n ∈ R, shadow n * erdos_weight n) ≤
+            (∑ n ∈ R, finite_chain_initial_mass x X n) +
+              ∑ p ∈ pairs.filter (fun p => p.1 * p.2 ∈ R), pairTerm p := by
+        rw [hpair_all_eq, hpair_product]
+        calc
+          (∑ n ∈ R, shadow n * erdos_weight n) =
+              ∑ n ∈ R, shadow n *
+                (finite_chain_initial_mass x X n +
+                  ∑ q ∈ Finset.range M,
+                    if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+                      erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+                        Real.log ((n * q : ℕ) : ℝ)
+                    else 0) := by
+                apply Finset.sum_congr rfl
+                intro n hn
+                rw [hmass_finite n hn]
+                ring
+          _ = (∑ n ∈ R, shadow n * finite_chain_initial_mass x X n) +
+              ∑ n ∈ R, shadow n *
+                ∑ q ∈ Finset.range M,
+                  if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+                    erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+                      Real.log ((n * q : ℕ) : ℝ)
+                  else 0 := by
+                rw [← Finset.sum_add_distrib]
+                apply Finset.sum_congr rfl
+                intro n hn
+                ring
+          _ ≤ (∑ n ∈ R, finite_chain_initial_mass x X n) +
+              ∑ n ∈ R, shadow n *
+                ∑ q ∈ Finset.range M,
+                  if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+                    erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+                      Real.log ((n * q : ℕ) : ℝ)
+                  else 0 := by
+                have hsum_le :
+                    (∑ n ∈ R, shadow n * finite_chain_initial_mass x X n) ≤
+                      ∑ n ∈ R, finite_chain_initial_mass x X n := by
+                  apply Finset.sum_le_sum
+                  intro n hn
+                  simpa using
+                    mul_le_mul_of_nonneg_right (hshadow_le_one n) (hmass_nonneg n)
+                linarith
+      linarith
+    rw [hb_tsum_eq, hleft_eq]
+    exact hfinite
 
 @[blueprint "lem:finite-chain-initial-mass-sum-eq-cut-capacity"
   (statement := /-- For every $x\geq2$ and every real $X$, the total finite
