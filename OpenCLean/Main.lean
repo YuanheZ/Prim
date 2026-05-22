@@ -452,39 +452,113 @@ lemma dirichlet_eta_positive :
   rw [hpow]
   simpa [Complex.mul_re] using mul_pos hfactor_pos hzeta_pos
 
+@[blueprint "lem:dirichlet-eta-mellin-transform"
+  (statement := /-- For every real $s>1$, the real Dirichlet eta value of
+  \cref{def:dirichlet-eta-real} is the normalized Mellin transform
+  $$
+    \eta(s)=\Gamma(s)^{-1}\int_0^\infty {x^{s-1}\over e^x+1}\,dx.
+  $$ -/)
+  (proof := /-- Fix $s>1$.  For every $x>0$, the geometric expansion
+  $(e^x+1)^{-1}=\sum_{n=0}^\infty (-1)^n e^{-(n+1)x}$ is summable, and the
+  exponential decay gives the summability needed to integrate the series term
+  by term against $x^{s-1}\,dx$ on $(0,\infty)$.  The Mellin integral of the
+  $n$th term is $(-1)^n\Gamma(s)/(n+1)^s$.  Hence the integral is
+  $\Gamma(s)\sum_{n=0}^\infty (-1)^n/(n+1)^s$.  For $s>1$ this alternating
+  Dirichlet series is absolutely convergent after grouping even and odd terms,
+  and its value is $(1-2^{1-s})\zeta(s)$.  Dividing by $\Gamma(s)$ gives
+  precisely the real value specified by \cref{def:dirichlet-eta-real}. -/)
+  (title := /-- Mellin transform formula for eta -/)
+  (latexEnv := "lemma")]
+lemma dirichlet_eta_mellin_transform :
+    ∀ s : ℝ, 1 < s ->
+      dirichlet_eta_real s =
+        (1 / Real.Gamma s) *
+          ∫ x : ℝ in Set.Ioi (0 : ℝ), x ^ (s - 1) / (Real.exp x + 1) := by
+  sorry
+
+@[blueprint "lem:gamma-logistic-expectation-eq-mellin-integral"
+  (statement := /-- For every real $s>1$, the expectation of
+  $h(x)=(1+e^{-x})^{-1}$ under `ProbabilityTheory.gammaMeasure s 1` is the
+  normalized Mellin integral
+  $$
+    \Gamma(s)^{-1}\int_0^\infty {x^{s-1}\over e^x+1}\,dx.
+  $$ -/)
+  (proof := /-- Fix $s>1$.  The measure `ProbabilityTheory.gammaMeasure s 1`
+  is the measure with density
+  $\Gamma(s)^{-1}x^{s-1}e^{-x}$ on $[0,\infty)$ and density zero on the
+  negative half-line.  The integrability follows from the exponential decay at
+  infinity and from $s>1$ at the origin.  On $(0,\infty)$ one has
+  $$
+    {1\over 1+e^{-x}}\,\Gamma(s)^{-1}x^{s-1}e^{-x}
+      = \Gamma(s)^{-1}{x^{s-1}\over e^x+1}.
+  $$
+  The possible endpoint $x=0$ has Lebesgue measure zero, and therefore does not
+  affect the Bochner integral.  Pulling out the constant $\Gamma(s)^{-1}$ gives
+  the asserted identity. -/)
+  (title := /-- Gamma expectation as a Mellin integral -/)
+  (latexEnv := "lemma")]
+lemma gamma_logistic_expectation_eq_mellin_integral :
+    ∀ s : ℝ, 1 < s ->
+      (∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure s 1)) =
+        (1 / Real.Gamma s) *
+          ∫ x : ℝ in Set.Ioi (0 : ℝ), x ^ (s - 1) / (Real.exp x + 1) := by
+  sorry
+
 @[blueprint "lem:dirichlet-eta-gamma-expectation"
   (statement := /-- For every real $s>1$, the eta value of
   \cref{def:dirichlet-eta-real} is the expectation of
   $h(x)=(1+e^{-x})^{-1}$ against the gamma distribution of shape $s$ and
   scale $1$.  In Lean this gamma distribution is
   `ProbabilityTheory.gammaMeasure s 1`. -/)
-  (proof := /-- Fix $s>1$.  The measure
-  `ProbabilityTheory.gammaMeasure s 1` has density
-  $\Gamma(s)^{-1}x^{s-1}e^{-x}$ on $[0,\infty)$.  Multiplying this density by
-  $h(x)=(1+e^{-x})^{-1}=e^x/(1+e^x)$ converts the expectation into
-  $$\Gamma(s)^{-1}\int_0^\infty {x^{s-1}\over 1+e^x}\,dx.$$
-  The classical Mellin transform formula for Dirichlet eta identifies this
-  last integral with $(1-2^{1-s})\zeta(s)$, which is precisely the real value
-  specified by \cref{def:dirichlet-eta-real} on the half-line $s>1$. -/)
+  (proof := /-- Fix $s>1$.  By
+  \cref{lem:gamma-logistic-expectation-eq-mellin-integral}, the gamma
+  expectation is
+  $$\Gamma(s)^{-1}\int_0^\infty {x^{s-1}\over e^x+1}\,dx.$$
+  By \cref{lem:dirichlet-eta-mellin-transform}, the same normalized Mellin
+  integral is the real eta value of \cref{def:dirichlet-eta-real}.  Combining
+  these two identities gives the asserted gamma-expectation representation of
+  $\eta(s)$. -/)
   (title := /-- Gamma-expectation representation of eta -/)
   (latexEnv := "lemma")]
 lemma dirichlet_eta_gamma_expectation :
     ∀ s : ℝ, 1 < s ->
       dirichlet_eta_real s =
         ∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure s 1) := by
+  sorry_using [dirichlet_eta_mellin_transform, gamma_logistic_expectation_eq_mellin_integral]
+
+@[blueprint "lem:gamma-logistic-expectation-mono-of-shape-le"
+  (statement := /-- If $0<a\leq b$, then the expectation of
+  $h(x)=(1+e^{-x})^{-1}$ under the gamma law of shape $a$ and scale $1$ is at
+  most the corresponding expectation under the gamma law of shape $b$ and scale
+  $1$. -/)
+  (proof := /-- Fix real numbers $a$ and $b$ with $0<a\leq b$, and put
+  $c=b-a$.  If $c=0$, the two gamma laws are equal and the desired inequality
+  is equality.  If $c>0$, let $X_a$ and $Y_c$ be independent gamma random
+  variables of shapes $a$ and $c$, both with scale $1$.  The additivity of
+  gamma laws with common scale identifies the law of $X_a+Y_c$ with the gamma
+  law of shape $b$.  Since gamma laws are supported on $[0,\infty)$, one has
+  $Y_c\geq 0$ almost surely.  The function $x\mapsto(1+e^{-x})^{-1}$ is
+  increasing on the real line, so
+  $(1+e^{-X_a})^{-1}\leq(1+e^{-(X_a+Y_c)})^{-1}$ almost surely.  Taking
+  expectations and using the distributional identity for $X_a+Y_c$ gives the
+  claimed comparison. -/)
+  (title := /-- Pairwise gamma-shape comparison for logistic expectations -/)
+  (latexEnv := "lemma")]
+lemma gamma_logistic_expectation_mono_of_shape_le :
+    ∀ ⦃a b : ℝ⦄, 0 < a -> a ≤ b ->
+      (∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure a 1)) ≤
+        ∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure b 1) := by
   sorry
 
 @[blueprint "lem:gamma-logistic-expectation-monotone"
   (statement := /-- The expectation of the increasing function
   $h(x)=(1+e^{-x})^{-1}$ under a gamma distribution of scale $1$ is
   non-decreasing as the positive shape parameter increases. -/)
-  (proof := /-- Let $0<a\leq b$ and put $c=b-a\geq 0$.  If $c=0$ the two
-  expectations are equal.  If $c>0$, let $X_a$ and $Y_c$ be independent gamma
-  variables of shapes $a$ and $c$, both with scale $1$.  The additivity of
-  gamma laws with common scale gives $X_a+Y_c$ the gamma law of shape $b$.
-  Since $Y_c\geq 0$ almost surely and $h(x)=(1+e^{-x})^{-1}$ is increasing on
-  $[0,\infty)$, one has $h(X_a)\leq h(X_a+Y_c)$ almost surely.  Taking
-  expectations gives the desired monotonicity in the shape parameter. -/)
+  (proof := /-- Let $a$ and $b$ be two elements of $(0,\infty)$ with $a\leq b$.
+  The hypotheses give $0<a$, so
+  \cref{lem:gamma-logistic-expectation-mono-of-shape-le} applies and compares
+  the two logistic expectations at shapes $a$ and $b$.  This is exactly the
+  defining pairwise condition for monotonicity on the set $(0,\infty)$. -/)
   (title := /-- Monotonicity of gamma-logistic expectations -/)
   (latexEnv := "lemma")]
 lemma gamma_logistic_expectation_monotone :
@@ -492,7 +566,7 @@ lemma gamma_logistic_expectation_monotone :
       (fun s : ℝ =>
         ∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure s 1))
       (Set.Ioi (0 : ℝ)) := by
-  sorry
+  sorry_using [gamma_logistic_expectation_mono_of_shape_le]
 
 @[blueprint "lem:dirichlet-eta-monotone"
   (statement := /-- The real Dirichlet eta function of
