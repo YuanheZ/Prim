@@ -1263,20 +1263,106 @@ lemma zeta_log_derivative_geometric_bound :
       have h := eta_log_derivative_nonnegative u hu
       linarith)
 
+@[blueprint "lem:mangoldt-dirichlet-series-eq-zeta-log-derivative"
+  (statement := /-- For every real number $u$ with $u>0$, the complex number
+  obtained from the real von Mangoldt Dirichlet series equals the negative
+  logarithmic derivative of the Riemann zeta function at $1+u$:
+  $$
+    \sum_{q\in\mathbb{N}} \Lambda(q)q^{-1-u}
+      =-\frac{\zeta'(1+u)}{\zeta(1+u)}.
+  $$ -/)
+  (proof := /-- Fix $u>0$ and put $s=1+u$, so that $\operatorname{Re}s>1$.
+  The Mathlib von Mangoldt L-series identity identifies the complex L-series
+  with $-\zeta'(s)/\zeta(s)$.  It remains only to expand
+  \cref{def:mangoldt-dirichlet-series}: after coercing the real infinite sum
+  to $\mathbb{C}$, each term is the corresponding L-series term, because for
+  every natural number $q$ the complex power of the non-negative real $q$ agrees
+  with the real power coerced to $\mathbb{C}$. -/)
+  (title := /-- Von Mangoldt series as a zeta logarithmic derivative -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_dirichlet_series_eq_zeta_log_derivative :
+    ∀ u : ℝ, 0 < u ->
+      (mangoldt_dirichlet_series u : ℂ) =
+        - deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+          riemannZeta ((1 + u : ℝ) : ℂ) := by
+  intro u hu
+  have hs : 1 < (((1 + u : ℝ) : ℂ).re) := by
+    simp
+    linarith
+  rw [← ArithmeticFunction.LSeries_vonMangoldt_eq_deriv_riemannZeta_div
+    (s := ((1 + u : ℝ) : ℂ)) hs]
+  change (mangoldt_dirichlet_series u : ℂ) =
+    LSeries (fun q : ℕ => (ArithmeticFunction.vonMangoldt q : ℂ)) ((1 + u : ℝ) : ℂ)
+  rw [mangoldt_dirichlet_series, LSeries, Complex.ofReal_tsum]
+  apply tsum_congr
+  intro q
+  by_cases hq : q = 0
+  · subst q
+    simp [Real.zero_rpow (by linarith : (1 : ℝ) + u ≠ 0)]
+  · rw [LSeries.term_of_ne_zero hq]
+    rw [Complex.ofReal_div]
+    congr 1
+    exact Complex.ofReal_cpow (Nat.cast_nonneg q) (1 + u)
+
+@[blueprint "lem:zeta-geometric-bound-le-inv"
+  (statement := /-- For every real number $u$ with $u>0$, the elementary
+  geometric factor satisfies
+  $$
+    \frac{\log 2}{2^u-1}\leq \frac{1}{u}.
+  $$ -/)
+  (proof := /-- Fix $u>0$.  The denominator $2^u-1$ is positive.  Applying
+  the inequality $x+1\leq e^x$ to $x=(\log 2)u$ and rewriting
+  $e^{(\log 2)u}$ as $2^u$ gives $(\log 2)u\leq 2^u-1$.  Since both $u$ and
+  $2^u-1$ are positive, cross-multiplication gives the displayed inequality. -/)
+  (title := /-- Geometric factor bounded by $1/u$ -/)
+  (latexEnv := "lemma")]
+lemma zeta_geometric_bound_le_inv :
+    ∀ u : ℝ, 0 < u ->
+      Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) ≤ 1 / u := by
+  intro u hu
+  have hpow_gt_one : 1 < Real.rpow (2 : ℝ) u := by
+    exact (Real.one_lt_rpow_iff (by norm_num : 0 ≤ (2 : ℝ))).2
+      (Or.inl ⟨by norm_num, hu⟩)
+  have hden_pos : 0 < Real.rpow (2 : ℝ) u - 1 := by
+    linarith
+  have hmul : Real.log (2 : ℝ) * u ≤ Real.rpow (2 : ℝ) u - 1 := by
+    have h := Real.add_one_le_exp (Real.log (2 : ℝ) * u)
+    have h' : Real.log (2 : ℝ) * u + 1 ≤ Real.rpow (2 : ℝ) u := by
+      simpa [Real.rpow_def_of_pos (by norm_num : (0 : ℝ) < 2) u] using h
+    linarith
+  rw [div_le_div_iff₀ hden_pos hu]
+  simpa [one_mul, mul_comm, mul_left_comm, mul_assoc] using hmul
+
 @[blueprint "lem:von-mangoldt-dirichlet-series-upper-bound"
-  (statement := /-- For every $u>0$, the von Mangoldt Dirichlet series satisfies
-  $\sum_q \Lambda(q)q^{-1-u}\leq 1/u$. -/)
-  (proof := /-- The source proves this from the identity
-  $\sum_q\Lambda(q)q^{-1-u}=-\zeta'(1+u)/\zeta(1+u)$.  Apply
-  \cref{lem:zeta-log-derivative-geometric-bound} to bound the logarithmic
-  derivative by $\log 2/(2^u-1)$.  Finally,
-  $(2^u-1)/\log 2=u\int_0^1 2^{tu}\,dt\geq u$, since $2^{tu}\geq 1$ on
-  $[0,1]$; rearranging gives $\log 2/(2^u-1)\leq 1/u$. -/)
+  (statement := /-- For every real number $u$ with $u>0$, the von Mangoldt
+  Dirichlet series
+  $\sum_{q\in\mathbb{N}} \Lambda(q)q^{-1-u}$ is at most $1/u$. -/)
+  (proof := /-- Fix a real number $u>0$.  By
+  \cref{lem:mangoldt-dirichlet-series-eq-zeta-log-derivative}, the real
+  Dirichlet series is the real part of
+  $-\zeta'(1+u)/\zeta(1+u)$.  The comparison
+  \cref{lem:zeta-log-derivative-geometric-bound} bounds this real part by
+  $\log 2/(2^u-1)$, and
+  \cref{lem:zeta-geometric-bound-le-inv} bounds the latter quantity by $1/u$.
+  Chaining these two inequalities gives the result. -/)
   (title := /-- Dirichlet-series upper bound -/)
   (latexEnv := "lemma")]
 lemma von_mangoldt_dirichlet_series_upper_bound :
     ∀ u : ℝ, 0 < u -> mangoldt_dirichlet_series u ≤ 1 / u := by
-  sorry_using [zeta_log_derivative_geometric_bound]
+  intro u hu
+  have hseries :
+      mangoldt_dirichlet_series u =
+        ((- deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+          riemannZeta ((1 + u : ℝ) : ℂ)).re) := by
+    simpa using congrArg Complex.re
+      (mangoldt_dirichlet_series_eq_zeta_log_derivative u hu)
+  calc
+    mangoldt_dirichlet_series u
+        = ((- deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+          riemannZeta ((1 + u : ℝ) : ℂ)).re) := hseries
+    _ ≤ Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) :=
+      zeta_log_derivative_geometric_bound u hu
+    _ ≤ 1 / u := zeta_geometric_bound_le_inv u hu
 
 @[blueprint "lem:mangoldt-tail-range-eq-ico"
   (statement := /-- For every natural cutoff $N$, natural parameter $m$, and
