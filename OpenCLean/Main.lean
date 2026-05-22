@@ -490,18 +490,24 @@ lemma dirichlet_eta_log_derivative_nonnegative :
   sorry_using [dirichlet_eta_positive, dirichlet_eta_monotone]
 
 @[blueprint "lem:dirichlet-eta-zeta-log-derivative"
-  (statement := /-- For every $u>0$, differentiating
-  $\eta(s)=(1-2^{1-s})\zeta(s)$ at $s=1+u$ identifies the eta logarithmic
-  derivative with the zeta logarithmic derivative plus the eta factor:
+  (statement := /-- For every real number $u$ with $u>0$, the logarithmic
+  derivative of the real Dirichlet eta function at $1+u$ is the real part of
+  the logarithmic derivative of the Riemann zeta function at $1+u$, plus the
+  eta-factor term:
   $$ {\eta'(1+u)\over\eta(1+u)}
     = \operatorname{Re}{\zeta'(1+u)\over\zeta(1+u)}
       + {\log 2\over 2^u-1}. $$ -/)
   (proof := /-- By \cref{def:dirichlet-eta-real},
-  $\eta(s)=(1-2^{1-s})\zeta(s)$ on the real axis.  Differentiate this identity
-  at $s=1+u$, using $u>0$ to stay away from the pole of $\zeta$ at $1$.  After
-  division by $\eta(1+u)=(1-2^{-u})\zeta(1+u)$, the logarithmic derivative of
-  the factor $1-2^{1-s}$ is $(\log 2)/(2^{s-1}-1)$.  Substituting $s=1+u$ and
-  taking real parts gives the displayed identity. -/)
+  $\eta(s)$ is the real part of $(1-2^{1-s})\zeta(s)$ on the real axis.  Fix
+  $u>0$ and put $s=1+u$.  The factor $1-2^{1-z}$ and the Riemann zeta function
+  are differentiable and non-zero at $z=s$, so the complex logarithmic
+  derivative of their product is the sum of their logarithmic derivatives.  The
+  factor derivative is
+  $\frac{d}{dz}(1-2^{1-z})=(\log 2)2^{1-z}$, hence at $s=1+u$ its logarithmic
+  derivative is $(\log 2)/(2^u-1)$.  Since the factor and $\zeta(s)$ are real
+  at this real point, taking real parts identifies the complex product
+  logarithmic derivative with the real logarithmic derivative of
+  \cref{def:dirichlet-eta-real}.  This gives the displayed identity. -/)
   (title := /-- Eta-zeta logarithmic derivative identity -/)
   (latexEnv := "lemma")]
 lemma dirichlet_eta_zeta_log_derivative :
@@ -510,7 +516,153 @@ lemma dirichlet_eta_zeta_log_derivative :
         ((deriv riemannZeta ((1 + u : ℝ) : ℂ) /
           riemannZeta ((1 + u : ℝ) : ℂ)).re +
         Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1)) := by
-  sorry
+  intro u hu
+  have hfactor_deriv :
+      deriv (fun z : ℂ => (1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z))
+          ((1 + u : ℝ) : ℂ) =
+        (2 : ℂ) ^ (-(u : ℂ)) * Complex.log (2 : ℂ) := by
+    have hinner :
+        HasDerivAt (fun z : ℂ => (1 : ℂ) - z) (-1 : ℂ) ((1 + u : ℝ) : ℂ) := by
+      simpa using
+        (hasDerivAt_const ((1 + u : ℝ) : ℂ) (1 : ℂ)).sub
+          (hasDerivAt_id ((1 + u : ℝ) : ℂ))
+    have hpow :
+        HasDerivAt (fun z : ℂ => (2 : ℂ) ^ ((1 : ℂ) - z))
+          ((2 : ℂ) ^ ((1 : ℂ) - (((1 + u : ℝ) : ℂ))) *
+            Complex.log (2 : ℂ) * (-1 : ℂ)) ((1 + u : ℝ) : ℂ) := by
+      simpa [mul_comm, mul_left_comm, mul_assoc] using
+        hinner.const_cpow (c := (2 : ℂ)) (Or.inl (by norm_num : (2 : ℂ) ≠ 0))
+    have hfactor :
+        HasDerivAt (fun z : ℂ => (1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z))
+          (-((2 : ℂ) ^ ((1 : ℂ) - (((1 + u : ℝ) : ℂ))) *
+            Complex.log (2 : ℂ) * (-1 : ℂ))) ((1 + u : ℝ) : ℂ) := by
+      simpa using (hasDerivAt_const ((1 + u : ℝ) : ℂ) (1 : ℂ)).sub hpow
+    simpa [mul_comm, mul_left_comm, mul_assoc] using hfactor.deriv
+  have hfactor_log :
+      (logDeriv (fun z : ℂ => (1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z))
+          ((1 + u : ℝ) : ℂ)).re =
+        Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) := by
+    have hfactor_deriv_real :
+        deriv (fun z : ℂ => (1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z))
+            ((1 + u : ℝ) : ℂ) =
+          ((Real.rpow (2 : ℝ) (-u) * Real.log (2 : ℝ) : ℝ) : ℂ) := by
+      simpa [Complex.ofReal_cpow, mul_comm, mul_left_comm, mul_assoc] using hfactor_deriv
+    have hpow_gt_one : 1 < Real.rpow (2 : ℝ) u := by
+      exact (Real.one_lt_rpow_iff (by norm_num : 0 ≤ (2 : ℝ))).2
+        (Or.inl ⟨by norm_num, hu⟩)
+    have hden_ne : Real.rpow (2 : ℝ) u - 1 ≠ 0 :=
+      sub_ne_zero.mpr (ne_of_gt hpow_gt_one)
+    have hfactor_val :
+        ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - (((1 + u : ℝ) : ℂ)))) =
+          ((1 - Real.rpow (2 : ℝ) (-u) : ℝ) : ℂ) := by
+      simp [Complex.ofReal_cpow]
+    rw [logDeriv]
+    change (deriv (fun z : ℂ => (1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z))
+        ((1 + u : ℝ) : ℂ) /
+          ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - (((1 + u : ℝ) : ℂ))))).re =
+      Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1)
+    rw [hfactor_deriv_real, hfactor_val]
+    rw [← Complex.ofReal_div]
+    norm_cast
+    rw [show Real.rpow (2 : ℝ) (-u) = (Real.rpow (2 : ℝ) u)⁻¹ by
+      exact Real.rpow_neg (by norm_num : 0 ≤ (2 : ℝ)) u]
+    field_simp [hden_ne]
+  have hpow_lt : Real.rpow (2 : ℝ) (-u) < 1 :=
+    Real.rpow_lt_one_of_one_lt_of_neg (by norm_num) (by linarith)
+  have hfactor_ne :
+      ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - (((1 + u : ℝ) : ℂ)))) ≠ 0 := by
+    have hpow_ne : (2 : ℂ) ^ (-(u : ℂ)) ≠ 1 := by
+      simpa [Complex.ofReal_cpow] using
+        (show ((Real.rpow (2 : ℝ) (-u) : ℝ) : ℂ) ≠ 1 by
+          exact_mod_cast hpow_lt.ne)
+    simpa using sub_ne_zero.mpr (Ne.symm hpow_ne)
+  have hz_ne : riemannZeta ((1 + u : ℝ) : ℂ) ≠ 0 :=
+    riemannZeta_ne_zero_of_one_lt_re (by simp; linarith)
+  have hf_diff :
+      DifferentiableAt ℂ (fun z : ℂ => (1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z))
+        ((1 + u : ℝ) : ℂ) := by
+    fun_prop
+  have hz_diff : DifferentiableAt ℂ riemannZeta ((1 + u : ℝ) : ℂ) :=
+    differentiableAt_riemannZeta (by norm_num [Complex.ext_iff]; linarith)
+  have hprod_log :
+      (logDeriv (fun z : ℂ =>
+          ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z)) * riemannZeta z)
+          ((1 + u : ℝ) : ℂ)).re =
+        (deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+            riemannZeta ((1 + u : ℝ) : ℂ)).re +
+          Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) := by
+    have h := logDeriv_mul
+      (f := fun z : ℂ => (1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z))
+      (g := riemannZeta) ((1 + u : ℝ) : ℂ) hfactor_ne hz_ne hf_diff hz_diff
+    calc
+      (logDeriv (fun z : ℂ =>
+          ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z)) * riemannZeta z)
+          ((1 + u : ℝ) : ℂ)).re
+          = (logDeriv (fun z : ℂ => (1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z))
+              ((1 + u : ℝ) : ℂ) + logDeriv riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+            rw [h]
+      _ = Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) +
+            (logDeriv riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+            rw [Complex.add_re]
+            rw [hfactor_log]
+      _ = Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) +
+            (deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+              riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+            simp [logDeriv]
+      _ = (deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+            riemannZeta ((1 + u : ℝ) : ℂ)).re +
+          Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) := by
+            ring
+  have hE_diff :
+      DifferentiableAt ℂ (fun z : ℂ =>
+        ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z)) * riemannZeta z)
+        ((1 + u : ℝ) : ℂ) :=
+    hf_diff.mul hz_diff
+  have hderiv_eta :
+      deriv dirichlet_eta_real (1 + u) =
+        (deriv (fun z : ℂ =>
+          ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z)) * riemannZeta z)
+          ((1 + u : ℝ) : ℂ)).re := by
+    change deriv (fun x : ℝ =>
+      ((((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - (x : ℂ))) *
+        riemannZeta (x : ℂ)).re)) (1 + u) = _
+    exact hE_diff.hasDerivAt.real_of_complex.deriv
+  have hfactor_val2 :
+      ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - (((1 + u : ℝ) : ℂ)))) =
+        ((1 - Real.rpow (2 : ℝ) (-u) : ℝ) : ℂ) := by
+    simp [Complex.ofReal_cpow]
+  have hz_im : (riemannZeta ((1 + u : ℝ) : ℂ)).im = 0 := by
+    simpa using riemannZeta_im_eq_zero_of_one_lt (by linarith : 1 < 1 + u)
+  have hE_im :
+      (((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - (((1 + u : ℝ) : ℂ)))) *
+        riemannZeta ((1 + u : ℝ) : ℂ)).im = 0 := by
+    rw [hfactor_val2]
+    have hz_im' : (riemannZeta (1 + (u : ℂ))).im = 0 := by
+      simpa [add_comm] using hz_im
+    simp [hz_im']
+  rw [← hprod_log]
+  rw [logDeriv, hderiv_eta]
+  unfold dirichlet_eta_real
+  let A : ℂ := deriv (fun z : ℂ =>
+    ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - z)) * riemannZeta z) ((1 + u : ℝ) : ℂ)
+  let B : ℂ :=
+    ((1 : ℂ) - (2 : ℂ) ^ ((1 : ℂ) - (((1 + u : ℝ) : ℂ)))) *
+      riemannZeta ((1 + u : ℝ) : ℂ)
+  have hB_im : B.im = 0 := by
+    simpa [B] using hE_im
+  have hB_ne : B ≠ 0 := by
+    dsimp [B]
+    exact mul_ne_zero hfactor_ne hz_ne
+  have hB_re_ne : B.re ≠ 0 := by
+    intro hB_re
+    apply hB_ne
+    exact Complex.ext hB_re hB_im
+  change A.re / B.re = (A / B).re
+  rw [Complex.div_re]
+  simp [hB_im]
+  field_simp [Complex.normSq, hB_im, hB_re_ne]
+  rw [Complex.normSq_apply, hB_im]
+  ring
 
 @[blueprint "lem:eta-log-derivative-nonnegative"
   (statement := /-- For every $u>0$, the eta-factor contribution to the
