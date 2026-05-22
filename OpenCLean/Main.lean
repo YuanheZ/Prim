@@ -2477,24 +2477,96 @@ lemma mangoldt_subinvariant_bound :
     _ = 1 := by
       field_simp [hlog_pos.ne']
 
+@[blueprint "def:finite-chain-initial-mass"
+  (statement := /-- For real parameters $x$ and $X$, and for a natural number
+  $n$, this is the finite initial mass
+  $b_{x,X}(n)$ used in the truncated von Mangoldt downward chain. It is zero
+  outside the real interval $[x,X]$, while on that interval it is
+  $\nu_0(n)$ minus the total incoming von Mangoldt mass from states $nq\leq X$,
+  namely
+  $\sum_{q\geq2,\ nq\leq X}\nu_0(nq)\Lambda(q)/\log(nq)$. -/)
+  (title := /-- Finite von Mangoldt initial mass -/)
+  (latexEnv := "definition")]
+noncomputable def finite_chain_initial_mass (x X : ℝ) (n : ℕ) : ℝ :=
+  if x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X then
+    erdos_weight n -
+      ∑' q : ℕ,
+        if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+          erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+            Real.log ((n * q : ℕ) : ℝ)
+        else 0
+  else 0
+
+@[blueprint "lem:finite-chain-erdos-le-initial-mass"
+  (statement := /-- Let $x\geq2$, let $X$ be real, and let $A\subseteq\mathbb N$
+  be primitive and supported in $[x,X]$. Then the Erd\H{o}s sum of $A$ is at
+  most the total finite initial mass $\sum_n b_{x,X}(n)$ from
+  \cref{def:finite-chain-initial-mass}. -/)
+  (proof := /-- Put $b(n)=b_{x,X}(n)$ as in
+  \cref{def:finite-chain-initial-mass}, and run the von Mangoldt downward chain
+  from the non-negative initial mass $b$.  The non-negativity follows from
+  \cref{lem:mangoldt-subinvariant-bound}: for $x\leq n\leq X$, the finite
+  incoming sum over $q$ with $nq\leq X$ is bounded by the full tail with
+  threshold $2$, and outside $[x,X]$ the mass is zero.  Since $b$ is supported
+  in $[x,X]$, no chain beginning in the support of $b$ can visit a state larger
+  than $X$.  Let $h_{b\searrow}(n)$ be the resulting hitting mass.  Descending
+  induction on the finite set of natural numbers not exceeding $X$ shows that
+  $h_{b\searrow}(n)=\nu_0(n)$ for every $n$ with $x\leq n\leq X$: after the
+  recursive formula for hitting mass is expanded, the subtracted finite
+  incoming term in the definition of $b(n)$ cancels exactly the contribution
+  from all parents $nq\leq X$.  Thus every element of $A$ has hitting mass equal
+  to its Erd\H{o}s weight, by \cref{def:supported-in-interval,def:erdos-weight}.
+  Each downward divisibility chain meets the primitive set $A$ at most once, by
+  \cref{def:primitive-set}; summing this pointwise chain inequality over the
+  initial mass gives
+  $\sum_{n\in A}\nu_0(n)\leq\sum_n b(n)$.  This is precisely the stated
+  inequality after expanding \cref{def:erdos-sum}. -/)
+  (title := /-- Hitting mass bounds the finite Erd\H{o}s sum -/)
+  (latexEnv := "lemma")]
+lemma finite_chain_erdos_le_initial_mass (A : Set ℕ) (x X : ℝ) (hx : 2 ≤ x)
+    (hprim : primitive_set A) (hsupp : supported_in_interval A x X) :
+    erdos_sum A ≤ ∑' n : ℕ, finite_chain_initial_mass x X n := by
+  sorry_using [mangoldt_subinvariant_bound]
+
+@[blueprint "lem:finite-chain-initial-mass-sum-eq-cut-capacity"
+  (statement := /-- For every $x\geq2$ and every real $X$, the total finite
+  initial mass $\sum_n b_{x,X}(n)$ from
+  \cref{def:finite-chain-initial-mass} is exactly the finite cut capacity
+  \cref{def:cut-capacity}. -/)
+  (proof := /-- Expand \cref{def:finite-chain-initial-mass}.  The first part of
+  the total mass is
+  $\sum_{x\leq r\leq X}\nu_0(r)$; by
+  \cref{lem:von-mangoldt-divisor-sum} and \cref{def:erdos-weight}, this is
+  $\sum_{x\leq r\leq X}(r\log^2 r)^{-1}\sum_{q\mid r}\Lambda(q)$, with
+  $x\geq2$ excluding the singular cases $r=0,1$.  The second part is a finite
+  double sum over pairs $(n,q)$ with $x\leq n\leq X$, $q\geq2$, and $nq\leq X$.
+  Relabeling $r=nq$ identifies this double sum with
+  $\sum_{x\leq r\leq X}(r\log^2 r)^{-1}
+  \sum_{q\mid r,\ r/q\geq x}\Lambda(q)$.  Subtracting the latter divisor sum
+  from the former leaves exactly those divisors $q\mid r$ for which
+  $r/q<x$, which is the summand in \cref{def:cut-capacity}. -/)
+  (title := /-- Total initial mass equals cut capacity -/)
+  (latexEnv := "lemma")]
+lemma finite_chain_initial_mass_sum_eq_cut_capacity (x X : ℝ) (hx : 2 ≤ x) :
+    (∑' n : ℕ, finite_chain_initial_mass x X n) = cut_capacity x X := by
+  sorry_using [von_mangoldt_divisor_sum]
+
 @[blueprint "lem:finite-chain-cut-bound"
   (statement := /-- Let $2\leq x\leq X$, and let $A\subseteq\mathbb{N}$ be a
   primitive set supported in $[x,X]$. Then $f(A)$ is at most the finite
   von Mangoldt cut capacity associated with $x$ and $X$. -/)
-  (proof := /-- The source constructs the initial mass
-  $b(n)=\nu_0(n)-\sum_{2\leq q\leq X/n}\nu_0(nq)P(nq\searrow n)$ on
-  $[x,X]$ for the downward von Mangoldt chain. The nonnegativity of this mass is
-  obtained from \cref{lem:mangoldt-subinvariant-bound}. The source then asserts
-  the downward induction showing that the hitting mass equals $\nu_0(n)$ on
-  $[x,X]$. Applying the primitive-set chain inequality and using
-  \cref{lem:von-mangoldt-divisor-sum} identifies the remaining boundary
-  contribution with the cut capacity. -/)
+  (proof := /-- Apply \cref{lem:finite-chain-erdos-le-initial-mass} to the
+  primitive set $A$ and the support interval $[x,X]$.  This bounds $f(A)$ by the
+  total initial mass of the finite von Mangoldt chain.  The exact finite
+  reindexing identity \cref{lem:finite-chain-initial-mass-sum-eq-cut-capacity}
+  then identifies that total initial mass with \cref{def:cut-capacity}, giving
+  the asserted inequality. -/)
   (title := /-- Finite chain cut bound -/)
   (latexEnv := "lemma")]
 lemma finite_chain_cut_bound (A : Set ℕ) (x X : ℝ) (hx : 2 ≤ x)
     (hprim : primitive_set A) (hsupp : supported_in_interval A x X) :
     erdos_sum A ≤ cut_capacity x X := by
-  sorry_using [von_mangoldt_divisor_sum, mangoldt_subinvariant_bound]
+  sorry_using [finite_chain_erdos_le_initial_mass, finite_chain_initial_mass_sum_eq_cut_capacity]
 
 @[blueprint "lem:cut-capacity-le-tail-majorant"
   (statement := /-- For every $x\geq 2$ and every real $X$, the finite cut
