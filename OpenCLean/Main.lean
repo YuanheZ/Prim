@@ -732,28 +732,237 @@ lemma dirichlet_eta_gamma_expectation :
   sorry_using [dirichlet_eta_mellin_transform, gamma_logistic_expectation_eq_mellin_integral]
 
 @[blueprint "lem:gamma-logistic-expectation-mono-of-shape-le"
-  (statement := /-- If $0<a\leq b$, then the expectation of
-  $h(x)=(1+e^{-x})^{-1}$ under the gamma law of shape $a$ and scale $1$ is at
-  most the corresponding expectation under the gamma law of shape $b$ and scale
-  $1$. -/)
+  (statement := /-- For all real numbers $a$ and $b$ with $0<a\leq b$, the
+  expectation of $h(x)=(1+e^{-x})^{-1}$ under the gamma law of shape $a$ and
+  scale $1$ is at most the corresponding expectation under the gamma law of
+  shape $b$ and scale $1$. -/)
   (proof := /-- Fix real numbers $a$ and $b$ with $0<a\leq b$, and put
-  $c=b-a$.  If $c=0$, the two gamma laws are equal and the desired inequality
-  is equality.  If $c>0$, let $X_a$ and $Y_c$ be independent gamma random
-  variables of shapes $a$ and $c$, both with scale $1$.  The additivity of
-  gamma laws with common scale identifies the law of $X_a+Y_c$ with the gamma
-  law of shape $b$.  Since gamma laws are supported on $[0,\infty)$, one has
-  $Y_c\geq 0$ almost surely.  The function $x\mapsto(1+e^{-x})^{-1}$ is
-  increasing on the real line, so
-  $(1+e^{-X_a})^{-1}\leq(1+e^{-(X_a+Y_c)})^{-1}$ almost surely.  Taking
-  expectations and using the distributional identity for $X_a+Y_c$ gives the
-  claimed comparison. -/)
+  $c=b-a$ and $K=\Gamma(a)/\Gamma(b)$.  If $b=a$, the two measures are equal.
+  Otherwise $c>0$.  The gamma density formula gives
+  $$
+    \gamma_{b,1}=\bigl(K\max(x,0)^c\bigr)\gamma_{a,1}
+  $$
+  as a measure identity.  Let $w(x)=K\max(x,0)^c$ and let
+  $t=(1/K)^{1/c}$, so that $w(t)=1$.  Both $w$ and
+  $x\mapsto(1+e^{-x})^{-1}$ are non-decreasing, hence for every real $x$,
+  $$
+    \bigl((1+e^{-x})^{-1}-(1+e^{-t})^{-1}\bigr)(w(x)-1)\geq 0.
+  $$
+  Integrating this inequality with respect to the gamma law of shape $a$,
+  expanding the product, and using the normalization
+  $\int w\,d\gamma_{a,1}=1$ gives
+  $$
+    \int (1+e^{-x})^{-1}\,d\gamma_{a,1}
+      \leq \int w(x)(1+e^{-x})^{-1}\,d\gamma_{a,1}.
+  $$
+  The measure identity identifies the last integral with the corresponding
+  expectation under the gamma law of shape $b$, which is the desired
+  inequality. -/)
   (title := /-- Pairwise gamma-shape comparison for logistic expectations -/)
   (latexEnv := "lemma")]
 lemma gamma_logistic_expectation_mono_of_shape_le :
     ∀ ⦃a b : ℝ⦄, 0 < a -> a ≤ b ->
       (∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure a 1)) ≤
         ∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure b 1) := by
-  sorry
+  intro a b ha hab
+  have hb : 0 < b := lt_of_lt_of_le ha hab
+  let c : ℝ := b - a
+  let K : ℝ := Real.Gamma a / Real.Gamma b
+  have hc : 0 ≤ c := by
+    dsimp [c]
+    linarith
+  have hgamma_meas : AEMeasurable (ProbabilityTheory.gammaPDF a 1) MeasureTheory.volume :=
+    (ENNReal.measurable_ofReal.comp (ProbabilityTheory.measurable_gammaPDFReal a 1)).aemeasurable
+  have hratio_meas :
+      AEMeasurable (fun x : ℝ => ENNReal.ofReal (K * (max x 0) ^ c)) MeasureTheory.volume := by
+    dsimp [K, c]
+    fun_prop
+  have htilt :
+      ProbabilityTheory.gammaMeasure b 1 =
+        (ProbabilityTheory.gammaMeasure a 1).withDensity
+          (fun x : ℝ => ENNReal.ofReal (K * (max x 0) ^ c)) := by
+    rw [ProbabilityTheory.gammaMeasure, ProbabilityTheory.gammaMeasure]
+    rw [← MeasureTheory.withDensity_mul₀ hgamma_meas hratio_meas]
+    apply MeasureTheory.withDensity_congr_ae
+    filter_upwards [MeasureTheory.Measure.ae_ne MeasureTheory.volume (0 : ℝ)] with x hx0
+    by_cases hx : 0 < x
+    · have hxle : 0 ≤ x := hx.le
+      rw [ProbabilityTheory.gammaPDF_of_nonneg hxle]
+      rw [Pi.mul_apply, ProbabilityTheory.gammaPDF_of_nonneg hxle]
+      dsimp [K, c]
+      rw [max_eq_left hxle]
+      rw [← ENNReal.ofReal_mul]
+      · congr 1
+        have hGa : Real.Gamma a ≠ 0 := (Real.Gamma_pos_of_pos ha).ne'
+        have hGb : Real.Gamma b ≠ 0 := (Real.Gamma_pos_of_pos hb).ne'
+        rw [Real.one_rpow, Real.one_rpow]
+        field_simp [hGa, hGb]
+        rw [← Real.rpow_add hx]
+        congr 1
+        ring
+      · positivity
+    · have hxlt : x < 0 := lt_of_le_of_ne (le_of_not_gt hx) hx0
+      rw [ProbabilityTheory.gammaPDF_of_neg hxlt]
+      rw [Pi.mul_apply, ProbabilityTheory.gammaPDF_of_neg hxlt]
+      simp
+  by_cases hba : b = a
+  · subst b
+    exact le_rfl
+  have hcpos : 0 < c := by
+    refine lt_of_le_of_ne' hc ?_
+    intro hc0
+    apply hba
+    dsimp [c] at hc0
+    linarith
+  have hKpos : 0 < K := by
+    dsimp [K]
+    positivity
+  let t : ℝ := (1 / K) ^ (c⁻¹)
+  have ht_nonneg : 0 ≤ t := by
+    dsimp [t]
+    positivity
+  have ht_cross : K * (max t 0) ^ c = 1 := by
+    have ht_eq : max t 0 = t := max_eq_left ht_nonneg
+    rw [ht_eq]
+    dsimp [t]
+    rw [Real.rpow_inv_rpow]
+    · field_simp [hKpos.ne']
+    · positivity
+    · exact hcpos.ne'
+  have hpoint :
+      ∀ x : ℝ,
+        0 ≤ (Real.sigmoid x - Real.sigmoid t) * (K * (max x 0) ^ c - 1) := by
+    intro x
+    by_cases hxt : x ≤ t
+    · have hsig : Real.sigmoid x ≤ Real.sigmoid t := Real.sigmoid_monotone hxt
+      have hmax : max x 0 ≤ max t 0 := max_le_max hxt le_rfl
+      have hpow : (max x 0) ^ c ≤ (max t 0) ^ c := by
+        exact Real.rpow_le_rpow (le_max_right x 0) hmax hc
+      have hw : K * (max x 0) ^ c ≤ 1 := by
+        calc
+          K * (max x 0) ^ c ≤ K * (max t 0) ^ c := by gcongr
+          _ = 1 := ht_cross
+      exact mul_nonneg_of_nonpos_of_nonpos (sub_nonpos.mpr hsig) (sub_nonpos.mpr hw)
+    · have htx : t ≤ x := le_of_not_ge hxt
+      have hsig : Real.sigmoid t ≤ Real.sigmoid x := Real.sigmoid_monotone htx
+      have hmax : max t 0 ≤ max x 0 := max_le_max htx le_rfl
+      have hpow : (max t 0) ^ c ≤ (max x 0) ^ c := by
+        exact Real.rpow_le_rpow (le_max_right t 0) hmax hc
+      have hw : 1 ≤ K * (max x 0) ^ c := by
+        calc
+          1 = K * (max t 0) ^ c := ht_cross.symm
+          _ ≤ K * (max x 0) ^ c := by gcongr
+      exact mul_nonneg (sub_nonneg.mpr hsig) (sub_nonneg.mpr hw)
+  have hdens_real :
+      ∀ x : ℝ, (ENNReal.ofReal (K * (max x 0) ^ c)).toReal = K * (max x 0) ^ c := by
+    intro x
+    rw [ENNReal.toReal_ofReal]
+    positivity
+  have hmass :
+      ∫ x : ℝ, K * (max x 0) ^ c ∂(ProbabilityTheory.gammaMeasure a 1) = 1 := by
+    calc
+      ∫ x : ℝ, K * (max x 0) ^ c ∂(ProbabilityTheory.gammaMeasure a 1)
+          = ∫ x : ℝ, (ENNReal.ofReal (K * (max x 0) ^ c)).toReal ∂(ProbabilityTheory.gammaMeasure a 1) := by
+            simp_rw [hdens_real]
+      _ = ∫ x : ℝ, (1 : ℝ) ∂((ProbabilityTheory.gammaMeasure a 1).withDensity
+            (fun x : ℝ => ENNReal.ofReal (K * (max x 0) ^ c))) := by
+            rw [integral_withDensity_eq_integral_toReal_smul₀ (f_meas := by fun_prop)
+              (hf_lt_top := by simp) (fun _ : ℝ => (1 : ℝ))]
+            simp
+      _ = ∫ x : ℝ, (1 : ℝ) ∂(ProbabilityTheory.gammaMeasure b 1) := by
+            rw [← htilt]
+      _ = 1 := by
+            haveI : MeasureTheory.IsProbabilityMeasure (ProbabilityTheory.gammaMeasure b 1) :=
+              ProbabilityTheory.isProbabilityMeasure_gammaMeasure hb (by norm_num)
+            simp
+  haveI : MeasureTheory.IsProbabilityMeasure (ProbabilityTheory.gammaMeasure a 1) :=
+    ProbabilityTheory.isProbabilityMeasure_gammaMeasure ha (by norm_num)
+  have hmu_one : ∫ x : ℝ, (1 : ℝ) ∂(ProbabilityTheory.gammaMeasure a 1) = 1 := by
+    simp
+  have hf_int : MeasureTheory.Integrable Real.sigmoid (ProbabilityTheory.gammaMeasure a 1) :=
+    MeasureTheory.Integrable.of_mem_Icc 0 1 (by fun_prop)
+      (Filter.Eventually.of_forall fun x => ⟨Real.sigmoid_nonneg x, Real.sigmoid_le_one x⟩)
+  have hlintegral :
+      (∫⁻ x, ENNReal.ofReal (K * (max x 0) ^ c) ∂(ProbabilityTheory.gammaMeasure a 1)) ≠
+        (⊤ : ENNReal) := by
+    haveI : MeasureTheory.IsProbabilityMeasure (ProbabilityTheory.gammaMeasure b 1) :=
+      ProbabilityTheory.isProbabilityMeasure_gammaMeasure hb (by norm_num)
+    have hfinite : ((ProbabilityTheory.gammaMeasure b 1) Set.univ) < (⊤ : ENNReal) :=
+      MeasureTheory.measure_lt_top (ProbabilityTheory.gammaMeasure b 1) Set.univ
+    rw [htilt, MeasureTheory.withDensity_apply _ MeasurableSet.univ] at hfinite
+    simpa using (ne_of_lt hfinite)
+  have hw_int :
+      MeasureTheory.Integrable (fun x : ℝ => K * (max x 0) ^ c)
+        (ProbabilityTheory.gammaMeasure a 1) := by
+    refine (MeasureTheory.lintegral_ofReal_ne_top_iff_integrable ?_ ?_).mp hlintegral
+    · fun_prop (disch := positivity)
+    · exact Filter.Eventually.of_forall fun x => by positivity
+  have hwf_int :
+      MeasureTheory.Integrable (fun x : ℝ => K * (max x 0) ^ c * Real.sigmoid x)
+        (ProbabilityTheory.gammaMeasure a 1) := by
+    refine MeasureTheory.Integrable.mono' hw_int ?_ ?_
+    · fun_prop (disch := positivity)
+    · exact Filter.Eventually.of_forall fun x => by
+        have hw0 : 0 ≤ K * (max x 0) ^ c := by positivity
+        have hprod0 : 0 ≤ K * (max x 0) ^ c * Real.sigmoid x :=
+          mul_nonneg hw0 (Real.sigmoid_nonneg x)
+        rw [Real.norm_of_nonneg hprod0]
+        exact mul_le_of_le_one_right hw0 (Real.sigmoid_le_one x)
+  have hwt_int :
+      MeasureTheory.Integrable (fun x : ℝ => Real.sigmoid t * (K * (max x 0) ^ c))
+        (ProbabilityTheory.gammaMeasure a 1) :=
+    hw_int.const_mul (Real.sigmoid t)
+  have hconst_int :
+      MeasureTheory.Integrable (fun _ : ℝ => Real.sigmoid t)
+        (ProbabilityTheory.gammaMeasure a 1) := by
+    fun_prop
+  have hcov_nonneg :
+      0 ≤ ∫ x : ℝ,
+          (Real.sigmoid x - Real.sigmoid t) * (K * (max x 0) ^ c - 1)
+            ∂(ProbabilityTheory.gammaMeasure a 1) := by
+    exact MeasureTheory.integral_nonneg
+      (μ := ProbabilityTheory.gammaMeasure a 1)
+      (f := fun x : ℝ => (Real.sigmoid x - Real.sigmoid t) * (K * (max x 0) ^ c - 1))
+      hpoint
+  have hcov_eq :
+      ∫ x : ℝ, (Real.sigmoid x - Real.sigmoid t) * (K * (max x 0) ^ c - 1)
+          ∂(ProbabilityTheory.gammaMeasure a 1)
+        = ∫ x : ℝ, K * (max x 0) ^ c * Real.sigmoid x
+            ∂(ProbabilityTheory.gammaMeasure a 1)
+          - ∫ x : ℝ, Real.sigmoid x ∂(ProbabilityTheory.gammaMeasure a 1) := by
+    calc
+      ∫ x : ℝ, (Real.sigmoid x - Real.sigmoid t) * (K * (max x 0) ^ c - 1)
+          ∂(ProbabilityTheory.gammaMeasure a 1)
+          = ∫ x : ℝ,
+              (K * (max x 0) ^ c * Real.sigmoid x - Real.sigmoid x) -
+                (Real.sigmoid t * (K * (max x 0) ^ c) - Real.sigmoid t)
+              ∂(ProbabilityTheory.gammaMeasure a 1) := by
+            apply MeasureTheory.integral_congr_ae
+            exact Filter.Eventually.of_forall fun x => by ring
+      _ = (∫ x : ℝ, K * (max x 0) ^ c * Real.sigmoid x
+              ∂(ProbabilityTheory.gammaMeasure a 1) -
+            ∫ x : ℝ, Real.sigmoid x ∂(ProbabilityTheory.gammaMeasure a 1)) -
+          (∫ x : ℝ, Real.sigmoid t * (K * (max x 0) ^ c)
+              ∂(ProbabilityTheory.gammaMeasure a 1) -
+            ∫ x : ℝ, Real.sigmoid t ∂(ProbabilityTheory.gammaMeasure a 1)) := by
+            rw [MeasureTheory.integral_sub]
+            · rw [MeasureTheory.integral_sub hwf_int hf_int]
+              rw [MeasureTheory.integral_sub hwt_int hconst_int]
+            · exact hwf_int.sub hf_int
+            · exact hwt_int.sub hconst_int
+      _ = ∫ x : ℝ, K * (max x 0) ^ c * Real.sigmoid x
+            ∂(ProbabilityTheory.gammaMeasure a 1) -
+          ∫ x : ℝ, Real.sigmoid x ∂(ProbabilityTheory.gammaMeasure a 1) := by
+            rw [MeasureTheory.integral_const_mul, hmass]
+            simp
+  simp only [one_div, ← Real.sigmoid_def]
+  rw [htilt]
+  rw [integral_withDensity_eq_integral_toReal_smul₀ (f_meas := by fun_prop)
+    (hf_lt_top := by simp) Real.sigmoid]
+  simp_rw [hdens_real, smul_eq_mul]
+  have hdiff_nonneg := hcov_nonneg
+  rw [hcov_eq] at hdiff_nonneg
+  linarith
 
 @[blueprint "lem:gamma-logistic-expectation-monotone"
   (statement := /-- The expectation of the increasing function
