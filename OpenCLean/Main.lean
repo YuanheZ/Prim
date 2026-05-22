@@ -3421,9 +3421,10 @@ lemma finite_chain_initial_mass_sum_eq_cut_capacity (x X : ℝ) (hx : 2 ≤ x) :
     ring
 
 @[blueprint "lem:finite-chain-cut-bound"
-  (statement := /-- Let $2\leq x\leq X$, and let $A\subseteq\mathbb{N}$ be a
-  primitive set supported in $[x,X]$. Then $f(A)$ is at most the finite
-  von Mangoldt cut capacity associated with $x$ and $X$. -/)
+  (statement := /-- Let $x,X\in\mathbb{R}$ with $2\leq x$, and let
+  $A\subseteq\mathbb{N}$ be a primitive set supported in $[x,X]$. Then $f(A)$
+  is at most the finite von Mangoldt cut capacity associated with $x$ and
+  $X$. -/)
   (proof := /-- Apply \cref{lem:finite-chain-erdos-le-initial-mass} to the
   primitive set $A$ and the support interval $[x,X]$.  This bounds $f(A)$ by the
   total initial mass of the finite von Mangoldt chain.  The exact finite
@@ -3435,7 +3436,11 @@ lemma finite_chain_initial_mass_sum_eq_cut_capacity (x X : ℝ) (hx : 2 ≤ x) :
 lemma finite_chain_cut_bound (A : Set ℕ) (x X : ℝ) (hx : 2 ≤ x)
     (hprim : primitive_set A) (hsupp : supported_in_interval A x X) :
     erdos_sum A ≤ cut_capacity x X := by
-  sorry_using [finite_chain_erdos_le_initial_mass, finite_chain_initial_mass_sum_eq_cut_capacity]
+  calc
+    erdos_sum A ≤ ∑' n : ℕ, finite_chain_initial_mass x X n :=
+      finite_chain_erdos_le_initial_mass A x X hx hprim hsupp
+    _ = cut_capacity x X :=
+      finite_chain_initial_mass_sum_eq_cut_capacity x X hx
 
 @[blueprint "lem:cut-capacity-le-tail-majorant"
   (statement := /-- For every $x\geq 2$ and every real $X$, the finite cut
