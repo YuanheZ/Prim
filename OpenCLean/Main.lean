@@ -1208,13 +1208,11 @@ lemma dirichlet_eta_zeta_log_derivative :
   ring
 
 @[blueprint "lem:eta-log-derivative-nonnegative"
-  (statement := /-- For every $u>0$, the eta-factor contribution to the
-  logarithmic derivative at $1+u$ is non-negative:
+  (statement := /-- For every real number $u>0$, the sum of the real part of
+  the logarithmic derivative of the Riemann zeta function at the complex point
+  $1+u$ and the eta-factor term is non-negative:
   $$0\leq \operatorname{Re}\frac{\zeta'(1+u)}{\zeta(1+u)}+
-  \frac{\log 2}{2^u-1}.$$
-  This is the formal form, after substituting the defining identity
-  $\eta(s)=(1-2^{1-s})\zeta(s)$, of the assertion that the Dirichlet eta
-  function has non-negative logarithmic derivative on $(1,\infty)$. -/)
+  \frac{\log 2}{2^u-1}.$$ -/)
   (proof := /-- Fix $u>0$ and put $s=1+u$, so $s>1$.  By
   \cref{lem:dirichlet-eta-log-derivative-nonnegative},
   $0\leq \eta'(s)/\eta(s)$.  By
@@ -1231,7 +1229,9 @@ lemma eta_log_derivative_nonnegative :
       0 ≤ ((deriv riemannZeta ((1 + u : ℝ) : ℂ) /
           riemannZeta ((1 + u : ℝ) : ℂ)).re +
         Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1)) := by
-  sorry_using [dirichlet_eta_log_derivative_nonnegative, dirichlet_eta_zeta_log_derivative]
+  intro u hu
+  rw [← dirichlet_eta_zeta_log_derivative u hu]
+  exact dirichlet_eta_log_derivative_nonnegative (1 + u) (by linarith)
 
 @[blueprint "lem:zeta-log-derivative-geometric-bound"
   (statement := /-- For every $u>0$, the logarithmic derivative of the Riemann
