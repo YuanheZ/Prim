@@ -967,9 +967,11 @@ lemma gamma_logistic_expectation_mono_of_shape_le :
   linarith
 
 @[blueprint "lem:gamma-logistic-expectation-monotone"
-  (statement := /-- The expectation of the increasing function
-  $h(x)=(1+e^{-x})^{-1}$ under a gamma distribution of scale $1$ is
-  non-decreasing as the positive shape parameter increases. -/)
+  (statement := /-- For all real numbers $a$ and $b$ with $0<a\leq b$, the
+  expectation of $h(x)=(1+e^{-x})^{-1}$ under the gamma distribution of shape
+  $a$ and scale $1$ is at most the corresponding expectation under the gamma
+  distribution of shape $b$ and scale $1$.  Equivalently, this expectation is
+  non-decreasing on the open half-line of positive shape parameters. -/)
   (proof := /-- Let $a$ and $b$ be two elements of $(0,\infty)$ with $a\leq b$.
   The hypotheses give $0<a$, so
   \cref{lem:gamma-logistic-expectation-mono-of-shape-le} applies and compares
@@ -982,7 +984,8 @@ lemma gamma_logistic_expectation_monotone :
       (fun s : ℝ =>
         ∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure s 1))
       (Set.Ioi (0 : ℝ)) := by
-  sorry_using [gamma_logistic_expectation_mono_of_shape_le]
+  intro a ha b hb hab
+  exact gamma_logistic_expectation_mono_of_shape_le ha hab
 
 @[blueprint "lem:dirichlet-eta-monotone"
   (statement := /-- The real Dirichlet eta function of
