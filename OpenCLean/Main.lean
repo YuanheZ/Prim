@@ -1161,25 +1161,35 @@ lemma mangoldt_tail_upper_bound :
     hsumm.tsum_le_of_sum_range_le (hbound m hm y hy)
 
 @[blueprint "lem:mangoldt-tail-finite-sum-le"
-  (statement := /-- Let $m\geq 1$, let $y\geq 2$, and let $S$ be a finite set of
-  natural numbers.  The contribution of $S$ to the von Mangoldt tail is bounded
-  above by the full tail:
-  $\sum_{q\in S}1_{q\geq y}\Lambda(q)/(q\log^2(mq))\leq
+  (statement := /-- Let $m$ be a natural number with $m\geq 1$, let $y$ be a
+  real number with $y\geq 2$, and let $S$ be a finite set of natural numbers.
+  Then
+  $\sum_{q\in S}1_{y\leq q}\Lambda(q)/(q\log^2(mq))\leq
   \sum_{q\geq y}\Lambda(q)/(q\log^2(mq))$. -/)
-  (proof := /-- By \cref{lem:mangoldt-tail-upper-bound}, the non-negative tail
-  series defining \cref{def:mangoldt-tail-sum} is summable for the stated
-  values of $m$ and $y$.  The von Mangoldt function is non-negative, and the
-  remaining factors in the tail summand are non-negative; hence every summand in
-  the tail is non-negative.  The standard finite-partial-sum comparison for a
-  summable non-negative real series then gives the asserted bound for the finite
-  set $S$. -/)
+  (proof := /-- By \cref{lem:mangoldt-tail-upper-bound}, the series defining
+  \cref{def:mangoldt-tail-sum} is summable for the stated values of $m$ and
+  $y$.  The summand in \cref{def:mangoldt-tail-term} is non-negative whenever
+  it is selected: the von Mangoldt function is non-negative and the denominator
+  is non-negative; the unselected summands are zero.  The standard comparison of
+  a finite sum with the t-sum of a summable real series whose omitted terms are
+  non-negative gives the asserted bound for the finite set $S$. -/)
   (title := /-- Finite tails are bounded by the full von Mangoldt tail -/)
   (latexEnv := "lemma")]
 lemma mangoldt_tail_finite_sum_le (m : ℕ) (hm : 1 ≤ m) (y : ℝ) (hy : 2 ≤ y)
     (s : Finset ℕ) :
     (∑ q ∈ s, if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) ≤
       mangoldt_tail_sum m y := by
-  sorry_using [mangoldt_tail_upper_bound]
+  obtain ⟨_, _, hbound⟩ := mangoldt_tail_upper_bound
+  have hsumm : Summable (fun q : ℕ =>
+      if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) :=
+    (hbound m hm y hy).1
+  have hnonneg : ∀ q : ℕ, 0 ≤
+      (if y ≤ (q : ℝ) then mangoldt_tail_term m q else 0) := by
+    intro q
+    split_ifs
+    · exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+    · norm_num
+  simpa [mangoldt_tail_sum] using hsumm.sum_le_tsum s (fun q _ => hnonneg q)
 
 @[blueprint "lem:mangoldt-subinvariant-bound"
   (statement := /-- For every natural $n\geq 2$,
