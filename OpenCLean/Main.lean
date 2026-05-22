@@ -1244,19 +1244,201 @@ lemma cut_capacity_le_tail_majorant (x X : ℝ) (hx : 2 ≤ x) :
   sorry_using [mangoldt_tail_finite_sum_le]
 
 @[blueprint "lem:tail-majorant-bound"
-  (statement := /-- There is an absolute constant $C$ such that, for every
-  $x\geq 2$, the reindexed tail majorant is at most $1+C/\log x$. -/)
-  (proof := /-- For each integer $1\leq n<x$, apply
-  \cref{lem:mangoldt-tail-upper-bound} with
-  $y=\max(2,x/n)$. Since $n\max(2,x/n)\geq x$, the main term is at most
-  $1/\log x$ and the error term is $O(1/\log^2 x)$. Summing over
-  $1\leq n<x$ gives $\sum_{n<x}1/n=\log x+O(1)$ by the standard harmonic
-  estimates, and hence the claimed bound. -/)
+  (statement := /-- There is a real constant $C\geq 0$ such that, for every
+  real number $x\geq 2$, the reindexed tail majorant is at most
+  $1+C/\log x$. -/)
+  (proof := /-- Let $D\geq 0$ be the constant supplied by
+  \cref{lem:mangoldt-tail-upper-bound}, set $K=1+\log 2$, and fix a real
+  number $x\geq 2$ with $L=\log x$. By \cref{def:tail-majorant}, only the
+  integers $1\leq n<x$ contribute.  For such an $n$, put
+  $y=\max(2,x/n)$. Then $y\geq 2$ and $ny\geq x$, so
+  \cref{lem:mangoldt-tail-upper-bound} gives
+  $\sum_{q\geq y}\Lambda(q)/(q\log^2(nq))\leq L^{-1}+D L^{-2}$. Hence the
+  majorant is at most $(L^{-1}+D L^{-2})\sum_{1\leq n\leq \lceil x\rceil}1/n$.
+  Since $\lceil x\rceil\leq 2x$, the harmonic estimate
+  $\sum_{1\leq n\leq \lceil x\rceil}1/n\leq L+K$ applies. Therefore the
+  majorant is at most
+  $1+(K+D)/L+KD/L^2$.  As $L\geq \log 2$, the final term is at most
+  $(KD/\log 2)/L$. Taking $C=K+D+KD/\log 2$ proves the asserted bound. -/)
   (title := /-- Bounding the reindexed tail majorant -/)
   (latexEnv := "lemma")]
 lemma tail_majorant_bound :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, 2 ≤ x -> tail_majorant x ≤ 1 + C / Real.log x := by
-  sorry_using [mangoldt_tail_upper_bound]
+  classical
+  obtain ⟨D, hD_nonneg, hD_bound⟩ := mangoldt_tail_upper_bound
+  let K : ℝ := 1 + Real.log (2 : ℝ)
+  let C : ℝ := K + D + K * D / Real.log (2 : ℝ)
+  have hlog2_pos : 0 < Real.log (2 : ℝ) := Real.log_pos (by norm_num)
+  have hK_nonneg : 0 ≤ K := by
+    dsimp [K]
+    positivity
+  have hC_nonneg : 0 ≤ C := by
+    dsimp [C]
+    positivity
+  refine ⟨C, hC_nonneg, ?_⟩
+  intro x hx
+  let N : ℕ := ⌈x⌉₊
+  let L : ℝ := Real.log x
+  let A : ℝ := 1 / L + D / L ^ 2
+  have hx_pos : 0 < x := by linarith
+  have hL_pos : 0 < L := by
+    dsimp [L]
+    exact Real.log_pos (by linarith)
+  have hlog2_le_L : Real.log (2 : ℝ) ≤ L := by
+    dsimp [L]
+    exact Real.log_le_log (by norm_num) hx
+  have hA_nonneg : 0 ≤ A := by
+    dsimp [A]
+    positivity
+  have hfinite : tail_majorant x =
+      ∑ n ∈ Finset.range N,
+        if 1 ≤ n ∧ (n : ℝ) < x then
+          (1 / (n : ℝ)) * mangoldt_tail_sum n (max (2 : ℝ) (x / (n : ℝ)))
+        else 0 := by
+    unfold tail_majorant
+    dsimp [N]
+    refine tsum_eq_sum (L := SummationFilter.unconditional ℕ)
+      (s := Finset.range ⌈x⌉₊)
+      (f := fun n : ℕ =>
+        if 1 ≤ n ∧ (n : ℝ) < x then
+          (1 / (n : ℝ)) * mangoldt_tail_sum n (max (2 : ℝ) (x / (n : ℝ)))
+        else 0) ?_
+    intro n hn
+    have hn_not_lt_x : ¬ (n : ℝ) < x := by
+      intro hnx
+      have hn_lt_ceil : n < ⌈x⌉₊ := by
+        by_contra hnot
+        have hceil_le_n : ⌈x⌉₊ ≤ n := le_of_not_gt hnot
+        have hx_le_n : x ≤ (n : ℝ) := by
+          exact (Nat.le_ceil x).trans (Nat.cast_le.mpr hceil_le_n)
+        exact (not_lt_of_ge hx_le_n) hnx
+      exact hn (Finset.mem_range.mpr hn_lt_ceil)
+    simp [hn_not_lt_x]
+  have hterm_le : ∀ n : ℕ,
+      (if 1 ≤ n ∧ (n : ℝ) < x then
+        (1 / (n : ℝ)) * mangoldt_tail_sum n (max (2 : ℝ) (x / (n : ℝ)))
+      else 0) ≤
+      (if 1 ≤ n ∧ (n : ℝ) < x then (1 / (n : ℝ)) * A else 0) := by
+    intro n
+    by_cases hn : 1 ≤ n ∧ (n : ℝ) < x
+    · have hn_pos_nat : 0 < n := lt_of_lt_of_le Nat.zero_lt_one hn.1
+      have hn_pos : 0 < (n : ℝ) := by exact_mod_cast hn_pos_nat
+      let y : ℝ := max (2 : ℝ) (x / (n : ℝ))
+      have hy : 2 ≤ y := by
+        dsimp [y]
+        exact le_max_left _ _
+      have hxy : x ≤ (n : ℝ) * y := by
+        have hdiv_le : x / (n : ℝ) ≤ y := by
+          dsimp [y]
+          exact le_max_right _ _
+        calc
+          x = (n : ℝ) * (x / (n : ℝ)) := by
+            field_simp [hn_pos.ne']
+          _ ≤ (n : ℝ) * y := mul_le_mul_of_nonneg_left hdiv_le (le_of_lt hn_pos)
+      have hlog_ge : L ≤ Real.log ((n : ℝ) * y) := by
+        dsimp [L]
+        exact Real.log_le_log hx_pos hxy
+      have hlog_pos : 0 < Real.log ((n : ℝ) * y) := hL_pos.trans_le hlog_ge
+      have htail := (hD_bound n hn.1 y hy).2
+      have hone : 1 / Real.log ((n : ℝ) * y) ≤ 1 / L := by
+        exact one_div_le_one_div_of_le hL_pos hlog_ge
+      have hsquare : D / (Real.log ((n : ℝ) * y)) ^ 2 ≤ D / L ^ 2 := by
+        have hsquares : L ^ 2 ≤ (Real.log ((n : ℝ) * y)) ^ 2 := by
+          nlinarith [hlog_ge, le_of_lt hL_pos, le_of_lt hlog_pos]
+        exact div_le_div_of_nonneg_left hD_nonneg (sq_pos_of_pos hL_pos) hsquares
+      have htail_A : mangoldt_tail_sum n y ≤ A := by
+        calc
+          mangoldt_tail_sum n y ≤
+              1 / Real.log ((n : ℝ) * y) + D / (Real.log ((n : ℝ) * y)) ^ 2 := htail
+          _ ≤ 1 / L + D / L ^ 2 := add_le_add hone hsquare
+          _ = A := by rfl
+      have hmul := mul_le_mul_of_nonneg_left htail_A (by positivity : 0 ≤ 1 / (n : ℝ))
+      simpa [hn, y, A] using hmul
+    · simp [hn]
+  have hsum_A :
+      (∑ n ∈ Finset.range N,
+        if 1 ≤ n ∧ (n : ℝ) < x then (1 / (n : ℝ)) * A else 0) ≤
+        ∑ n ∈ Finset.Icc 1 N, (1 / (n : ℝ)) * A := by
+    calc
+      (∑ n ∈ Finset.range N,
+        if 1 ≤ n ∧ (n : ℝ) < x then (1 / (n : ℝ)) * A else 0) =
+          ∑ n ∈ (Finset.range N).filter (fun n : ℕ => 1 ≤ n ∧ (n : ℝ) < x),
+            (1 / (n : ℝ)) * A := by
+            rw [Finset.sum_filter]
+      _ ≤ ∑ n ∈ Finset.Icc 1 N, (1 / (n : ℝ)) * A := by
+        refine Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_
+        · intro n hn
+          simp only [Finset.mem_filter, Finset.mem_range] at hn
+          exact Finset.mem_Icc.mpr ⟨hn.2.1, Nat.le_of_lt hn.1⟩
+        · intro n hnI hnnot
+          positivity
+  have hrecip_eq_harm :
+      (∑ n ∈ Finset.Icc 1 N, (1 / (n : ℝ))) = (harmonic N : ℝ) := by
+    simpa [one_div, harmonic_eq_sum_Icc]
+  have htail_le_HA : tail_majorant x ≤ (harmonic N : ℝ) * A := by
+    calc
+      tail_majorant x = ∑ n ∈ Finset.range N,
+        if 1 ≤ n ∧ (n : ℝ) < x then
+          (1 / (n : ℝ)) * mangoldt_tail_sum n (max (2 : ℝ) (x / (n : ℝ)))
+        else 0 := hfinite
+      _ ≤ ∑ n ∈ Finset.range N,
+        if 1 ≤ n ∧ (n : ℝ) < x then (1 / (n : ℝ)) * A else 0 := by
+          exact Finset.sum_le_sum (by intro n hn; exact hterm_le n)
+      _ ≤ ∑ n ∈ Finset.Icc 1 N, (1 / (n : ℝ)) * A := hsum_A
+      _ = (harmonic N : ℝ) * A := by
+        rw [← Finset.sum_mul, hrecip_eq_harm]
+  have hN_lt_add_one : (N : ℝ) < x + 1 := by
+    dsimp [N]
+    exact Nat.ceil_lt_add_one (by linarith : 0 ≤ x)
+  have hN_le_two_x : (N : ℝ) ≤ 2 * x := by
+    nlinarith [hN_lt_add_one, hx]
+  have hN_pos : 0 < (N : ℝ) := by
+    have hx_le_N : x ≤ (N : ℝ) := by
+      dsimp [N]
+      exact Nat.le_ceil x
+    linarith
+  have hlogN_le : Real.log (N : ℝ) ≤ Real.log (2 : ℝ) + L := by
+    have hlog_le := Real.log_le_log hN_pos hN_le_two_x
+    have hlog_mul : Real.log (2 * x) = Real.log (2 : ℝ) + Real.log x := by
+      rw [Real.log_mul] <;> positivity
+    simpa [L, hlog_mul] using hlog_le
+  have hH_le : (harmonic N : ℝ) ≤ L + K := by
+    have hh := harmonic_le_one_add_log N
+    calc
+      (harmonic N : ℝ) ≤ 1 + Real.log (N : ℝ) := hh
+      _ ≤ 1 + (Real.log (2 : ℝ) + L) := by linarith
+      _ = L + K := by
+        dsimp [K]
+        ring
+  have htail_le_main : tail_majorant x ≤ (L + K) * A :=
+    le_trans htail_le_HA (mul_le_mul_of_nonneg_right hH_le hA_nonneg)
+  have halg : (L + K) * A ≤ 1 + C / L := by
+    have hKD_nonneg : 0 ≤ K * D := by positivity
+    have hKD_div : K * D / L ≤ K * D / Real.log (2 : ℝ) := by
+      exact div_le_div_of_nonneg_left hKD_nonneg hlog2_pos hlog2_le_L
+    have hKD_sq : K * D / L ^ 2 ≤ (K * D / Real.log (2 : ℝ)) / L := by
+      calc
+        K * D / L ^ 2 = (K * D / L) / L := by
+          field_simp [hL_pos.ne']
+        _ ≤ (K * D / Real.log (2 : ℝ)) / L :=
+          div_le_div_of_nonneg_right hKD_div (le_of_lt hL_pos)
+    have hdecomp : (L + K) * A = 1 + (K + D) / L + K * D / L ^ 2 := by
+      dsimp [A]
+      field_simp [hL_pos.ne']
+      ring
+    have htarget : 1 + (K + D) / L + K * D / L ^ 2 ≤
+        1 + (K + D) / L + (K * D / Real.log (2 : ℝ)) / L := by
+      linarith
+    have hcombine : 1 + (K + D) / L + (K * D / Real.log (2 : ℝ)) / L =
+        1 + C / L := by
+      dsimp [C]
+      field_simp [hL_pos.ne']
+      ring
+    calc
+      (L + K) * A = 1 + (K + D) / L + K * D / L ^ 2 := hdecomp
+      _ ≤ 1 + (K + D) / L + (K * D / Real.log (2 : ℝ)) / L := htarget
+      _ = 1 + C / L := hcombine
+  exact le_trans htail_le_main halg
 
 @[blueprint "lem:finite-large-primitive-bound"
   (statement := /-- There is an absolute constant $C$ for which the finite
