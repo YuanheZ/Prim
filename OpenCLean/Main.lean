@@ -452,42 +452,85 @@ lemma dirichlet_eta_positive :
   rw [hpow]
   simpa [Complex.mul_re] using mul_pos hfactor_pos hzeta_pos
 
+@[blueprint "lem:dirichlet-eta-gamma-expectation"
+  (statement := /-- For every real $s>1$, the eta value of
+  \cref{def:dirichlet-eta-real} is the expectation of
+  $h(x)=(1+e^{-x})^{-1}$ against the gamma distribution of shape $s$ and
+  scale $1$.  In Lean this gamma distribution is
+  `ProbabilityTheory.gammaMeasure s 1`. -/)
+  (proof := /-- Fix $s>1$.  The measure
+  `ProbabilityTheory.gammaMeasure s 1` has density
+  $\Gamma(s)^{-1}x^{s-1}e^{-x}$ on $[0,\infty)$.  Multiplying this density by
+  $h(x)=(1+e^{-x})^{-1}=e^x/(1+e^x)$ converts the expectation into
+  $$\Gamma(s)^{-1}\int_0^\infty {x^{s-1}\over 1+e^x}\,dx.$$
+  The classical Mellin transform formula for Dirichlet eta identifies this
+  last integral with $(1-2^{1-s})\zeta(s)$, which is precisely the real value
+  specified by \cref{def:dirichlet-eta-real} on the half-line $s>1$. -/)
+  (title := /-- Gamma-expectation representation of eta -/)
+  (latexEnv := "lemma")]
+lemma dirichlet_eta_gamma_expectation :
+    ∀ s : ℝ, 1 < s ->
+      dirichlet_eta_real s =
+        ∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure s 1) := by
+  sorry
+
+@[blueprint "lem:gamma-logistic-expectation-monotone"
+  (statement := /-- The expectation of the increasing function
+  $h(x)=(1+e^{-x})^{-1}$ under a gamma distribution of scale $1$ is
+  non-decreasing as the positive shape parameter increases. -/)
+  (proof := /-- Let $0<a\leq b$ and put $c=b-a\geq 0$.  If $c=0$ the two
+  expectations are equal.  If $c>0$, let $X_a$ and $Y_c$ be independent gamma
+  variables of shapes $a$ and $c$, both with scale $1$.  The additivity of
+  gamma laws with common scale gives $X_a+Y_c$ the gamma law of shape $b$.
+  Since $Y_c\geq 0$ almost surely and $h(x)=(1+e^{-x})^{-1}$ is increasing on
+  $[0,\infty)$, one has $h(X_a)\leq h(X_a+Y_c)$ almost surely.  Taking
+  expectations gives the desired monotonicity in the shape parameter. -/)
+  (title := /-- Monotonicity of gamma-logistic expectations -/)
+  (latexEnv := "lemma")]
+lemma gamma_logistic_expectation_monotone :
+    MonotoneOn
+      (fun s : ℝ =>
+        ∫ x : ℝ, (1 / (1 + Real.exp (-x))) ∂(ProbabilityTheory.gammaMeasure s 1))
+      (Set.Ioi (0 : ℝ)) := by
+  sorry
+
 @[blueprint "lem:dirichlet-eta-monotone"
   (statement := /-- The real Dirichlet eta function of
   \cref{def:dirichlet-eta-real} is non-decreasing on the open half-line
   $(1,\infty)$. -/)
-  (proof := /-- Let $1<s\leq t$.  The Mellin representation gives
-  $$\eta(r)=\Gamma(r)^{-1}\int_0^\infty {x^{r-1}\over e^x+1}\,dx$$
-  for every $r>1$.  Equivalently, if $X_r$ has the gamma distribution with
-  shape $r$ and scale $1$, and if $h(x)=(1+e^{-x})^{-1}$, then
-  $\eta(r)=\mathbb E h(X_r)$.  Couple $X_t$ as $X_s+Y_{t-s}$, where
-  $Y_{t-s}$ is an independent gamma variable of shape $t-s$ and scale $1$;
-  when $t=s$ this variable is identically zero.  Since $Y_{t-s}\geq 0$ almost
-  surely and $h$ is increasing on $[0,\infty)$, one has
-  $h(X_s)\leq h(X_s+Y_{t-s})$ almost surely.  Taking expectations gives
-  $\eta(s)\leq\eta(t)$.  This proves monotonicity on $(1,\infty)$. -/)
+  (proof := /-- Let $1<s\leq t$.  By
+  \cref{lem:dirichlet-eta-gamma-expectation}, both $\eta(s)$ and $\eta(t)$
+  are the expectations of $h(x)=(1+e^{-x})^{-1}$ against the gamma laws of
+  shapes $s$ and $t$ and scale $1$.  Since $0<s\leq t$,
+  \cref{lem:gamma-logistic-expectation-monotone} compares these two
+  expectations and gives the expectation at shape $s$ at most the expectation
+  at shape $t$.  Substituting the two eta-expectation identities gives
+  $\eta(s)\leq\eta(t)$.  This is exactly monotonicity of
+  \cref{def:dirichlet-eta-real} on $(1,\infty)$. -/)
   (title := /-- Monotonicity of eta on the half-line $s>1$ -/)
   (latexEnv := "lemma")]
 lemma dirichlet_eta_monotone :
     MonotoneOn dirichlet_eta_real (Set.Ioi (1 : ℝ)) := by
-  sorry
+  sorry_using [dirichlet_eta_gamma_expectation, gamma_logistic_expectation_monotone]
 
 @[blueprint "lem:dirichlet-eta-log-derivative-nonnegative"
   (statement := /-- For every real $s>1$, the logarithmic derivative of the
   real Dirichlet eta function is non-negative:
   $0\leq \eta'(s)/\eta(s)$. -/)
   (proof := /-- Fix $s>1$.  By \cref{lem:dirichlet-eta-monotone}, the function
-  $\eta$ is non-decreasing on $(1,\infty)$.  The Mellin representation used in
-  that proof also gives differentiability at $s$, so the standard one-sided
-  difference-quotient characterization of the derivative of a monotone
-  differentiable function gives $\eta'(s)\geq 0$.  By
+  $\eta$ is non-decreasing on $(1,\infty)$.  The representation in
+  \cref{lem:dirichlet-eta-gamma-expectation}, with its exponentially decaying
+  gamma density, justifies differentiability at $s$ by differentiating under
+  the integral sign on compact subintervals of $(1,\infty)$.  Hence the
+  one-sided difference-quotient characterization of the derivative of a
+  monotone differentiable function gives $\eta'(s)\geq 0$.  By
   \cref{lem:dirichlet-eta-positive}, $\eta(s)>0$.  Dividing the non-negative
   derivative by this positive value gives $\eta'(s)/\eta(s)\geq 0$. -/)
   (title := /-- Non-negativity of the eta logarithmic derivative -/)
   (latexEnv := "lemma")]
 lemma dirichlet_eta_log_derivative_nonnegative :
     ∀ s : ℝ, 1 < s -> 0 ≤ deriv dirichlet_eta_real s / dirichlet_eta_real s := by
-  sorry_using [dirichlet_eta_positive, dirichlet_eta_monotone]
+  sorry_using [dirichlet_eta_positive, dirichlet_eta_gamma_expectation, dirichlet_eta_monotone]
 
 @[blueprint "lem:dirichlet-eta-zeta-log-derivative"
   (statement := /-- For every real number $u$ with $u>0$, the logarithmic
