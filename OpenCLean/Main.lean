@@ -2549,7 +2549,387 @@ lemma finite_chain_erdos_le_initial_mass (A : Set ℕ) (x X : ℝ) (hx : 2 ≤ x
   (latexEnv := "lemma")]
 lemma finite_chain_initial_mass_sum_eq_cut_capacity (x X : ℝ) (hx : 2 ≤ x) :
     (∑' n : ℕ, finite_chain_initial_mass x X n) = cut_capacity x X := by
-  sorry_using [von_mangoldt_divisor_sum]
+  classical
+  let s : Finset ℕ := Finset.range (⌈X⌉₊ + 1)
+  let coeff : ℕ → ℝ := fun r => 1 / ((r : ℝ) * Real.log (r : ℝ) ^ 2)
+  let pairTerm : ℕ × ℕ → ℝ := fun p =>
+    if x ≤ (p.1 : ℝ) ∧ (p.1 : ℝ) ≤ X then
+      if 2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X) then
+        coeff (p.1 * p.2) * ArithmeticFunction.vonMangoldt p.2
+      else 0
+    else 0
+  have hincoming_point (n q : ℕ)
+      (hnint : x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X)
+      (hqcond : 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X) :
+      erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+          Real.log ((n * q : ℕ) : ℝ) =
+        coeff (n * q) * ArithmeticFunction.vonMangoldt q := by
+    have hprod_gt_one : (1 : ℝ) < ((n * q : ℕ) : ℝ) := by
+      have hn_ge_two_real : (2 : ℝ) ≤ (n : ℝ) := le_trans hx hnint.1
+      have hq_ge_two_real : (2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hqcond.1
+      rw [Nat.cast_mul]
+      nlinarith
+    have hlog_ne : Real.log ((n * q : ℕ) : ℝ) ≠ 0 :=
+      (Real.log_pos hprod_gt_one).ne'
+    rw [erdos_weight]
+    dsimp [coeff]
+    field_simp [hlog_ne]
+  have hleft : (∑' n : ℕ, finite_chain_initial_mass x X n) =
+      ∑ n ∈ s, finite_chain_initial_mass x X n := by
+    exact tsum_eq_sum (s := s) (fun n hn => by
+      rw [finite_chain_initial_mass]
+      rw [if_neg]
+      intro hnx
+      apply hn
+      simp only [s, Finset.mem_range]
+      have hnleceil : n ≤ ⌈X⌉₊ := by
+        exact_mod_cast (le_trans hnx.2 (Nat.le_ceil X))
+      omega)
+  have hinner (n : ℕ) (hnint : x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X) :
+      (∑' q : ℕ,
+        if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+          erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+            Real.log ((n * q : ℕ) : ℝ)
+        else 0) =
+      ∑ q ∈ s,
+        if 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X then
+          erdos_weight (n * q) * ArithmeticFunction.vonMangoldt q /
+            Real.log ((n * q : ℕ) : ℝ)
+        else 0 := by
+    refine tsum_eq_sum (s := s) ?_
+    intro q hq
+    rw [if_neg]
+    intro hcond
+    apply hq
+    simp only [s, Finset.mem_range]
+    have hn_ge_one : 1 ≤ n := by
+      have hn_ge_two_real : (2 : ℝ) ≤ (n : ℝ) := le_trans hx hnint.1
+      exact_mod_cast (show (1 : ℝ) ≤ (n : ℝ) by linarith)
+    have hq_le_prod : q ≤ n * q := Nat.le_mul_of_pos_left q hn_ge_one
+    have hq_le_X : (q : ℝ) ≤ X := by
+      have : ((q : ℕ) : ℝ) ≤ ((n * q : ℕ) : ℝ) := by exact_mod_cast hq_le_prod
+      exact le_trans this hcond.2
+    have hq_le_ceil : q ≤ ⌈X⌉₊ := by
+      exact_mod_cast (le_trans hq_le_X (Nat.le_ceil X))
+    omega
+  have hleft_expand :
+      (∑' n : ℕ, finite_chain_initial_mass x X n) =
+        (∑ n ∈ s, if x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X then erdos_weight n else 0) -
+          ∑ p ∈ s.product s, pairTerm p := by
+    rw [hleft]
+    calc
+      (∑ n ∈ s, finite_chain_initial_mass x X n)
+          = ∑ n ∈ s,
+              ((if x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X then erdos_weight n else 0) -
+                ∑ q ∈ s, pairTerm (n, q)) := by
+            apply Finset.sum_congr rfl
+            intro n hn
+            rw [finite_chain_initial_mass]
+            by_cases hnint : x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X
+            · rw [if_pos hnint, hinner n hnint]
+              simp only [if_pos hnint]
+              congr 1
+              apply Finset.sum_congr rfl
+              intro q hq
+              by_cases hqcond : 2 ≤ q ∧ ((n * q : ℕ) : ℝ) ≤ X
+              · rw [if_pos hqcond, hincoming_point n q hnint hqcond]
+                have hqcond' : 2 ≤ q ∧ (n : ℝ) * (q : ℝ) ≤ X := by
+                  exact ⟨hqcond.1, by simpa [Nat.cast_mul] using hqcond.2⟩
+                simp [pairTerm, hnint, hqcond, hqcond', Nat.cast_mul]
+              · rw [if_neg hqcond]
+                have hqcond' : ¬(2 ≤ q ∧ (n : ℝ) * (q : ℝ) ≤ X) := by
+                  intro h
+                  apply hqcond
+                  exact ⟨h.1, by simpa [Nat.cast_mul] using h.2⟩
+                simp [pairTerm, hnint, hqcond, hqcond', Nat.cast_mul]
+            · rw [if_neg hnint]
+              simp [pairTerm, hnint]
+      _ = (∑ n ∈ s, if x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X then erdos_weight n else 0) -
+            ∑ n ∈ s, ∑ q ∈ s, pairTerm (n, q) := by
+          rw [Finset.sum_sub_distrib]
+      _ = (∑ n ∈ s, if x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X then erdos_weight n else 0) -
+            ∑ p ∈ s.product s, pairTerm p := by
+          simpa using congrArg
+            (fun z => (∑ n ∈ s,
+              if x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X then erdos_weight n else 0) - z)
+            (Finset.sum_product (s := s) (t := s)
+              (f := fun p : ℕ × ℕ => pairTerm p)).symm
+  have hright : cut_capacity x X =
+      ∑ r ∈ s,
+        if x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X then
+          coeff r * (∑ q ∈ r.divisors,
+            if (((r / q : ℕ) : ℝ) < x) then ArithmeticFunction.vonMangoldt q else 0)
+        else 0 := by
+    rw [cut_capacity]
+    calc
+      (∑' r : ℕ,
+        if x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X then
+          (1 / ((r : ℝ) * (Real.log (r : ℝ)) ^ 2)) *
+            (∑ q ∈ r.divisors,
+              if (((r / q : ℕ) : ℝ) < x) then ArithmeticFunction.vonMangoldt q else 0)
+        else 0)
+          = ∑ r ∈ s,
+              if x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X then
+                (1 / ((r : ℝ) * (Real.log (r : ℝ)) ^ 2)) *
+                  (∑ q ∈ r.divisors,
+                    if (((r / q : ℕ) : ℝ) < x) then ArithmeticFunction.vonMangoldt q else 0)
+              else 0 := by
+            exact tsum_eq_sum (s := s) (fun r hr => by
+              rw [if_neg]
+              intro hrx
+              apply hr
+              simp only [s, Finset.mem_range]
+              have hrleceil : r ≤ ⌈X⌉₊ := by
+                exact_mod_cast (le_trans hrx.2 (Nat.le_ceil X))
+              omega)
+      _ = ∑ r ∈ s,
+          if x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X then
+            coeff r * (∑ q ∈ r.divisors,
+              if (((r / q : ℕ) : ℝ) < x) then ArithmeticFunction.vonMangoldt q else 0)
+          else 0 := by
+            apply Finset.sum_congr rfl
+            intro r hr
+            by_cases hrint : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X
+            · simp [coeff, hrint]
+            · simp [hrint]
+  have hbase_point (r : ℕ) (hr : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X) :
+      erdos_weight r = coeff r * (∑ q ∈ r.divisors, ArithmeticFunction.vonMangoldt q) := by
+    have hr_gt_one : (1 : ℝ) < (r : ℝ) := by linarith [le_trans hx hr.1]
+    have hlog_ne : Real.log (r : ℝ) ≠ 0 := (Real.log_pos hr_gt_one).ne'
+    rw [von_mangoldt_divisor_sum, erdos_weight]
+    dsimp [coeff]
+    field_simp [hlog_ne]
+  have hbase_sum :
+      (∑ n ∈ s, if x ≤ (n : ℝ) ∧ (n : ℝ) ≤ X then erdos_weight n else 0) =
+        ∑ r ∈ s,
+          if x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X then
+            coeff r * (∑ q ∈ r.divisors, ArithmeticFunction.vonMangoldt q)
+          else 0 := by
+    apply Finset.sum_congr rfl
+    intro r hr
+    by_cases hrint : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X
+    · rw [if_pos hrint, if_pos hrint, hbase_point r hrint]
+    · simp [hrint]
+  have hpair_fiber (r : ℕ) (hrint : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X)
+      (p : ℕ × ℕ) (hp : p ∈ (s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 = r)) :
+      pairTerm p =
+        if 2 ≤ p.2 ∧ x ≤ (p.1 : ℝ) then coeff r * ArithmeticFunction.vonMangoldt p.2 else 0 := by
+    have hprod : p.1 * p.2 = r := (Finset.mem_filter.mp hp).2
+    by_cases hcond : 2 ≤ p.2 ∧ x ≤ (p.1 : ℝ)
+    · have hp2_ge_one : 1 ≤ p.2 := by omega
+      have hp1_le_prod : p.1 ≤ p.1 * p.2 := Nat.le_mul_of_pos_right p.1 hp2_ge_one
+      have hp1_le_X : (p.1 : ℝ) ≤ X := by
+        have : (p.1 : ℝ) ≤ ((p.1 * p.2 : ℕ) : ℝ) := by exact_mod_cast hp1_le_prod
+        rw [hprod] at this
+        exact le_trans this hrint.2
+      have hprod_le_X : (((p.1 * p.2 : ℕ) : ℝ) ≤ X) := by simpa [hprod] using hrint.2
+      have hprod_le_X' : (p.1 : ℝ) * (p.2 : ℝ) ≤ X := by
+        simpa [Nat.cast_mul] using hprod_le_X
+      have hcond' : 2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X) := ⟨hcond.1, hprod_le_X⟩
+      have hcond'' : 2 ≤ p.2 ∧ (p.1 : ℝ) * (p.2 : ℝ) ≤ X := ⟨hcond.1, hprod_le_X'⟩
+      have houter : x ≤ (p.1 : ℝ) ∧ (p.1 : ℝ) ≤ X := ⟨hcond.2, hp1_le_X⟩
+      have hprod_coeff : coeff (p.1 * p.2) = coeff r := by rw [hprod]
+      simp [pairTerm, houter, hcond', hcond'', hcond, hprod_coeff, Nat.cast_mul]
+    · have hnot_outer_or_inner :
+          ¬(x ≤ (p.1 : ℝ) ∧ (p.1 : ℝ) ≤ X) ∨
+            ¬(2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X)) := by
+        by_cases houter : x ≤ (p.1 : ℝ) ∧ (p.1 : ℝ) ≤ X
+        · right
+          intro hinner
+          apply hcond
+          exact ⟨hinner.1, houter.1⟩
+        · exact Or.inl houter
+      rcases hnot_outer_or_inner with houter | hinner
+      · simp [pairTerm, houter, hcond]
+      · have hinner' : ¬(2 ≤ p.2 ∧ (p.1 : ℝ) * (p.2 : ℝ) ≤ X) := by
+          intro h
+          apply hinner
+          exact ⟨h.1, by simpa [Nat.cast_mul] using h.2⟩
+        simp [pairTerm, hinner, hinner', hcond, Nat.cast_mul]
+  have hbij_sum (r : ℕ) (hrmem : r ∈ s) (hrint : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X) :
+      (∑ p ∈ ((s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 = r)).filter
+          (fun p : ℕ × ℕ => 2 ≤ p.2 ∧ x ≤ (p.1 : ℝ)),
+          coeff r * ArithmeticFunction.vonMangoldt p.2) =
+        ∑ q ∈ r.divisors.filter (fun q : ℕ => 2 ≤ q ∧ x ≤ ((r / q : ℕ) : ℝ)),
+          coeff r * ArithmeticFunction.vonMangoldt q := by
+    refine Finset.sum_bij' (fun p hp => p.2) (fun q hq => (r / q, q)) ?_ ?_ ?_ ?_ ?_
+    · intro p hp
+      simp only [Finset.mem_filter] at hp ⊢
+      rcases hp with ⟨hpfiber, hpcond⟩
+      have hprod : p.1 * p.2 = r := hpfiber.2
+      have hr_ne : r ≠ 0 := by
+        have : (0 : ℝ) < (r : ℝ) := by linarith [hx, hrint.1]
+        exact_mod_cast this.ne'
+      have hp2pos : 0 < p.2 := by omega
+      have hp2dvd : p.2 ∣ r := by
+        refine ⟨p.1, ?_⟩
+        rw [mul_comm, hprod]
+      have hp1_eq : p.1 = r / p.2 := by
+        rw [← hprod]
+        simp [hp2pos]
+      constructor
+      · exact Nat.mem_divisors.mpr ⟨hp2dvd, hr_ne⟩
+      · constructor
+        · exact hpcond.1
+        · simpa [← hp1_eq] using hpcond.2
+    · intro q hq
+      simp only [Finset.mem_filter] at hq ⊢
+      rcases hq with ⟨hqdivmem, hqcond⟩
+      have hqdiv : q ∣ r := (Nat.mem_divisors.mp hqdivmem).1
+      have hr_ne : r ≠ 0 := (Nat.mem_divisors.mp hqdivmem).2
+      have hprod : (r / q) * q = r := Nat.div_mul_cancel hqdiv
+      have hqle : q ≤ r := Nat.le_of_dvd (Nat.pos_of_ne_zero hr_ne) hqdiv
+      have hdivle : r / q ≤ r := Nat.div_le_self r q
+      have hr_lt : r < ⌈X⌉₊ + 1 := by simpa [s, Finset.mem_range] using hrmem
+      have hqmems : q ∈ s := by simp only [s, Finset.mem_range]; omega
+      have hdivmems : r / q ∈ s := by simp only [s, Finset.mem_range]; omega
+      constructor
+      · constructor
+        · exact Finset.mem_product.mpr ⟨hdivmems, hqmems⟩
+        · exact hprod
+      · exact hqcond
+    · intro p hp
+      simp only [Finset.mem_filter] at hp
+      rcases hp with ⟨hpfiber, hpcond⟩
+      have hprod : p.1 * p.2 = r := hpfiber.2
+      have hp2pos : 0 < p.2 := by omega
+      have hp1_eq : r / p.2 = p.1 := by rw [← hprod]; simp [hp2pos]
+      ext
+      · exact hp1_eq
+      · rfl
+    · intro q hq
+      rfl
+    · intro p hp
+      rfl
+  have hfiber_high (r : ℕ) (hrmem : r ∈ s) (hrint : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X) :
+      (∑ p ∈ (s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 = r), pairTerm p) =
+        coeff r * (∑ q ∈ r.divisors,
+          if 2 ≤ q ∧ x ≤ ((r / q : ℕ) : ℝ) then ArithmeticFunction.vonMangoldt q else 0) := by
+    calc
+      (∑ p ∈ (s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 = r), pairTerm p)
+          = ∑ p ∈ (s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 = r),
+              if 2 ≤ p.2 ∧ x ≤ (p.1 : ℝ) then coeff r * ArithmeticFunction.vonMangoldt p.2 else 0 := by
+            apply Finset.sum_congr rfl
+            intro p hp
+            exact hpair_fiber r hrint p hp
+      _ = ∑ p ∈ ((s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 = r)).filter
+              (fun p : ℕ × ℕ => 2 ≤ p.2 ∧ x ≤ (p.1 : ℝ)),
+              coeff r * ArithmeticFunction.vonMangoldt p.2 := by
+            exact (Finset.sum_filter (s := (s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 = r))
+              (p := fun p : ℕ × ℕ => 2 ≤ p.2 ∧ x ≤ (p.1 : ℝ))
+              (f := fun p : ℕ × ℕ => coeff r * ArithmeticFunction.vonMangoldt p.2)).symm
+      _ = ∑ q ∈ r.divisors.filter (fun q : ℕ => 2 ≤ q ∧ x ≤ ((r / q : ℕ) : ℝ)),
+              coeff r * ArithmeticFunction.vonMangoldt q := hbij_sum r hrmem hrint
+      _ = coeff r * (∑ q ∈ r.divisors,
+          if 2 ≤ q ∧ x ≤ ((r / q : ℕ) : ℝ) then ArithmeticFunction.vonMangoldt q else 0) := by
+            rw [Finset.mul_sum]
+            simpa [mul_ite] using
+              (Finset.sum_filter (s := r.divisors)
+                (p := fun q : ℕ => 2 ≤ q ∧ x ≤ ((r / q : ℕ) : ℝ))
+                (f := fun q : ℕ => coeff r * ArithmeticFunction.vonMangoldt q))
+  have hfiber_zero (r : ℕ) (hrnot : ¬(x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X)) :
+      (∑ p ∈ (s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 = r), pairTerm p) = 0 := by
+    apply Finset.sum_eq_zero
+    intro p hp
+    have hprod : p.1 * p.2 = r := (Finset.mem_filter.mp hp).2
+    by_cases houter : x ≤ (p.1 : ℝ) ∧ (p.1 : ℝ) ≤ X
+    · by_cases hinner : 2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X)
+      · have hp2_ge_one : 1 ≤ p.2 := by omega
+        have hp1_le_prod : p.1 ≤ p.1 * p.2 := Nat.le_mul_of_pos_right p.1 hp2_ge_one
+        have hxle_r : x ≤ (r : ℝ) := by
+          have : (p.1 : ℝ) ≤ ((p.1 * p.2 : ℕ) : ℝ) := by exact_mod_cast hp1_le_prod
+          rw [hprod] at this
+          exact le_trans houter.1 this
+        have hrleX : (r : ℝ) ≤ X := by simpa [hprod] using hinner.2
+        exact False.elim (hrnot ⟨hxle_r, hrleX⟩)
+      · have hinner' : ¬(2 ≤ p.2 ∧ (p.1 : ℝ) * (p.2 : ℝ) ≤ X) := by
+          intro h
+          apply hinner
+          exact ⟨h.1, by simpa [Nat.cast_mul] using h.2⟩
+        simp [pairTerm, houter, hinner, hinner', Nat.cast_mul]
+    · simp [pairTerm, houter]
+  have hpair_zero_notmem (p : ℕ × ℕ) (hp : p ∈ s.product s)
+      (hprodmem : ¬ p.1 * p.2 ∈ s) : pairTerm p = 0 := by
+    by_cases houter : x ≤ (p.1 : ℝ) ∧ (p.1 : ℝ) ≤ X
+    · by_cases hinner : 2 ≤ p.2 ∧ (((p.1 * p.2 : ℕ) : ℝ) ≤ X)
+      · apply False.elim
+        apply hprodmem
+        simp only [s, Finset.mem_range]
+        have hleceil : p.1 * p.2 ≤ ⌈X⌉₊ := by
+          exact_mod_cast (le_trans hinner.2 (Nat.le_ceil X))
+        omega
+      · have hinner' : ¬(2 ≤ p.2 ∧ (p.1 : ℝ) * (p.2 : ℝ) ≤ X) := by
+          intro h
+          apply hinner
+          exact ⟨h.1, by simpa [Nat.cast_mul] using h.2⟩
+        simp [pairTerm, houter, hinner, hinner', Nat.cast_mul]
+    · simp [pairTerm, houter]
+  have hpair_sum :
+      (∑ p ∈ s.product s, pairTerm p) =
+        ∑ r ∈ s,
+          if x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X then
+            coeff r * (∑ q ∈ r.divisors,
+              if 2 ≤ q ∧ x ≤ ((r / q : ℕ) : ℝ) then ArithmeticFunction.vonMangoldt q else 0)
+          else 0 := by
+    calc
+      (∑ p ∈ s.product s, pairTerm p)
+          = ∑ p ∈ s.product s, if p.1 * p.2 ∈ s then pairTerm p else 0 := by
+            apply Finset.sum_congr rfl
+            intro p hp
+            by_cases hprodmem : p.1 * p.2 ∈ s
+            · simp [hprodmem]
+            · rw [if_neg hprodmem, hpair_zero_notmem p hp hprodmem]
+      _ = ∑ p ∈ (s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 ∈ s), pairTerm p := by
+            exact (Finset.sum_filter (s := s.product s)
+              (p := fun p : ℕ × ℕ => p.1 * p.2 ∈ s) (f := pairTerm)).symm
+      _ = ∑ r ∈ s, ∑ p ∈ (s.product s).filter (fun p : ℕ × ℕ => p.1 * p.2 = r),
+              pairTerm p := by
+            exact (Finset.sum_fiberwise_eq_sum_filter (s.product s) s
+              (fun p : ℕ × ℕ => p.1 * p.2) pairTerm).symm
+      _ = ∑ r ∈ s,
+          if x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X then
+            coeff r * (∑ q ∈ r.divisors,
+              if 2 ≤ q ∧ x ≤ ((r / q : ℕ) : ℝ) then ArithmeticFunction.vonMangoldt q else 0)
+          else 0 := by
+            apply Finset.sum_congr rfl
+            intro r hrmem
+            by_cases hrint : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X
+            · rw [if_pos hrint, hfiber_high r hrmem hrint]
+            · rw [if_neg hrint, hfiber_zero r hrint]
+  have hfinal_point (r : ℕ) (hrint : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X) :
+      coeff r * (∑ q ∈ r.divisors, ArithmeticFunction.vonMangoldt q) -
+        coeff r * (∑ q ∈ r.divisors,
+          if 2 ≤ q ∧ x ≤ ((r / q : ℕ) : ℝ) then ArithmeticFunction.vonMangoldt q else 0) =
+        coeff r * (∑ q ∈ r.divisors,
+          if ((r / q : ℕ) : ℝ) < x then ArithmeticFunction.vonMangoldt q else 0) := by
+    have hdiv_split :
+        (∑ q ∈ r.divisors, ArithmeticFunction.vonMangoldt q) -
+          (∑ q ∈ r.divisors,
+            if 2 ≤ q ∧ x ≤ ((r / q : ℕ) : ℝ) then ArithmeticFunction.vonMangoldt q else 0) =
+          ∑ q ∈ r.divisors,
+            if ((r / q : ℕ) : ℝ) < x then ArithmeticFunction.vonMangoldt q else 0 := by
+      rw [← Finset.sum_sub_distrib]
+      apply Finset.sum_congr rfl
+      intro q hq
+      by_cases hlt : ((r / q : ℕ) : ℝ) < x
+      · have hnle : ¬ x ≤ ((r / q : ℕ) : ℝ) := not_le_of_gt hlt
+        simp [hlt, hnle]
+      · have hge : x ≤ ((r / q : ℕ) : ℝ) := le_of_not_gt hlt
+        by_cases hq2 : 2 ≤ q
+        · simp [hlt, hge, hq2]
+        · have hqpos : 0 < q := Nat.pos_of_mem_divisors hq
+          have hqeq : q = 1 := by omega
+          simp [hlt, hge, hq2, hqeq]
+    rw [← mul_sub, hdiv_split]
+  rw [hleft_expand, hright, hbase_sum, hpair_sum]
+  rw [← Finset.sum_sub_distrib]
+  apply Finset.sum_congr rfl
+  intro r hrmem
+  by_cases hrint : x ≤ (r : ℝ) ∧ (r : ℝ) ≤ X
+  · rw [if_pos hrint, if_pos hrint, if_pos hrint]
+    exact hfinal_point r hrint
+  · rw [if_neg hrint, if_neg hrint, if_neg hrint]
+    ring
 
 @[blueprint "lem:finite-chain-cut-bound"
   (statement := /-- Let $2\leq x\leq X$, and let $A\subseteq\mathbb{N}$ be a
