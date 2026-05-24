@@ -4011,18 +4011,44 @@ def prime_layer : Set ℕ :=
   (statement := /-- This package records the formal interface supplied by the
   modified von Mangoldt downward chain used in the proof of the
   Erd\H{o}s primitive set conjecture.  It consists of transition weights
-  $P(n,m)$ on $\mathbb N$, non-negative and of total mass one from every
-  starting state; every prime is absorbing; and the Erd\H{o}s weight is
-  sub-invariant for the transition kernel, namely
-  $\sum_n \nu_0(n)P(n,m)\leq \nu_0(m)$ for all $m\geq2$. -/)
+  $P(n,m)$ on the positive natural numbers, non-negative and of total mass one
+  from every positive starting state.  The auxiliary state $1$ is isolated,
+  every prime is absorbing, non-zero transitions from states $n\geq2$ move
+  downward in the divisibility poset except at absorbing primes, and the exact
+  transition rule is the source proof's modified von Mangoldt rule: away from
+  prime powers it is the ordinary von Mangoldt transition, while for
+  $p^k$, $k\geq2$, the jump that would divide by $p^{k-1}$ is redirected to the
+  prime state $p$.  The Erd\H{o}s weight is sub-invariant for the incoming
+  transitions from larger states, namely
+  $\sum_{q>1}\nu_0(mq)P(mq,m)\leq\nu_0(m)$ for every $m\geq2$. -/)
   (title := /-- Modified-chain sub-invariance package -/)
   (latexEnv := "definition")]
 def eps_modified_chain_subinvariant_package : Prop :=
   ∃ P : ℕ → ℕ → ℝ,
     (∀ n m : ℕ, 0 ≤ P n m) ∧
-    (∀ n : ℕ, (∑' m : ℕ, P n m) = 1) ∧
+    (∀ n : ℕ, 1 ≤ n -> (∑' m : ℕ, P n m) = 1) ∧
+    P 1 1 = 1 ∧
+    (∀ m : ℕ, m ≠ 1 -> P 1 m = 0) ∧
     (∀ p : ℕ, p ∈ prime_layer -> P p p = 1) ∧
-    (∀ m : ℕ, 2 ≤ m -> (∑' n : ℕ, erdos_weight n * P n m) ≤ erdos_weight m)
+    (∀ p m : ℕ, p ∈ prime_layer -> m ≠ p -> P p m = 0) ∧
+    (∀ n m : ℕ, 2 ≤ n -> P n m ≠ 0 ->
+      m ∣ n ∧ ((m = n ∧ n ∈ prime_layer) ∨ m < n)) ∧
+    (∀ n q : ℕ, 2 ≤ n -> n ∉ prime_layer ->
+      (∀ p k : ℕ, p ∈ prime_layer -> 2 ≤ k -> n ≠ p ^ k) ->
+      1 < q -> q ∣ n ->
+        P n (n / q) = ArithmeticFunction.vonMangoldt q / Real.log (n : ℝ)) ∧
+    (∀ p k : ℕ, p ∈ prime_layer -> 2 ≤ k ->
+      P (p ^ k) p =
+        ArithmeticFunction.vonMangoldt (p ^ (k - 1)) /
+          Real.log ((p ^ k : ℕ) : ℝ) + 1 / (k : ℝ)) ∧
+    (∀ p k j : ℕ, p ∈ prime_layer -> 2 ≤ k -> 1 ≤ j -> j ≤ k - 2 ->
+      P (p ^ k) (p ^ (k - j)) =
+        ArithmeticFunction.vonMangoldt (p ^ j) / Real.log ((p ^ k : ℕ) : ℝ)) ∧
+    (∀ p k m : ℕ, p ∈ prime_layer -> 2 ≤ k -> P (p ^ k) m ≠ 0 ->
+      m = p ∨ ∃ j : ℕ, 1 ≤ j ∧ j ≤ k - 2 ∧ m = p ^ (k - j)) ∧
+    (∀ m : ℕ, 2 ≤ m ->
+      (∑' q : ℕ, if 1 < q then erdos_weight (m * q) * P (m * q) m else 0) ≤
+        erdos_weight m)
 
 @[blueprint "lem:eps-modified-chain-subinvariant"
   (statement := /-- The modified von Mangoldt downward chain with absorbing
@@ -4031,14 +4057,18 @@ def eps_modified_chain_subinvariant_package : Prop :=
   (proof := /-- Define the transition kernel exactly as in the source proof:
   away from prime powers it is the von Mangoldt downward chain, primes are
   absorbing, and for $p^k$ with $k\geq2$ the mass that would jump from $p^k$ to
-  $1$ is redirected to the transition from $p^k$ to $p$.  The Markov property
-  follows from $\sum_{q\mid n}\Lambda(q)=\log n$ and the identity
-  $(k-2)/k+2/k=1$.  For the sub-invariance inequality, the ordinary von
-  Mangoldt contribution is bounded by \cref{lem:mangoldt-subinvariant-bound}.
-  If the target state is prime, the redirected prime-power contribution is the
-  additional series displayed in the source proof; the elementary estimates
-  there bound it by the remaining slack in the inequality.  These verifications
-  give all clauses in \cref{def:eps-modified-chain-subinvariant-package}. -/)
+  $1$ is redirected to the transition from $p^k$ to $p$; the state $1$ is
+  included only as the isolated positive state needed to totalize the Lean
+  kernel.  The Markov property follows from
+  $\sum_{q\mid n}\Lambda(q)=\log n$ and the identity $(k-2)/k+2/k=1$, and the
+  support clauses follow directly from the displayed transition rules.  For
+  the sub-invariance inequality, the ordinary von Mangoldt contribution from
+  larger states is bounded by \cref{lem:mangoldt-subinvariant-bound}.  If the
+  target state is prime, the redirected prime-power contribution is precisely
+  the additional positive series displayed in the source proof, and the
+  elementary estimates there bound it by the remaining slack in the inequality.
+  These verifications give every clause of
+  \cref{def:eps-modified-chain-subinvariant-package}. -/)
   (title := /-- Sub-invariance of the modified chain -/)
   (latexEnv := "lemma")]
 lemma eps_modified_chain_subinvariant :
@@ -4053,16 +4083,19 @@ lemma eps_modified_chain_subinvariant :
   summable Erd\H{o}s series whose sum is at most the Erd\H{o}s sum of the prime
   layer. -/)
   (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package} and
-  form the adjoint upward chain with respect to the weight $\nu_0$.  The
-  sub-invariance clause supplies the missing transition mass to the absorbing
-  state $\infty$, so the adjoint transition probabilities have total mass one.
-  Start the chain with mass $\nu_0(p)$ at each prime $p$; this total initial
-  mass is the convergent prime-layer series of \cref{def:prime-layer}.  Since
-  primes are absorbing for the downward chain, the upward hitting mass equals
-  the initial mass on the prime layer.  The adjoint recursion and induction on
-  the divisibility rank then give hitting mass $\nu_0(n)$ for every $n$.  A
-  primitive set meets any upward divisibility chain in at most one state, hence
-  the chain-antichain inequality bounds every finite partial sum of the
+  use its transition kernel to form the adjoint upward chain with respect to
+  the weight $\nu_0$.  The incoming sub-invariance clause supplies the missing
+  transition mass to the absorbing state $\infty$, so the adjoint transition
+  probabilities have total mass one.  The divisibility-support clauses ensure
+  that, before absorption at $\infty$, every realized upward trajectory is a
+  strictly increasing divisibility chain.  Start the chain with mass
+  $\nu_0(p)$ at each prime $p$; this total initial mass is the prime-layer
+  series associated with \cref{def:prime-layer}.  Since primes are absorbing for
+  the downward chain, the upward hitting mass on a prime equals its initial
+  mass.  The adjoint recursion and induction on divisibility rank then give
+  hitting mass $\nu_0(n)$ for every positive natural number $n$.  A primitive
+  set meets any upward divisibility chain in at most one state, hence the
+  chain-antichain inequality bounds every finite partial sum of the
   nonnegative series defining its Erd\H{o}s sum by the total initial mass on the
   primes.  The bounded-partial-sums criterion for nonnegative real series gives
   summability for the primitive set and the resulting inequality of
@@ -4233,16 +4266,67 @@ noncomputable def upper_chain_hit_density (n : ℕ → ℕ) (A : Set ℕ) : ℝ 
 def chain_hits_density_at_least (n : ℕ → ℕ) (A : Set ℕ) (Delta : ℝ) : Prop :=
   Delta ≤ upper_chain_hit_density n A
 
+@[blueprint "lem:mangoldt-weight-erdos-summable-error"
+  (statement := /-- The pointwise discrepancy between the invariant von
+  Mangoldt weight and the Erd\H{o}s weight is absolutely summable over
+  $\mathbb N$. -/)
+  (proof := /-- By \cref{def:mangoldt-weight} and \cref{def:erdos-weight}, the
+  reciprocal-zeta expansion at $s=1$ gives
+  $\nu_\Lambda(n)-\nu_0(n)=O(1/(n\log^2 n))$ for $n\geq2$, while $n=0$ and
+  $n=1$ contribute only finitely many terms under Lean's totalization of the
+  weights.  The comparison series
+  $\sum_{n\geq2}1/(n\log^2 n)$ converges by the integral test, so the absolute
+  error series is summable. -/)
+  (title := /-- Summable error between $\nu_\Lambda$ and $\nu_0$ -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_erdos_summable_error :
+    Summable (fun n : ℕ => |mangoldt_weight n - erdos_weight n|) := by
+  sorry
+
+@[blueprint "lem:summable-error-limsup-transfer"
+  (statement := /-- Let $w$ and $v$ be two real weights on $\mathbb N$ whose
+  pointwise difference is absolutely summable.  For every set
+  $A\subseteq\mathbb N$, replacing $w$ by $v$ in the truncated sums over
+  $A\cap[1,x]$ does not change the normalized limit superior after division by
+  $\log\log x$. -/)
+  (proof := /-- Fix $A\subseteq\mathbb N$.  For every real $x$, the absolute
+  value of the difference between the two truncated sums over
+  $A\cap[1,x]$ is bounded by the total absolute error
+  $\sum_n |w(n)-v(n)|$, because \cref{def:real-initial-segment} only restricts
+  the index set.  This bound is independent of $x$, and division by
+  $\log\log x$ tends to $0$ as $x\to\infty$.  The two normalized functions
+  therefore differ by a term tending to $0$ along the filter at infinity, so
+  their limit superiors are equal. -/)
+  (title := /-- Limsup transfer across a summable error -/)
+  (latexEnv := "lemma")]
+lemma summable_error_limsup_transfer {w v : ℕ → ℝ}
+    (h : Summable (fun n : ℕ => |w n - v n|)) :
+    ∀ A : Set ℕ,
+      Filter.limsup
+        (fun x : ℝ =>
+          (∑' n : ℕ, (A ∩ real_initial_segment x).indicator w n) /
+            Real.log (Real.log x))
+        Filter.atTop =
+      Filter.limsup
+        (fun x : ℝ =>
+          (∑' n : ℕ, (A ∩ real_initial_segment x).indicator v n) /
+            Real.log (Real.log x))
+        Filter.atTop := by
+  sorry
+
 @[blueprint "lem:mangoldt-weight-aggregate-comparison"
   (statement := /-- For every set $A\subseteq\mathbb N$, replacing the
   Erd\H{o}s weight by the invariant von Mangoldt weight does not change the
   upper doubly logarithmic density of the truncated sums. -/)
-  (proof := /-- The source proves the asymptotic
-  $\nu_\Lambda(n)=(1+O(1/\log n))\nu_0(n)$ with a more precise first-order
-  term.  Summing the resulting error over $A\cap[1,x]$ gives an $O(1)$ total
-  error, because $\sum_{n\leq x}1/(n\log^2 n)$ is bounded uniformly in $x$.
-  Dividing by $\log\log x$ and taking the limit superior along $x\to\infty$
-  therefore leaves the upper doubly logarithmic density unchanged. -/)
+  (proof := /-- The absolute discrepancy between the two pointwise weights is
+  summable by \cref{lem:mangoldt-weight-erdos-summable-error}.  Applying the
+  transfer principle \cref{lem:summable-error-limsup-transfer} with
+  $w=\nu_\Lambda$ and $v=\nu_0$ shows that the normalized limit superior of the
+  truncated von Mangoldt-weight sums equals the corresponding normalized limit
+  superior for the Erd\H{o}s sums.  The latter expression is exactly
+  \cref{def:upper-doubly-log-density}, after expanding
+  \cref{def:mangoldt-weight-sum-up-to}, \cref{def:erdos-sum-up-to}, and
+  \cref{def:erdos-sum}. -/)
   (title := /-- Aggregate comparison of $\nu_\Lambda$ and $\nu_0$ -/)
   (latexEnv := "lemma")]
 lemma mangoldt_weight_aggregate_comparison :
@@ -4250,7 +4334,7 @@ lemma mangoldt_weight_aggregate_comparison :
       Filter.limsup
         (fun x : ℝ => mangoldt_weight_sum_up_to A x / Real.log (Real.log x))
         Filter.atTop = upper_doubly_log_density A := by
-  sorry
+  sorry_using [mangoldt_weight_erdos_summable_error, summable_error_limsup_transfer]
 
 @[blueprint "lem:probabilistic-dense-ambient-chain"
   (statement := /-- If $A\subseteq\mathbb N$ has positive upper doubly
