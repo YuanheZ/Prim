@@ -2369,7 +2369,7 @@ lemma mangoldt_tail_range_subinvariant_local (n N : ℕ) (hn : 2 ≤ n) :
     have hrate : -Real.log (n : ℝ) < 0 := by linarith
     convert integrableOn_exp_mul_Ioi hrate 0 using 1
     funext t
-    ring
+    ring_nf
   have hsum_integral :
       (∑ q ∈ Finset.range N,
         if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) =
@@ -3986,3 +3986,312 @@ lemma finite_truncation_principle :
 theorem erdos_sarkozy_szemeredi_1196 :
     ∃ C : ℝ, erdos1196_bound C := by
   exact finite_truncation_principle finite_large_primitive_bound
+
+@[blueprint "def:prime-layer"
+  (statement := /-- The first divisibility layer $\mathbb N_1$ is the set of
+  prime natural numbers. -/)
+  (title := /-- The prime layer -/)
+  (latexEnv := "definition")]
+def prime_layer : Set ℕ :=
+  {n : ℕ | Nat.Prime n}
+
+@[blueprint "def:eps-modified-chain-subinvariant-package"
+  (statement := /-- This package records the formal interface supplied by the
+  modified von Mangoldt downward chain used in the proof of the
+  Erd\H{o}s primitive set conjecture.  It consists of transition weights
+  $P(n,m)$ on $\mathbb N$, non-negative and of total mass one from every
+  starting state; every prime is absorbing; and the Erd\H{o}s weight is
+  sub-invariant for the transition kernel, namely
+  $\sum_n \nu_0(n)P(n,m)\leq \nu_0(m)$ for all $m\geq2$. -/)
+  (title := /-- Modified-chain sub-invariance package -/)
+  (latexEnv := "definition")]
+def eps_modified_chain_subinvariant_package : Prop :=
+  ∃ P : ℕ → ℕ → ℝ,
+    (∀ n m : ℕ, 0 ≤ P n m) ∧
+    (∀ n : ℕ, (∑' m : ℕ, P n m) = 1) ∧
+    (∀ p : ℕ, p ∈ prime_layer -> P p p = 1) ∧
+    (∀ m : ℕ, 2 ≤ m -> (∑' n : ℕ, erdos_weight n * P n m) ≤ erdos_weight m)
+
+@[blueprint "lem:eps-modified-chain-subinvariant"
+  (statement := /-- The modified von Mangoldt downward chain with absorbing
+  states the primes satisfies the sub-invariance package of
+  \cref{def:eps-modified-chain-subinvariant-package}. -/)
+  (proof := /-- Define the transition kernel exactly as in the source proof:
+  away from prime powers it is the von Mangoldt downward chain, primes are
+  absorbing, and for $p^k$ with $k\geq2$ the mass that would jump from $p^k$ to
+  $1$ is redirected to the transition from $p^k$ to $p$.  The Markov property
+  follows from $\sum_{q\mid n}\Lambda(q)=\log n$ and the identity
+  $(k-2)/k+2/k=1$.  For the sub-invariance inequality, the ordinary von
+  Mangoldt contribution is bounded by \cref{lem:mangoldt-subinvariant-bound}.
+  If the target state is prime, the redirected prime-power contribution is the
+  additional series displayed in the source proof; the elementary estimates
+  there bound it by the remaining slack in the inequality.  These verifications
+  give all clauses in \cref{def:eps-modified-chain-subinvariant-package}. -/)
+  (title := /-- Sub-invariance of the modified chain -/)
+  (latexEnv := "lemma")]
+lemma eps_modified_chain_subinvariant :
+    eps_modified_chain_subinvariant_package := by
+  sorry_using [mangoldt_subinvariant_bound]
+
+@[blueprint "lem:eps-modified-chain-hitting-mass-identity"
+  (statement := /-- If the modified-chain sub-invariance package holds, then
+  the adjoint upward chain started from initial mass $\nu_0$ on the prime layer
+  has hitting mass exactly $\nu_0$ at every natural number.  Consequently every
+  primitive set has Erd\H{o}s sum at most the Erd\H{o}s sum of the prime layer. -/)
+  (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package} and
+  form the adjoint upward chain with respect to the weight $\nu_0$.  The
+  sub-invariance clause supplies the missing transition mass to the absorbing
+  state $\infty$, so the adjoint transition probabilities have total mass one.
+  Start the chain with mass $\nu_0(p)$ at each prime $p$.  Since primes are
+  absorbing for the downward chain, the upward hitting mass equals the initial
+  mass on the prime layer.  The adjoint recursion and induction on the
+  divisibility rank then give hitting mass $\nu_0(n)$ for every $n$.  A
+  primitive set meets any upward divisibility chain in at most one state, hence
+  the chain-antichain inequality bounds the sum of the hitting masses on the
+  primitive set by the total initial mass on the primes. -/)
+  (title := /-- Hitting masses for the modified adjoint chain -/)
+  (latexEnv := "lemma")]
+lemma eps_modified_chain_hitting_mass_identity :
+    eps_modified_chain_subinvariant_package ->
+      ∀ A : Set ℕ, primitive_set A -> erdos_sum A ≤ erdos_sum prime_layer := by
+  sorry
+
+@[blueprint "lem:eps-chain-antichain-bound"
+  (statement := /-- Every primitive set has Erd\H{o}s sum at most the
+  Erd\H{o}s sum of the prime layer. -/)
+  (proof := /-- The sub-invariance package is supplied by
+  \cref{lem:eps-modified-chain-subinvariant}.  Applying the hitting-mass
+  identity \cref{lem:eps-modified-chain-hitting-mass-identity} to this package
+  gives the desired bound for every primitive set. -/)
+  (title := /-- Chain-antichain bound for the prime layer -/)
+  (latexEnv := "lemma")]
+lemma eps_chain_antichain_bound :
+    ∀ A : Set ℕ, primitive_set A -> erdos_sum A ≤ erdos_sum prime_layer := by
+  sorry_using [eps_modified_chain_subinvariant, eps_modified_chain_hitting_mass_identity]
+
+@[blueprint "thm:erdos-primitive-set-conjecture-164"
+  (statement := /-- For every primitive set $A\subseteq\mathbb N$, the
+  Erd\H{o}s sum of $A$ is at most the Erd\H{o}s sum of the prime layer
+  $\mathbb N_1$. -/)
+  (proof := /-- This is precisely the chain-antichain bound established in
+  \cref{lem:eps-chain-antichain-bound}. -/)
+  (title := /-- Erd\H{o}s primitive set conjecture, problem \#164 -/)
+  (latexEnv := "theorem")]
+theorem erdos_primitive_set_conjecture_164 :
+    ∀ A : Set ℕ, primitive_set A -> erdos_sum A ≤ erdos_sum prime_layer := by
+  sorry_using [eps_chain_antichain_bound]
+
+@[blueprint "def:real-initial-segment"
+  (statement := /-- For a real parameter $x$, the initial segment
+  $[1,x]\cap\mathbb N$ consists of natural numbers $n$ with $1\leq n\leq x$. -/)
+  (title := /-- Real initial segment of the naturals -/)
+  (latexEnv := "definition")]
+def real_initial_segment (x : ℝ) : Set ℕ :=
+  {n : ℕ | 1 ≤ n ∧ (n : ℝ) ≤ x}
+
+@[blueprint "def:erdos-sum-up-to"
+  (statement := /-- The truncated Erd\H{o}s sum $f(A\cap[1,x])$ is the
+  Erd\H{o}s sum of the intersection of $A$ with
+  \cref{def:real-initial-segment}. -/)
+  (title := /-- Truncated Erd\H{o}s sum -/)
+  (latexEnv := "definition")]
+noncomputable def erdos_sum_up_to (A : Set ℕ) (x : ℝ) : ℝ :=
+  erdos_sum (A ∩ real_initial_segment x)
+
+@[blueprint "def:upper-doubly-log-density"
+  (statement := /-- The upper doubly logarithmic density of a set
+  $A\subseteq\mathbb N$ is
+  $\limsup_{x\to\infty} f(A\cap[1,x])/\log\log x$, with the limit superior
+  taken along real $x\to\infty$. -/)
+  (title := /-- Upper doubly logarithmic density -/)
+  (latexEnv := "definition")]
+noncomputable def upper_doubly_log_density (A : Set ℕ) : ℝ :=
+  Filter.limsup
+    (fun x : ℝ => erdos_sum_up_to A x / Real.log (Real.log x))
+    Filter.atTop
+
+@[blueprint "def:mangoldt-weight"
+  (statement := /-- The invariant von Mangoldt weight is
+  $\nu_\Lambda(1)=1$ and, for $n\neq1$,
+  $\nu_\Lambda(n)=\int_1^\infty \log n/(\zeta(s)n^s)\,ds$ on the real axis. -/)
+  (title := /-- Invariant von Mangoldt weight -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_weight (n : ℕ) : ℝ :=
+  if n = 1 then 1 else
+    ∫ s : ℝ in Set.Ioi (1 : ℝ),
+      Real.log (n : ℝ) /
+        (((riemannZeta (s : ℂ)).re) * Real.rpow (n : ℝ) s)
+
+@[blueprint "def:mangoldt-weight-sum-up-to"
+  (statement := /-- This is the truncated sum of the invariant von Mangoldt
+  weight over $A\cap[1,x]$. -/)
+  (title := /-- Truncated von Mangoldt-weight sum -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_weight_sum_up_to (A : Set ℕ) (x : ℝ) : ℝ :=
+  ∑' n : ℕ, (A ∩ real_initial_segment x).indicator mangoldt_weight n
+
+@[blueprint "def:strictly-increasing-divisibility-chain"
+  (statement := /-- A sequence $n_0,n_1,n_2,\ldots$ is a strictly increasing
+  divisibility chain if it is strictly increasing as a sequence of natural
+  numbers and each term divides its successor. -/)
+  (title := /-- Strict increasing divisibility chains -/)
+  (latexEnv := "definition")]
+def strictly_increasing_divisibility_chain (n : ℕ → ℕ) : Prop :=
+  StrictMono n ∧ ∀ i : ℕ, n i ∣ n (i + 1)
+
+@[blueprint "def:chain-in-set"
+  (statement := /-- A chain $n_0,n_1,n_2,\ldots$ lies in a set
+  $A\subseteq\mathbb N$ if every term of the chain belongs to $A$. -/)
+  (title := /-- Chain contained in a set -/)
+  (latexEnv := "definition")]
+def chain_in_set (n : ℕ → ℕ) (A : Set ℕ) : Prop :=
+  ∀ i : ℕ, n i ∈ A
+
+@[blueprint "def:chain-count-up-to"
+  (statement := /-- The counting function of a chain at a real height $x$ is
+  the number of indices $i$ for which $n_i\leq x$. -/)
+  (title := /-- Chain counting function -/)
+  (latexEnv := "definition")]
+noncomputable def chain_count_up_to (n : ℕ → ℕ) (x : ℝ) : ℕ :=
+  Set.ncard {i : ℕ | (n i : ℝ) ≤ x}
+
+@[blueprint "def:upper-chain-density"
+  (statement := /-- The upper doubly logarithmic density of the counting
+  function of a chain is
+  $\limsup_{x\to\infty}\#\{i:n_i\leq x\}/\log\log x$. -/)
+  (title := /-- Upper density of a chain -/)
+  (latexEnv := "definition")]
+noncomputable def upper_chain_density (n : ℕ → ℕ) : ℝ :=
+  Filter.limsup
+    (fun x : ℝ => (chain_count_up_to n x : ℝ) / Real.log (Real.log x))
+    Filter.atTop
+
+@[blueprint "def:upper-chain-density-at-least"
+  (statement := /-- The chain $n_0,n_1,n_2,\ldots$ has upper doubly
+  logarithmic density at least $\Delta$ if its upper chain density is at least
+  $\Delta$. -/)
+  (title := /-- Lower bound for chain density -/)
+  (latexEnv := "definition")]
+def upper_chain_density_at_least (n : ℕ → ℕ) (Delta : ℝ) : Prop :=
+  Delta ≤ upper_chain_density n
+
+@[blueprint "def:chain-hits-count-up-to"
+  (statement := /-- The hit-counting function of a chain against a set $A$ at
+  height $x$ is the number of indices $i$ such that $n_i\in A$ and
+  $n_i\leq x$. -/)
+  (title := /-- Chain hit-counting function -/)
+  (latexEnv := "definition")]
+noncomputable def chain_hits_count_up_to (n : ℕ → ℕ) (A : Set ℕ) (x : ℝ) : ℕ :=
+  Set.ncard {i : ℕ | n i ∈ A ∧ (n i : ℝ) ≤ x}
+
+@[blueprint "def:upper-chain-hit-density"
+  (statement := /-- The upper doubly logarithmic density of the visits of a
+  chain to $A$ is
+  $\limsup_{x\to\infty}\#\{i:n_i\in A,\ n_i\leq x\}/\log\log x$. -/)
+  (title := /-- Upper density of chain hits -/)
+  (latexEnv := "definition")]
+noncomputable def upper_chain_hit_density (n : ℕ → ℕ) (A : Set ℕ) : ℝ :=
+  Filter.limsup
+    (fun x : ℝ => (chain_hits_count_up_to n A x : ℝ) / Real.log (Real.log x))
+    Filter.atTop
+
+@[blueprint "def:chain-hits-density-at-least"
+  (statement := /-- A chain visits $A$ with upper doubly logarithmic density at
+  least $\Delta$ if its hit density against $A$ is at least $\Delta$. -/)
+  (title := /-- Lower bound for hit density -/)
+  (latexEnv := "definition")]
+def chain_hits_density_at_least (n : ℕ → ℕ) (A : Set ℕ) (Delta : ℝ) : Prop :=
+  Delta ≤ upper_chain_hit_density n A
+
+@[blueprint "lem:mangoldt-weight-aggregate-comparison"
+  (statement := /-- For every set $A\subseteq\mathbb N$, replacing the
+  Erd\H{o}s weight by the invariant von Mangoldt weight does not change the
+  upper doubly logarithmic density of the truncated sums. -/)
+  (proof := /-- The source proves the asymptotic
+  $\nu_\Lambda(n)=(1+O(1/\log n))\nu_0(n)$ with a more precise first-order
+  term.  Summing the resulting error over $A\cap[1,x]$ gives an $O(1)$ total
+  error, because $\sum_{n\leq x}1/(n\log^2 n)$ is bounded uniformly in $x$.
+  Dividing by $\log\log x$ and taking the limit superior along $x\to\infty$
+  therefore leaves the upper doubly logarithmic density unchanged. -/)
+  (title := /-- Aggregate comparison of $\nu_\Lambda$ and $\nu_0$ -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_aggregate_comparison :
+    ∀ A : Set ℕ,
+      Filter.limsup
+        (fun x : ℝ => mangoldt_weight_sum_up_to A x / Real.log (Real.log x))
+        Filter.atTop = upper_doubly_log_density A := by
+  sorry
+
+@[blueprint "lem:probabilistic-dense-ambient-chain"
+  (statement := /-- If $A\subseteq\mathbb N$ has positive upper doubly
+  logarithmic density, then there exists a strictly increasing divisibility
+  chain in $\mathbb N$ whose visits to $A$ have upper doubly logarithmic
+  density at least that of $A$. -/)
+  (proof := /-- Use the adjoint of the von Mangoldt downward chain with
+  respect to the invariant weight $\nu_\Lambda$, started at $1$.  The invariant
+  recursion implies that the expected number of visits to each state $n$ is
+  $\nu_\Lambda(n)$.  By \cref{lem:mangoldt-weight-aggregate-comparison}, the
+  expected normalized number of visits to $A\cap[1,x]$ has limit superior equal
+  to the upper doubly logarithmic density of $A$.  The second-moment estimate
+  in the source bounds the normalized visit counts uniformly in $L^2$, and the
+  reverse Fatou argument then gives positive probability that the realized
+  chain has visit-density at least this value.  Choosing such a realization
+  gives the asserted ambient chain. -/)
+  (title := /-- Dense ambient chain from the zeta process -/)
+  (latexEnv := "lemma")]
+lemma probabilistic_dense_ambient_chain :
+    ∀ A : Set ℕ, 0 < upper_doubly_log_density A ->
+      ∃ n : ℕ → ℕ,
+        strictly_increasing_divisibility_chain n ∧
+        chain_hits_density_at_least n A (upper_doubly_log_density A) := by
+  sorry_using [mangoldt_weight_aggregate_comparison]
+
+@[blueprint "lem:dense-hits-subchain-in-set"
+  (statement := /-- Let $A\subseteq\mathbb N$ have positive upper doubly
+  logarithmic density.  If a strictly increasing divisibility chain in
+  $\mathbb N$ visits $A$ with upper doubly logarithmic density at least that of
+  $A$, then the subsequence of its visits to $A$ is a strictly increasing
+  divisibility chain lying in $A$ with the same lower bound for its upper
+  doubly logarithmic density. -/)
+  (proof := /-- Since the hit density is at least the positive number
+  $\Delta$, the ambient chain visits $A$ infinitely often.  Enumerate the visit
+  indices increasingly, and define the new chain by restricting the ambient
+  chain to those indices.  Strict monotonicity is inherited from the ambient
+  chain, and divisibility is inherited by transitivity along the intervening
+  consecutive divisibility steps.  The counting function of the extracted
+  chain up to height $x$ is exactly the hit-counting function of the ambient
+  chain up to height $x$, so the upper doubly logarithmic density lower bound
+  is preserved. -/)
+  (title := /-- Extracting a dense subchain inside $A$ -/)
+  (latexEnv := "lemma")]
+lemma dense_hits_subchain_in_set :
+    ∀ (A : Set ℕ) (ambient : ℕ → ℕ),
+      0 < upper_doubly_log_density A ->
+      strictly_increasing_divisibility_chain ambient ->
+      chain_hits_density_at_least ambient A (upper_doubly_log_density A) ->
+        ∃ n : ℕ → ℕ,
+          strictly_increasing_divisibility_chain n ∧
+          chain_in_set n A ∧
+          upper_chain_density_at_least n (upper_doubly_log_density A) := by
+  sorry
+
+@[blueprint "thm:erdos-sarkozy-szemeredi-1217"
+  (statement := /-- Let $A\subseteq\mathbb N$ have positive upper doubly
+  logarithmic density $\Delta$.  Then $A$ contains a strictly increasing
+  infinite divisibility chain $n_0\mid n_1\mid n_2\mid\cdots$ whose counting
+  function has upper doubly logarithmic density at least $\Delta$. -/)
+  (proof := /-- Apply \cref{lem:probabilistic-dense-ambient-chain} to obtain a
+  strictly increasing divisibility chain in $\mathbb N$ whose visits to $A$
+  have upper doubly logarithmic density at least $\Delta$.  Then apply
+  \cref{lem:dense-hits-subchain-in-set} to the ambient chain.  The extracted
+  subsequence lies in $A$, remains a strictly increasing divisibility chain,
+  and has counting-density at least $\Delta$. -/)
+  (title := /-- Erd\H{o}s--S\'ark\"ozy--Szemer\'edi problem \#1217 -/)
+  (latexEnv := "theorem")]
+theorem erdos_sarkozy_szemeredi_1217 :
+    ∀ A : Set ℕ, 0 < upper_doubly_log_density A ->
+      ∃ n : ℕ → ℕ,
+        strictly_increasing_divisibility_chain n ∧
+        chain_in_set n A ∧
+        upper_chain_density_at_least n (upper_doubly_log_density A) := by
+  sorry_using [probabilistic_dense_ambient_chain, dense_hits_subchain_in_set]
