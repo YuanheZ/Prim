@@ -4277,21 +4277,31 @@ lemma probabilistic_dense_ambient_chain :
   sorry_using [mangoldt_weight_aggregate_comparison]
 
 @[blueprint "lem:dense-hits-subchain-in-set"
-  (statement := /-- Let $A\subseteq\mathbb N$ have positive upper doubly
-  logarithmic density.  If a strictly increasing divisibility chain in
-  $\mathbb N$ visits $A$ with upper doubly logarithmic density at least that of
-  $A$, then the subsequence of its visits to $A$ is a strictly increasing
-  divisibility chain lying in $A$ with the same lower bound for its upper
-  doubly logarithmic density. -/)
-  (proof := /-- Since the hit density is at least the positive number
-  $\Delta$, the ambient chain visits $A$ infinitely often.  Enumerate the visit
-  indices increasingly, and define the new chain by restricting the ambient
-  chain to those indices.  Strict monotonicity is inherited from the ambient
-  chain, and divisibility is inherited by transitivity along the intervening
-  consecutive divisibility steps.  The counting function of the extracted
-  chain up to height $x$ is exactly the hit-counting function of the ambient
-  chain up to height $x$, so the upper doubly logarithmic density lower bound
-  is preserved. -/)
+  (statement := /-- For every set $A\subseteq\mathbb N$ and every sequence
+  $m:\mathbb N\to\mathbb N$, if $A$ has positive upper doubly logarithmic
+  density, $m$ is a strictly increasing divisibility chain, and the visits of
+  $m$ to $A$ have upper doubly logarithmic density at least that of $A$, then
+  there exists a strictly increasing divisibility chain lying in $A$ whose
+  upper chain density is at least the upper doubly logarithmic density of
+  $A$. -/)
+  (proof := /-- Let $p(i)$ be the assertion that the ambient chain value
+  $m_i$ belongs to $A$.  If the set of indices satisfying $p$ were finite,
+  then \cref{def:chain-hits-count-up-to} would bound every hit-count by this
+  finite cardinality.  Dividing by $\log\log x$ and letting $x\to\infty$
+  would force the upper hit density in
+  \cref{def:upper-chain-hit-density,def:chain-hits-density-at-least} to be
+  zero, contradicting the positive lower bound.  Hence the hit-index set is
+  infinite.  Enumerate it increasingly and define the extracted chain by
+  $n_k=m_{e_k}$.  By \cref{def:strictly-increasing-divisibility-chain}, strict
+  monotonicity is inherited from the ambient chain, and the consecutive
+  divisibility condition follows by transitivity along the ambient divisibility
+  links between $e_k$ and $e_{k+1}$.  By \cref{def:chain-in-set}, each $n_k$
+  lies in $A$.  Finally, the increasing enumeration is a bijection between the
+  extracted indices counted by \cref{def:chain-count-up-to} and the ambient hit
+  indices counted by \cref{def:chain-hits-count-up-to}; therefore the two
+  normalized counting functions have the same limsup, and
+  \cref{def:upper-chain-density-at-least} follows from the assumed hit-density
+  lower bound. -/)
   (title := /-- Extracting a dense subchain inside $A$ -/)
   (latexEnv := "lemma")]
 lemma dense_hits_subchain_in_set :
@@ -4303,7 +4313,101 @@ lemma dense_hits_subchain_in_set :
           strictly_increasing_divisibility_chain n ∧
           chain_in_set n A ∧
           upper_chain_density_at_least n (upper_doubly_log_density A) := by
-  sorry
+  classical
+  intro A ambient hpos hchain hhit
+  let p : ℕ → Prop := fun i => ambient i ∈ A
+  have hpInf : ({i : ℕ | p i} : Set ℕ).Infinite := by
+    by_contra hnot
+    have hfin : ({i : ℕ | p i} : Set ℕ).Finite := Set.not_infinite.mp hnot
+    have hcount_le : ∀ x : ℝ, chain_hits_count_up_to ambient A x ≤
+        Set.ncard ({i : ℕ | p i} : Set ℕ) := by
+      intro x
+      unfold chain_hits_count_up_to
+      exact Set.ncard_le_ncard (by intro i hi; exact hi.1) hfin
+    have hden_pos_eventually : ∀ᶠ x in Filter.atTop, 0 < Real.log (Real.log x) := by
+      filter_upwards [Filter.eventually_gt_atTop (Real.exp 1)] with x hx
+      have hxpos : 0 < x := lt_trans (Real.exp_pos 1) hx
+      have hlog_gt_one : 1 < Real.log x := by
+        rw [Real.lt_log_iff_exp_lt hxpos]
+        simpa using hx
+      exact Real.log_pos hlog_gt_one
+    have hnonneg :
+        ∀ᶠ x in Filter.atTop, 0 ≤
+          (chain_hits_count_up_to ambient A x : ℝ) / Real.log (Real.log x) := by
+      filter_upwards [hden_pos_eventually] with x hdenpos
+      exact div_nonneg (Nat.cast_nonneg _) hdenpos.le
+    have hle_fun :
+        (fun x : ℝ => (chain_hits_count_up_to ambient A x : ℝ) / Real.log (Real.log x))
+          ≤ᶠ[Filter.atTop]
+        (fun x : ℝ => ((Set.ncard ({i : ℕ | p i} : Set ℕ) : ℝ)) /
+          Real.log (Real.log x)) := by
+      filter_upwards [hden_pos_eventually] with x hdenpos
+      exact div_le_div_of_nonneg_right (by exact_mod_cast hcount_le x) hdenpos.le
+    have htend_hit : Filter.Tendsto
+        (fun x : ℝ => (chain_hits_count_up_to ambient A x : ℝ) / Real.log (Real.log x))
+        Filter.atTop (nhds 0) :=
+      squeeze_zero' hnonneg hle_fun
+        (Filter.Tendsto.const_div_atTop
+          (Real.tendsto_log_atTop.comp Real.tendsto_log_atTop) _)
+    have hhit_zero : upper_chain_hit_density ambient A = 0 := by
+      unfold upper_chain_hit_density
+      exact htend_hit.limsup_eq
+    unfold chain_hits_density_at_least at hhit
+    linarith
+  let e : ℕ → ℕ := Nat.nth p
+  let n : ℕ → ℕ := fun k => ambient (e k)
+  refine ⟨n, ?_, ?_, ?_⟩
+  · constructor
+    · intro i j hij
+      exact hchain.1 ((Nat.nth_strictMono hpInf) hij)
+    · intro i
+      have hdiv_le : ∀ {a b : ℕ}, a ≤ b → ambient a ∣ ambient b := by
+        intro a b hab
+        exact Nat.le_induction (m := a) (P := fun b _ => ambient a ∣ ambient b)
+          dvd_rfl (fun b _ h => dvd_trans h (hchain.2 b)) b hab
+      exact hdiv_le ((Nat.nth_strictMono hpInf).monotone (Nat.le_succ i))
+  · intro i
+    exact Nat.nth_mem_of_infinite hpInf i
+  · have hcount : ∀ x : ℝ, chain_count_up_to n x = chain_hits_count_up_to ambient A x := by
+      intro x
+      let S : Set ℕ := {i | (n i : ℝ) ≤ x}
+      have heinj : Function.Injective e := by
+        intro a b h
+        exact Nat.nth_injective hpInf h
+      have himage : e '' S = ({j : ℕ | ambient j ∈ A ∧ (ambient j : ℝ) ≤ x} : Set ℕ) := by
+        ext j
+        constructor
+        · rintro ⟨i, hi, rfl⟩
+          refine ⟨?_, ?_⟩
+          · simpa [p] using (Nat.nth_mem_of_infinite hpInf i)
+          · simpa [S, n] using hi
+        · intro hj
+          have hjrange : j ∈ Set.range e := by
+            change j ∈ Set.range (Nat.nth p)
+            rw [Nat.range_nth_of_infinite hpInf]
+            simpa [p] using hj.1
+          rcases hjrange with ⟨i, hi_eq⟩
+          have hi_mem : i ∈ S := by
+            dsimp [S, n]
+            rw [hi_eq]
+            exact hj.2
+          exact ⟨i, hi_mem, hi_eq⟩
+      unfold chain_count_up_to chain_hits_count_up_to
+      change S.ncard = ({j : ℕ | ambient j ∈ A ∧ (ambient j : ℝ) ≤ x} : Set ℕ).ncard
+      rw [← himage]
+      exact (Set.ncard_image_of_injective S heinj).symm
+    unfold upper_chain_density_at_least
+    unfold upper_chain_density
+    unfold chain_hits_density_at_least upper_chain_hit_density at hhit
+    rw [show Filter.limsup
+        (fun x : ℝ => (chain_count_up_to n x : ℝ) / Real.log (Real.log x))
+        Filter.atTop = Filter.limsup
+        (fun x : ℝ => (chain_hits_count_up_to ambient A x : ℝ) / Real.log (Real.log x))
+        Filter.atTop by
+      apply Filter.limsup_congr
+      filter_upwards with x
+      rw [hcount x]]
+    exact hhit
 
 @[blueprint "thm:erdos-sarkozy-szemeredi-1217"
   (statement := /-- Let $A\subseteq\mathbb N$ have positive upper doubly
