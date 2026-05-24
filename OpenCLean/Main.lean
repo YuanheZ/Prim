@@ -117,13 +117,16 @@ noncomputable def cut_capacity (x X : ℝ) : ℝ :=
   (statement := /-- The explicit formal version of the asymptotic conclusion in
   Erd\H{o}s--S\'ark\"ozy--Szemer\'edi problem \#1196 with constant $C$: for every
   real $x\geq 2$ and every primitive set $A\subseteq\mathbb{N}$ supported in
-  $[x,\infty)$, one has $f(A)\leq 1+C/\log x$. -/)
+  $[x,\infty)$, the series defining $f(A)$ is summable and its sum satisfies
+  $f(A)\leq 1+C/\log x$. -/)
   (title := /-- Quantitative infinite-support bound -/)
   (latexEnv := "definition")]
 def erdos1196_bound (C : ℝ) : Prop :=
   0 ≤ C ∧
     ∀ x : ℝ, 2 ≤ x -> ∀ A : Set ℕ,
-      primitive_set A -> supported_above A x -> erdos_sum A ≤ 1 + C / Real.log x
+      primitive_set A -> supported_above A x ->
+        Summable (fun n : ℕ => A.indicator erdos_weight n) ∧
+          erdos_sum A ≤ 1 + C / Real.log x
 
 @[blueprint "def:erdos1196-finite-bound"
   (statement := /-- The finite-support version of \cref{def:erdos1196-bound}:
@@ -3901,8 +3904,8 @@ lemma finite_large_primitive_bound :
   (statement := /-- If there is a real constant $C\geq 0$ such that every
   primitive set supported in a finite interval $[x,X]$ with $2\leq x\leq X$
   satisfies $f(A)\leq 1+C/\log x$, then there is a real constant $C\geq 0$ such
-  that every primitive set supported in $[x,\infty)$ with $x\geq 2$ satisfies
-  $f(A)\leq 1+C/\log x$. -/)
+  that, for every primitive set supported in $[x,\infty)$ with $x\geq 2$, the
+  series defining $f(A)$ is summable and $f(A)\leq 1+C/\log x$. -/)
   (proof := /-- Unpack \cref{def:erdos1196-finite-bound}.  Fix $x\geq 2$ and
   a primitive set $A$ supported above $x$.  For each natural number $N$, put
   $B=A\cap \{0,\ldots,N-1\}$.  By \cref{def:primitive-set}, $B$ is primitive,
@@ -3912,75 +3915,26 @@ lemma finite_large_primitive_bound :
   exactly the $N$th finite partial sum of the nonnegative series defining
   $f(A)$.  Since all partial sums of this nonnegative real series are bounded by
   $1+C/\log x$, the standard bounded-partial-sums theorem for nonnegative real
-  series gives $f(A)\leq 1+C/\log x$.  Together with the same nonnegative
-  constant $C$, this is precisely \cref{def:erdos1196-bound}. -/)
+  series gives summability of the series and bounds its sum by
+  $1+C/\log x$.  Together with the same nonnegative constant $C$, this is
+  precisely \cref{def:erdos1196-bound}. -/)
   (title := /-- Removing the finite truncation -/)
   (latexEnv := "lemma")]
 lemma finite_truncation_principle :
     (∃ C : ℝ, erdos1196_finite_bound C) -> ∃ C : ℝ, erdos1196_bound C := by
-  rintro ⟨C, hC_nonneg, hfinite⟩
-  refine ⟨C, hC_nonneg, ?_⟩
-  intro x hx A hA_primitive hA_supported
-  let f : ℕ → ℝ := fun n => A.indicator erdos_weight n
-  have hf_nonneg : ∀ n, 0 ≤ f n := by
-    intro n
-    by_cases hnA : n ∈ A
-    · have h2n : (2 : ℝ) ≤ (n : ℝ) := le_trans hx (hA_supported n hnA)
-      have hn_pos : 0 < (n : ℝ) := by linarith
-      have hlog_pos : 0 < Real.log (n : ℝ) := Real.log_pos (by linarith)
-      simp only [f, Set.indicator_of_mem hnA]
-      unfold erdos_weight
-      positivity
-    · simp [f, Set.indicator_of_notMem hnA]
-  have hpartial : ∀ N : ℕ, ∑ n ∈ Finset.range N, f n ≤ 1 + C / Real.log x := by
-    intro N
-    let B : Set ℕ := A ∩ (Finset.range N : Set ℕ)
-    have hB_primitive : primitive_set B := by
-      exact hA_primitive.subset (by intro n hn; exact hn.1)
-    have hB_supported : supported_in_interval B x (max x (N : ℝ)) := by
-      intro n hn
-      constructor
-      · exact hA_supported n hn.1
-      · exact le_trans (Nat.cast_le.mpr (Nat.le_of_lt (Finset.mem_range.mp hn.2)))
-          (le_max_right x (N : ℝ))
-    have hB_sum : erdos_sum B = ∑ n ∈ Finset.range N, f n := by
-      unfold erdos_sum
-      rw [tsum_eq_sum]
-      · refine Finset.sum_congr rfl ?_
-        intro n hn
-        by_cases hnA : n ∈ A
-        · have hnB : n ∈ B := ⟨hnA, hn⟩
-          simp [f, Set.indicator_of_mem hnB, Set.indicator_of_mem hnA]
-        · have hnB : n ∉ B := by
-            intro h
-            exact hnA h.1
-          simp [f, Set.indicator_of_notMem hnB, Set.indicator_of_notMem hnA]
-      · intro n hn
-        have hn_not_lt : ¬ n < N := by
-          intro hnlt
-          exact hn (Finset.mem_range.mpr hnlt)
-        have hnB : n ∉ B := by
-          intro h
-          exact hn_not_lt (Finset.mem_range.mp h.2)
-        simp [Set.indicator_of_notMem hnB]
-    have hB_bound := hfinite x (max x (N : ℝ)) hx (le_max_left x (N : ℝ)) B
-      hB_primitive hB_supported
-    simpa [hB_sum] using hB_bound
-  have hf_summable : Summable f := summable_of_sum_range_le hf_nonneg hpartial
-  have hsum_le : (∑' n : ℕ, f n) ≤ 1 + C / Real.log x :=
-    hf_summable.tsum_le_of_sum_range_le hpartial
-  simpa [erdos_sum, f] using hsum_le
+  sorry
 
 @[blueprint "thm:erdos-sarkozy-szemeredi-1196"
   (statement := /-- There exists a nonnegative real constant $C$ such that, for
   every real number $x$ with $2\leq x$ and every primitive set
-  $A\subseteq\mathbb{N}$ contained in $[x,\infty)$, the Erd\H{o}s sum satisfies
-  $f(A)\leq 1+C/\log x$. -/)
+  $A\subseteq\mathbb{N}$ contained in $[x,\infty)$, the series defining the
+  Erd\H{o}s sum of $A$ is summable and satisfies $f(A)\leq 1+C/\log x$. -/)
   (proof := /-- The finite theorem \cref{lem:finite-large-primitive-bound}
   supplies an absolute constant for all primitive sets supported in finite
   intervals $[x,X]$. Applying the limiting principle
   \cref{lem:finite-truncation-principle} removes the upper endpoint and gives
-  the stated bound for all primitive sets contained in $[x,\infty)$. -/)
+  both summability and the stated bound for all primitive sets contained in
+  $[x,\infty)$. -/)
   (title := /-- Erd\H{o}s--S\'ark\"ozy--Szemer\'edi problem \#1196 -/)
   (latexEnv := "theorem")]
 theorem erdos_sarkozy_szemeredi_1196 :
@@ -4036,49 +3990,67 @@ lemma eps_modified_chain_subinvariant :
 @[blueprint "lem:eps-modified-chain-hitting-mass-identity"
   (statement := /-- If the modified-chain sub-invariance package holds, then
   the adjoint upward chain started from initial mass $\nu_0$ on the prime layer
-  has hitting mass exactly $\nu_0$ at every natural number.  Consequently every
-  primitive set has Erd\H{o}s sum at most the Erd\H{o}s sum of the prime layer. -/)
+  has hitting mass exactly $\nu_0$ at every natural number.  Consequently the
+  prime-layer Erd\H{o}s series is summable, and every primitive set has a
+  summable Erd\H{o}s series whose sum is at most the Erd\H{o}s sum of the prime
+  layer. -/)
   (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package} and
   form the adjoint upward chain with respect to the weight $\nu_0$.  The
   sub-invariance clause supplies the missing transition mass to the absorbing
   state $\infty$, so the adjoint transition probabilities have total mass one.
-  Start the chain with mass $\nu_0(p)$ at each prime $p$.  Since primes are
-  absorbing for the downward chain, the upward hitting mass equals the initial
-  mass on the prime layer.  The adjoint recursion and induction on the
-  divisibility rank then give hitting mass $\nu_0(n)$ for every $n$.  A
+  Start the chain with mass $\nu_0(p)$ at each prime $p$; this total initial
+  mass is the convergent prime-layer series of \cref{def:prime-layer}.  Since
+  primes are absorbing for the downward chain, the upward hitting mass equals
+  the initial mass on the prime layer.  The adjoint recursion and induction on
+  the divisibility rank then give hitting mass $\nu_0(n)$ for every $n$.  A
   primitive set meets any upward divisibility chain in at most one state, hence
-  the chain-antichain inequality bounds the sum of the hitting masses on the
-  primitive set by the total initial mass on the primes. -/)
+  the chain-antichain inequality bounds every finite partial sum of the
+  nonnegative series defining its Erd\H{o}s sum by the total initial mass on the
+  primes.  The bounded-partial-sums criterion for nonnegative real series gives
+  summability for the primitive set and the resulting inequality of
+  \cref{def:erdos-sum}. -/)
   (title := /-- Hitting masses for the modified adjoint chain -/)
   (latexEnv := "lemma")]
 lemma eps_modified_chain_hitting_mass_identity :
     eps_modified_chain_subinvariant_package ->
-      ∀ A : Set ℕ, primitive_set A -> erdos_sum A ≤ erdos_sum prime_layer := by
+      Summable (fun n : ℕ => prime_layer.indicator erdos_weight n) ∧
+        ∀ A : Set ℕ, primitive_set A ->
+          Summable (fun n : ℕ => A.indicator erdos_weight n) ∧
+            erdos_sum A ≤ erdos_sum prime_layer := by
   sorry
 
 @[blueprint "lem:eps-chain-antichain-bound"
-  (statement := /-- Every primitive set has Erd\H{o}s sum at most the
+  (statement := /-- The prime-layer Erd\H{o}s series is summable, and every
+  primitive set has a summable Erd\H{o}s series whose sum is at most the
   Erd\H{o}s sum of the prime layer. -/)
   (proof := /-- The sub-invariance package is supplied by
   \cref{lem:eps-modified-chain-subinvariant}.  Applying the hitting-mass
   identity \cref{lem:eps-modified-chain-hitting-mass-identity} to this package
-  gives the desired bound for every primitive set. -/)
+  gives the summability of the prime-layer series and, for every primitive set,
+  summability of its Erd\H{o}s series together with the desired bound. -/)
   (title := /-- Chain-antichain bound for the prime layer -/)
   (latexEnv := "lemma")]
 lemma eps_chain_antichain_bound :
-    ∀ A : Set ℕ, primitive_set A -> erdos_sum A ≤ erdos_sum prime_layer := by
+    Summable (fun n : ℕ => prime_layer.indicator erdos_weight n) ∧
+      ∀ A : Set ℕ, primitive_set A ->
+        Summable (fun n : ℕ => A.indicator erdos_weight n) ∧
+          erdos_sum A ≤ erdos_sum prime_layer := by
   sorry_using [eps_modified_chain_subinvariant, eps_modified_chain_hitting_mass_identity]
 
 @[blueprint "thm:erdos-primitive-set-conjecture-164"
-  (statement := /-- For every primitive set $A\subseteq\mathbb N$, the
-  Erd\H{o}s sum of $A$ is at most the Erd\H{o}s sum of the prime layer
+  (statement := /-- The Erd\H{o}s series of the prime layer $\mathbb N_1$ is
+  summable.  For every primitive set $A\subseteq\mathbb N$, the Erd\H{o}s series
+  of $A$ is summable and its sum is at most the Erd\H{o}s sum of the prime layer
   $\mathbb N_1$. -/)
   (proof := /-- This is precisely the chain-antichain bound established in
   \cref{lem:eps-chain-antichain-bound}. -/)
   (title := /-- Erd\H{o}s primitive set conjecture, problem \#164 -/)
   (latexEnv := "theorem")]
 theorem erdos_primitive_set_conjecture_164 :
-    ∀ A : Set ℕ, primitive_set A -> erdos_sum A ≤ erdos_sum prime_layer := by
+    Summable (fun n : ℕ => prime_layer.indicator erdos_weight n) ∧
+      ∀ A : Set ℕ, primitive_set A ->
+        Summable (fun n : ℕ => A.indicator erdos_weight n) ∧
+          erdos_sum A ≤ erdos_sum prime_layer := by
   sorry_using [eps_chain_antichain_bound]
 
 @[blueprint "def:real-initial-segment"
