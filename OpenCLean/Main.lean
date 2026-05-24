@@ -3901,11 +3901,13 @@ lemma finite_large_primitive_bound :
     _ ≤ 1 + C / Real.log x := hC_bound x hx
 
 @[blueprint "lem:finite-truncation-principle"
-  (statement := /-- If there is a real constant $C\geq 0$ such that every
-  primitive set supported in a finite interval $[x,X]$ with $2\leq x\leq X$
-  satisfies $f(A)\leq 1+C/\log x$, then there is a real constant $C\geq 0$ such
-  that, for every primitive set supported in $[x,\infty)$ with $x\geq 2$, the
-  series defining $f(A)$ is summable and $f(A)\leq 1+C/\log x$. -/)
+  (statement := /-- If there exists a nonnegative real constant $C_0$ such that,
+  for every pair of real numbers $x,X$ with $2\leq x\leq X$ and every primitive
+  set $A\subseteq\mathbb N$ supported in $[x,X]$, one has
+  $f(A)\leq 1+C_0/\log x$, then there exists a nonnegative real constant $C_1$
+  such that, for every real number $x\geq 2$ and every primitive set
+  $A\subseteq\mathbb N$ supported in $[x,\infty)$, the series defining $f(A)$ is
+  summable and $f(A)\leq 1+C_1/\log x$. -/)
   (proof := /-- Unpack \cref{def:erdos1196-finite-bound}.  Fix $x\geq 2$ and
   a primitive set $A$ supported above $x$.  For each natural number $N$, put
   $B=A\cap \{0,\ldots,N-1\}$.  By \cref{def:primitive-set}, $B$ is primitive,
@@ -3922,7 +3924,63 @@ lemma finite_large_primitive_bound :
   (latexEnv := "lemma")]
 lemma finite_truncation_principle :
     (∃ C : ℝ, erdos1196_finite_bound C) -> ∃ C : ℝ, erdos1196_bound C := by
-  sorry
+  rintro ⟨C, hC⟩
+  rw [erdos1196_finite_bound] at hC
+  rcases hC with ⟨hC_nonneg, hfinite⟩
+  refine ⟨C, ?_⟩
+  rw [erdos1196_bound]
+  refine ⟨hC_nonneg, ?_⟩
+  intro x hx A hprim hsupp
+  have hnonneg : ∀ n : ℕ, 0 ≤ A.indicator erdos_weight n := by
+    intro n
+    by_cases hnA : n ∈ A
+    · rw [Set.indicator_of_mem hnA]
+      rw [erdos_weight]
+      have hn_two : (2 : ℝ) ≤ (n : ℝ) := le_trans hx (hsupp n hnA)
+      have hn_one : (1 : ℝ) ≤ (n : ℝ) := le_trans (by norm_num) hn_two
+      exact div_nonneg zero_le_one
+        (mul_nonneg (Nat.cast_nonneg n) (Real.log_nonneg hn_one))
+    · rw [Set.indicator_of_notMem hnA]
+  have hpartial_bound : ∀ N : ℕ,
+      (∑ i ∈ Finset.range N, A.indicator erdos_weight i) ≤
+        1 + C / Real.log x := by
+    intro N
+    let B : Set ℕ := A ∩ {n : ℕ | n < N}
+    have hprimB : primitive_set B := by
+      rw [primitive_set] at hprim ⊢
+      exact hprim.subset (by intro n hn; exact hn.1)
+    have hsuppB : supported_in_interval B x (max x (N : ℝ)) := by
+      intro n hn
+      refine ⟨hsupp n hn.1, ?_⟩
+      exact le_trans (by exact_mod_cast Nat.le_of_lt hn.2) (le_max_right x (N : ℝ))
+    have htsumB : erdos_sum B = ∑ i ∈ Finset.range N, B.indicator erdos_weight i := by
+      rw [erdos_sum]
+      exact tsum_eq_sum (s := Finset.range N) (fun n hn => by
+        have hnB : n ∉ B := by
+          intro h
+          exact hn (Finset.mem_range.mpr h.2)
+        simp [Set.indicator_of_notMem hnB])
+    have hsum_eq :
+        (∑ i ∈ Finset.range N, A.indicator erdos_weight i) = erdos_sum B := by
+      rw [htsumB]
+      apply Finset.sum_congr rfl
+      intro i hi
+      have hi_lt : i < N := Finset.mem_range.mp hi
+      by_cases hiA : i ∈ A
+      · have hiB : i ∈ B := ⟨hiA, hi_lt⟩
+        simp [Set.indicator_of_mem hiA, Set.indicator_of_mem hiB]
+      · have hiB : i ∉ B := by
+          intro h
+          exact hiA h.1
+        simp [Set.indicator_of_notMem hiA, Set.indicator_of_notMem hiB]
+    calc
+      (∑ i ∈ Finset.range N, A.indicator erdos_weight i) = erdos_sum B := hsum_eq
+      _ ≤ 1 + C / Real.log x :=
+          hfinite x (max x (N : ℝ)) hx (le_max_left x (N : ℝ)) B hprimB hsuppB
+  have hsumm : Summable (fun n : ℕ => A.indicator erdos_weight n) :=
+    summable_of_sum_range_le hnonneg hpartial_bound
+  refine ⟨hsumm, ?_⟩
+  simpa [erdos_sum] using hsumm.tsum_le_of_sum_range_le hpartial_bound
 
 @[blueprint "thm:erdos-sarkozy-szemeredi-1196"
   (statement := /-- There exists a nonnegative real constant $C$ such that, for
