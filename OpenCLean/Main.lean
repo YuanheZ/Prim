@@ -8807,29 +8807,39 @@ lemma reciprocal_zeta_tendsto_at_top :
   simpa [one_div] using hzeta_re.inv₀ (by norm_num : (1 : ℝ) ≠ 0)
 
 @[blueprint "lem:reciprocal-zeta-ibp-regularity"
-  (statement := /-- The real reciprocal zeta factor and the kernels
-  $s\mapsto n^{-s}$ satisfy the analytic hypotheses needed for improper
-  integration by parts on $(1,\infty)$.  More precisely, the reciprocal zeta
-  factor is differentiable on $(1,\infty)$ with derivative equal to the Lean
-  derivative, its derivative is integrable on $(1,\infty)$, and for every
-  integer $n\geq2$ the function $s\mapsto n^{-s}$ has derivative
-  $-(\log n)n^{-s}$, both products required by integration by parts are
-  integrable, and the boundary product
-  $(\operatorname{Re}\zeta(s))^{-1}n^{-s}$ tends to $0$ at both endpoints. -/)
-  (proof := /-- The endpoint at $1+$ is
-  \cref{lem:reciprocal-zeta-tendsto-one-right}, and the endpoint at infinity
-  is \cref{lem:reciprocal-zeta-tendsto-at-top} combined with the exponential
-  decay of $n^{-s}$ for $n\geq2$.  Differentiability of the reciprocal zeta
-  factor follows from differentiability of $\zeta$ to the right of $1$ and
-  the positivity of its real part there; the derivative identity used to
-  control the derivative kernel is the one isolated in
-  \cref{lem:mangoldt-weight-incoming-integral-bridge-deriv-identity}.  The
-  reciprocal-zeta product kernel is integrable after the translation
-  $u=s-1$ by
-  \cref{lem:mangoldt-weight-integral-change-of-variables-zeta-kernel-integrable}.
-  These estimates give exactly the two product integrability hypotheses and
-  the two endpoint hypotheses required by the improper integration-by-parts
-  theorem on $(1,\infty)$. -/)
+  (statement := /-- Let
+  $u(s)=(\operatorname{Re}\zeta(s))^{-1}$ for real $s>1$.  For every real
+  $s>1$, the function $u$ has derivative $\operatorname{deriv} u(s)$ at $s$,
+  and $s\mapsto \operatorname{deriv} u(s)$ is integrable on $(1,\infty)$.
+  Moreover, for every natural number $n\geq2$, the function
+  $v_n(s)=n^{-s}$ has derivative $-(\log n)/n^s$ at every real $s>1$, the
+  functions $u(s)(-(\log n)/n^s)$ and
+  $(\operatorname{deriv}u(s))n^{-s}$ are integrable on $(1,\infty)$, and the
+  product $u(s)n^{-s}$ tends to $0$ both as $s\to1^+$ and as
+  $s\to+\infty$. -/)
+  (proof := /-- For $s>1$, differentiability of the reciprocal real zeta
+  factor follows from differentiability of $\zeta$ on the real half-line and
+  positivity of its real part.  The derivative is then rewritten by
+  \cref{lem:mangoldt-weight-incoming-integral-bridge-deriv-identity}.  Its
+  integrability is proved by splitting $(1,\infty)$ into $(1,2]$ and
+  $(2,\infty)$.  On the first interval,
+  \cref{lem:reciprocal-zeta-second-order-bound},
+  \cref{lem:von-mangoldt-dirichlet-series-upper-bound}, and the lower bound
+  \cref{lem:mangoldt-weight-integral-change-of-variables-one-le-zeta-re}
+  give a uniform bound.  On the tail,
+  \cref{lem:mangoldt-dirichlet-series-eq-zeta-log-derivative} and
+  \cref{lem:zeta-log-derivative-geometric-bound} bound the Mangoldt series by
+  the geometric logarithmic-derivative kernel, and
+  \cref{lem:two-power-kernel-midpoint-bound-local} makes this kernel dominated
+  by an integrable exponential.  For each $n\geq2$, the kernel $n^{-s}$ is
+  differentiated directly.  The product $u(s)v_n'(s)$ is dominated by
+  $(\log n)n^{-s}$ using
+  \cref{lem:mangoldt-weight-integral-change-of-variables-one-le-zeta-re}, and
+  the product $u'(s)v_n(s)$ follows from the reciprocal-zeta derivative
+  integrability because $n^{-s}$ is bounded on $s>1$.  The endpoint limits are
+  \cref{lem:reciprocal-zeta-tendsto-one-right} at $1+$ and
+  \cref{lem:reciprocal-zeta-tendsto-at-top} at infinity, multiplied by the
+  corresponding continuous or decaying kernel limit. -/)
   (title := /-- Regularity package for reciprocal-zeta integration by parts -/)
   (latexEnv := "lemma")]
 lemma reciprocal_zeta_ibp_regularity :
@@ -8863,9 +8873,347 @@ lemma reciprocal_zeta_ibp_regularity :
         (fun s : ℝ =>
           (1 / ((riemannZeta (s : ℂ)).re)) * (1 / Real.rpow (n : ℝ) s))
         Filter.atTop (nhds (0 : ℝ))) := by
-  sorry_using [reciprocal_zeta_tendsto_one_right, reciprocal_zeta_tendsto_at_top,
-    mangoldt_weight_integral_change_of_variables_zeta_kernel_integrable,
-    mangoldt_weight_incoming_integral_bridge_deriv_identity]
+  have hrec_int : MeasureTheory.IntegrableOn
+      (fun s : ℝ => deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s)
+      (Set.Ioi (1 : ℝ)) := by
+    rcases reciprocal_zeta_second_order_bound with ⟨δ, C₀, hδ_pos, hC₀_nonneg, hlocal⟩
+    let K : ℝ := max C₀ (δ⁻¹ ^ 2 + δ⁻¹)
+    have hK_nonneg : 0 ≤ K := le_trans hC₀_nonneg (le_max_left _ _)
+    have hglobal : ∀ u : ℝ, 0 < u ->
+        |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| ≤ K * u ^ 2 := by
+      intro u hu_pos
+      by_cases hu_le_delta : u ≤ δ
+      · exact le_trans (hlocal u hu_pos hu_le_delta) (by gcongr; exact le_max_left _ _)
+      · have hdelta_lt_u : δ < u := lt_of_not_ge hu_le_delta
+        have hdelta_le_u : δ ≤ u := le_of_lt hdelta_lt_u
+        have hz_pos : 0 < (riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+          exact riemannZeta_re_pos_of_one_lt (by linarith : 1 < 1 + u)
+        have hz_one_le : 1 ≤ (riemannZeta ((1 + u : ℝ) : ℂ)).re :=
+          mangoldt_weight_integral_change_of_variables_one_le_zeta_re
+            (by linarith : 1 < 1 + u)
+        have hrec_nonneg : 0 ≤ 1 / (riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+          exact one_div_nonneg.mpr hz_pos.le
+        have hrec_le_one : 1 / (riemannZeta ((1 + u : ℝ) : ℂ)).re ≤ 1 := by
+          exact (div_le_one₀ hz_pos).2 hz_one_le
+        have herr_linear : |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| ≤ 1 + u := by
+          calc
+            |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| ≤
+                |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)| + |u| := by
+                simpa [sub_eq_add_neg, abs_neg] using
+                  abs_add_le (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) (-u)
+            _ = 1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) + u := by
+                rw [abs_of_nonneg hrec_nonneg, abs_of_pos hu_pos]
+            _ ≤ 1 + u := by linarith
+        have hinv_mul : 1 ≤ δ⁻¹ * u := by
+          have hmul := mul_le_mul_of_nonneg_left hdelta_le_u (le_of_lt (inv_pos.mpr hδ_pos))
+          rwa [inv_mul_cancel₀ hδ_pos.ne'] at hmul
+        have h_one_quad : 1 ≤ δ⁻¹ ^ 2 * u ^ 2 := by
+          nlinarith [sq_nonneg (δ⁻¹ * u), hinv_mul]
+        have h_u_quad : u ≤ δ⁻¹ * u ^ 2 := by
+          have hmul := mul_le_mul_of_nonneg_right hinv_mul hu_pos.le
+          nlinarith
+        have htail_quad : 1 + u ≤ (δ⁻¹ ^ 2 + δ⁻¹) * u ^ 2 := by
+          nlinarith
+        exact le_trans herr_linear (le_trans htail_quad (by gcongr; exact le_max_right _ _))
+    have hmds_nonneg : ∀ u : ℝ, 0 < u -> 0 ≤ mangoldt_dirichlet_series u := by
+      intro u hu
+      exact tsum_nonneg fun q =>
+        div_nonneg ArithmeticFunction.vonMangoldt_nonneg
+          (Real.rpow_nonneg (Nat.cast_nonneg q) (1 + u))
+    have hnear : MeasureTheory.IntegrableOn
+        (fun s : ℝ => deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s)
+        (Set.Ioc (1 : ℝ) 2) := by
+      refine MeasureTheory.IntegrableOn.of_bound (by simp)
+        (aestronglyMeasurable_deriv
+          (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re))
+          (MeasureTheory.volume.restrict (Set.Ioc (1 : ℝ) 2))) (1 + K) ?_
+      filter_upwards [MeasureTheory.ae_restrict_mem
+        (μ := MeasureTheory.volume) (measurableSet_Ioc : MeasurableSet (Set.Ioc (1 : ℝ) 2))] with s hs
+      have hs1 : 1 < s := hs.1
+      have hs2 : s ≤ 2 := hs.2
+      let u : ℝ := s - 1
+      have hu_pos : 0 < u := by dsimp [u]; linarith
+      have hu_le_one : u ≤ 1 := by dsimp [u]; linarith
+      have hone : (1 + u : ℝ) = s := by dsimp [u]; ring
+      have hderiv_eq := mangoldt_weight_incoming_integral_bridge_deriv_identity s hs1
+      have hmds_ge : 0 ≤ mangoldt_dirichlet_series (s - 1) :=
+        hmds_nonneg (s - 1) (by linarith)
+      have hmds_le : mangoldt_dirichlet_series (s - 1) ≤ 1 / (s - 1) :=
+        von_mangoldt_dirichlet_series_upper_bound (s - 1) (by linarith)
+      have hz_pos : 0 < (riemannZeta (s : ℂ)).re := riemannZeta_re_pos_of_one_lt hs1
+      have hrec_nonneg : 0 ≤ 1 / (riemannZeta (s : ℂ)).re := one_div_nonneg.mpr hz_pos.le
+      have hrec_le : 1 / (riemannZeta (s : ℂ)).re ≤ u + K * u ^ 2 := by
+        have hloc := hglobal u hu_pos
+        have hle :
+            1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u ≤ K * u ^ 2 :=
+          le_trans (le_abs_self _) hloc
+        rw [hone] at hle
+        linarith
+      have hrhs_nonneg : 0 ≤ u + K * u ^ 2 := by positivity
+      have hprod_nonneg : 0 ≤
+          (1 / (riemannZeta (s : ℂ)).re) * mangoldt_dirichlet_series (s - 1) :=
+        mul_nonneg hrec_nonneg hmds_ge
+      rw [hderiv_eq, Real.norm_eq_abs, abs_of_nonneg hprod_nonneg]
+      calc
+        (1 / (riemannZeta (s : ℂ)).re) * mangoldt_dirichlet_series (s - 1) ≤
+            (u + K * u ^ 2) * (1 / u) := by
+          simpa [u] using mul_le_mul hrec_le hmds_le hmds_ge hrhs_nonneg
+        _ = 1 + K * u := by
+          field_simp [hu_pos.ne']
+        _ ≤ 1 + K := by
+          nlinarith [mul_le_mul_of_nonneg_left hu_le_one hK_nonneg]
+    have htail : MeasureTheory.IntegrableOn
+        (fun s : ℝ => deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s)
+        (Set.Ioi (2 : ℝ)) := by
+      have hlog2_pos : 0 < Real.log (2 : ℝ) := Real.log_pos (by norm_num)
+      have hrate : -(Real.log (2 : ℝ) / 2) < 0 := by linarith
+      have hexp : MeasureTheory.IntegrableOn
+          (fun s : ℝ => Real.exp ((-(Real.log (2 : ℝ) / 2)) * s))
+          (Set.Ioi (2 : ℝ)) := integrableOn_exp_mul_Ioi hrate 2
+      have hbound_int : MeasureTheory.IntegrableOn
+          (fun s : ℝ => Real.exp (Real.log (2 : ℝ) / 2) *
+            Real.exp ((-(Real.log (2 : ℝ) / 2)) * s))
+          (Set.Ioi (2 : ℝ)) := hexp.const_mul (Real.exp (Real.log (2 : ℝ) / 2))
+      refine hbound_int.mono'
+        (aestronglyMeasurable_deriv
+          (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re))
+          (MeasureTheory.volume.restrict (Set.Ioi (2 : ℝ)))) ?_
+      filter_upwards [MeasureTheory.ae_restrict_mem
+        (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (2 : ℝ)))] with s hs
+      have hs2 : 2 < s := by simpa [Set.mem_Ioi] using hs
+      have hs1 : 1 < s := by linarith
+      let u : ℝ := s - 1
+      have hu_pos : 0 < u := by dsimp [u]; linarith
+      have hu_ge_one : 1 ≤ u := by dsimp [u]; linarith
+      have hderiv_eq := mangoldt_weight_incoming_integral_bridge_deriv_identity s hs1
+      have hz_pos : 0 < (riemannZeta (s : ℂ)).re := riemannZeta_re_pos_of_one_lt hs1
+      have hz_one_le : 1 ≤ (riemannZeta (s : ℂ)).re :=
+        mangoldt_weight_integral_change_of_variables_one_le_zeta_re hs1
+      have hrec_nonneg : 0 ≤ 1 / (riemannZeta (s : ℂ)).re := one_div_nonneg.mpr hz_pos.le
+      have hrec_le_one : 1 / (riemannZeta (s : ℂ)).re ≤ 1 :=
+        (div_le_one₀ hz_pos).2 hz_one_le
+      have hmds_ge : 0 ≤ mangoldt_dirichlet_series (s - 1) :=
+        hmds_nonneg (s - 1) (by linarith)
+      have hmds_le_geom : mangoldt_dirichlet_series u ≤
+          Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) := by
+        have hseries :
+            mangoldt_dirichlet_series u =
+              ((- deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+                riemannZeta ((1 + u : ℝ) : ℂ)).re) := by
+          simpa using congrArg Complex.re
+            (mangoldt_dirichlet_series_eq_zeta_log_derivative u hu_pos)
+        calc
+          mangoldt_dirichlet_series u =
+              ((- deriv riemannZeta ((1 + u : ℝ) : ℂ) /
+                riemannZeta ((1 + u : ℝ) : ℂ)).re) := hseries
+          _ ≤ Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) :=
+              zeta_log_derivative_geometric_bound u hu_pos
+      have hpow_gt_one : 1 < Real.rpow (2 : ℝ) u := by
+        exact (Real.one_lt_rpow_iff (by norm_num : 0 ≤ (2 : ℝ))).2
+          (Or.inl ⟨by norm_num, hu_pos⟩)
+      have hden_pos : 0 < Real.rpow (2 : ℝ) u - 1 := by linarith
+      have hgeom_nonneg : 0 ≤ Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) :=
+        div_nonneg hlog2_pos.le hden_pos.le
+      have hgeom_le_mul :
+          Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) ≤
+            u * (Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1)) := by
+        nlinarith [mul_le_mul_of_nonneg_right hu_ge_one hgeom_nonneg]
+      have hgeom_le_exp :
+          Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) ≤
+            Real.exp (Real.log (2 : ℝ) / 2) *
+              Real.exp ((-(Real.log (2 : ℝ) / 2)) * s) := by
+        calc
+          Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) ≤
+              u * (Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1)) := hgeom_le_mul
+          _ ≤ Real.rpow (2 : ℝ) (-(u / 2)) := by
+            simpa [mul_div_assoc] using two_power_kernel_midpoint_bound_local u hu_pos
+          _ = Real.exp (Real.log (2 : ℝ) / 2) *
+              Real.exp ((-(Real.log (2 : ℝ) / 2)) * s) := by
+            dsimp [u]
+            rw [Real.rpow_def_of_pos (by norm_num : (0 : ℝ) < 2)]
+            rw [← Real.exp_add]
+            congr 1
+            ring
+      have hprod_nonneg : 0 ≤
+          (1 / (riemannZeta (s : ℂ)).re) * mangoldt_dirichlet_series (s - 1) :=
+        mul_nonneg hrec_nonneg hmds_ge
+      rw [hderiv_eq, Real.norm_eq_abs, abs_of_nonneg hprod_nonneg]
+      calc
+        (1 / (riemannZeta (s : ℂ)).re) * mangoldt_dirichlet_series (s - 1) ≤
+            Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) := by
+          calc
+            (1 / (riemannZeta (s : ℂ)).re) * mangoldt_dirichlet_series (s - 1) ≤
+                1 * (Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1)) := by
+              exact mul_le_mul hrec_le_one (by simpa [u] using hmds_le_geom) hmds_ge zero_le_one
+            _ = Real.log (2 : ℝ) / (Real.rpow (2 : ℝ) u - 1) := by ring
+        _ ≤ Real.exp (Real.log (2 : ℝ) / 2) *
+            Real.exp ((-(Real.log (2 : ℝ) / 2)) * s) := hgeom_le_exp
+    have hcover : Set.Ioi (1 : ℝ) = Set.Ioc (1 : ℝ) 2 ∪ Set.Ioi (2 : ℝ) := by
+      ext s
+      constructor
+      · intro hs
+        by_cases hs2 : s ≤ 2
+        · exact Or.inl ⟨hs, hs2⟩
+        · exact Or.inr (lt_of_not_ge hs2)
+      · rintro (⟨hs, _⟩ | hs)
+        · exact hs
+        · have hs' : 2 < s := by simpa [Set.mem_Ioi] using hs
+          exact (by simpa [Set.mem_Ioi] using (by linarith : (1 : ℝ) < s))
+    rw [hcover]
+    exact hnear.union htail
+  refine ⟨?hrec_deriv, hrec_int, ?hkernels⟩
+  · intro s hs
+    have hs' : 1 < s := by simpa [Set.mem_Ioi] using hs
+    have hz_pos : 0 < (riemannZeta (s : ℂ)).re := riemannZeta_re_pos_of_one_lt hs'
+    have hz_diff : DifferentiableAt ℂ riemannZeta (s : ℂ) :=
+      differentiableAt_riemannZeta (by
+        norm_num [Complex.ext_iff]
+        linarith)
+    have hbase_has : HasDerivAt
+        (fun t : ℝ => (riemannZeta (t : ℂ)).re)
+        (deriv riemannZeta (s : ℂ)).re s := by
+      change HasDerivAt (fun t : ℝ => (riemannZeta (t : ℂ)).re)
+        (deriv riemannZeta (s : ℂ)).re s
+      exact hz_diff.hasDerivAt.real_of_complex
+    have hhas : HasDerivAt
+        (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re))
+        (-(deriv riemannZeta (s : ℂ)).re / ((riemannZeta (s : ℂ)).re) ^ 2) s := by
+      simpa [one_div] using (hbase_has.inv hz_pos.ne')
+    exact hhas.differentiableAt.hasDerivAt
+  · intro n hn
+    have hn_pos_nat : 0 < n := lt_of_lt_of_le (by norm_num : 0 < 2) hn
+    have hn_pos : 0 < (n : ℝ) := by exact_mod_cast hn_pos_nat
+    have hlog_pos : 0 < Real.log (n : ℝ) := by
+      exact Real.log_pos (by exact_mod_cast hn : (1 : ℝ) < n)
+    refine ⟨?hker_deriv, ?huv_int, ?hduv_int, ?hlim_one, ?hlim_top⟩
+    · intro s hs
+      have hbase_pos : 0 < (n : ℝ)⁻¹ := inv_pos.mpr hn_pos
+      have hder : HasDerivAt
+          (fun t : ℝ => ((n : ℝ)⁻¹) ^ t)
+          (Real.log ((n : ℝ)⁻¹) * 1 * ((n : ℝ)⁻¹) ^ s) s := by
+        simpa using (hasDerivAt_id s).const_rpow hbase_pos
+      have hfun : (fun t : ℝ => 1 / Real.rpow (n : ℝ) t) =
+          (fun t : ℝ => ((n : ℝ)⁻¹) ^ t) := by
+        funext t
+        simpa [one_div] using (Real.inv_rpow hn_pos.le t).symm
+      rw [hfun]
+      convert hder using 1
+      rw [Real.log_inv]
+      rw [Real.inv_rpow hn_pos.le]
+      simp [div_eq_mul_inv, mul_assoc]
+    · have hbase_int : MeasureTheory.IntegrableOn
+          (fun s : ℝ => Real.log (n : ℝ) / Real.rpow (n : ℝ) s)
+          (Set.Ioi (1 : ℝ)) := by
+        have hrate : -Real.log (n : ℝ) < 0 := by linarith
+        have hexp : MeasureTheory.IntegrableOn
+            (fun s : ℝ => Real.exp ((-Real.log (n : ℝ)) * s))
+            (Set.Ioi (1 : ℝ)) := integrableOn_exp_mul_Ioi hrate 1
+        have hscaled := hexp.const_mul (Real.log (n : ℝ))
+        have hfun : (fun s : ℝ => Real.log (n : ℝ) / Real.rpow (n : ℝ) s) =
+            fun s : ℝ => Real.log (n : ℝ) * Real.exp ((-Real.log (n : ℝ)) * s) := by
+          funext s
+          change Real.log (n : ℝ) / ((n : ℝ) ^ s) =
+            Real.log (n : ℝ) * Real.exp ((-Real.log (n : ℝ)) * s)
+          rw [Real.rpow_def_of_pos hn_pos]
+          field_simp [(Real.exp_pos (Real.log (n : ℝ) * s)).ne']
+          rw [← Real.exp_add]
+          ring_nf
+          simp
+        rw [hfun]
+        exact hscaled
+      have hz_cont : ContinuousOn
+          (fun s : ℝ => (riemannZeta (s : ℂ)).re) (Set.Ioi (1 : ℝ)) := by
+        intro s hs
+        have hs' : 1 < s := by simpa [Set.mem_Ioi] using hs
+        have hz_diff : DifferentiableAt ℂ riemannZeta (s : ℂ) :=
+          differentiableAt_riemannZeta (by
+            norm_num [Complex.ext_iff]
+            linarith)
+        exact (Complex.continuous_re.continuousAt.comp
+          (hz_diff.continuousAt.comp Complex.continuous_ofReal.continuousAt)).continuousWithinAt
+      have hrec_cont : ContinuousOn
+          (fun s : ℝ => 1 / ((riemannZeta (s : ℂ)).re)) (Set.Ioi (1 : ℝ)) := by
+        simpa [one_div] using hz_cont.inv₀ (by
+          intro s hs
+          exact (riemannZeta_re_pos_of_one_lt (by simpa [Set.mem_Ioi] using hs)).ne')
+      have hpow_cont : Continuous (fun s : ℝ => Real.rpow (n : ℝ) s) :=
+        Real.continuous_const_rpow hn_pos.ne'
+      have hfactor_cont : Continuous (fun s : ℝ => -(Real.log (n : ℝ) / Real.rpow (n : ℝ) s)) := by
+        exact (continuous_const.div hpow_cont (fun s => (Real.rpow_pos_of_pos hn_pos s).ne')).neg
+      have htarget_meas : MeasureTheory.AEStronglyMeasurable
+          (fun s : ℝ =>
+            (1 / ((riemannZeta (s : ℂ)).re)) *
+              (-(Real.log (n : ℝ) / Real.rpow (n : ℝ) s)))
+          (MeasureTheory.volume.restrict (Set.Ioi (1 : ℝ))) := by
+        exact (hrec_cont.mul hfactor_cont.continuousOn).aestronglyMeasurable measurableSet_Ioi
+      refine hbase_int.mono' htarget_meas ?_
+      filter_upwards [MeasureTheory.ae_restrict_mem
+        (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (1 : ℝ)))] with s hs
+      have hs' : 1 < s := by simpa [Set.mem_Ioi] using hs
+      have hz_pos : 0 < (riemannZeta (s : ℂ)).re := riemannZeta_re_pos_of_one_lt hs'
+      have hz_one_le : 1 ≤ (riemannZeta (s : ℂ)).re :=
+        mangoldt_weight_integral_change_of_variables_one_le_zeta_re hs'
+      have hrec_nonneg : 0 ≤ 1 / (riemannZeta (s : ℂ)).re := one_div_nonneg.mpr hz_pos.le
+      have hrec_le_one : 1 / (riemannZeta (s : ℂ)).re ≤ 1 :=
+        (div_le_one₀ hz_pos).2 hz_one_le
+      have hpow_pos : 0 < Real.rpow (n : ℝ) s := Real.rpow_pos_of_pos hn_pos s
+      have hbase_nonneg : 0 ≤ Real.log (n : ℝ) / Real.rpow (n : ℝ) s :=
+        div_nonneg hlog_pos.le hpow_pos.le
+      rw [Real.norm_eq_abs, abs_mul, abs_neg, abs_of_nonneg hrec_nonneg,
+        abs_of_nonneg hbase_nonneg]
+      exact mul_le_of_le_one_left hbase_nonneg hrec_le_one
+    · have hderiv_int : MeasureTheory.Integrable
+          (fun s : ℝ => deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s)
+          (MeasureTheory.volume.restrict (Set.Ioi (1 : ℝ))) := hrec_int
+      have hkernel_meas : MeasureTheory.AEStronglyMeasurable
+          (fun s : ℝ => 1 / Real.rpow (n : ℝ) s)
+          (MeasureTheory.volume.restrict (Set.Ioi (1 : ℝ))) := by
+        have hcont_pow : Continuous (fun s : ℝ => Real.rpow (n : ℝ) s) :=
+          Real.continuous_const_rpow hn_pos.ne'
+        have hcont : Continuous (fun s : ℝ => 1 / Real.rpow (n : ℝ) s) := by
+          exact continuous_const.div hcont_pow (fun s => (Real.rpow_pos_of_pos hn_pos s).ne')
+        exact hcont.aestronglyMeasurable
+      have hkernel_bound : ∀ᵐ s ∂MeasureTheory.volume.restrict (Set.Ioi (1 : ℝ)),
+          ‖1 / Real.rpow (n : ℝ) s‖ ≤ (1 : ℝ) := by
+        filter_upwards [MeasureTheory.ae_restrict_mem
+          (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (1 : ℝ)))] with s hs
+        have hs' : 1 < s := by simpa [Set.mem_Ioi] using hs
+        have hpow_ge_one : 1 ≤ Real.rpow (n : ℝ) s := by
+          have hn_ge_one : (1 : ℝ) ≤ (n : ℝ) := by exact_mod_cast (by omega : 1 ≤ n)
+          have hn_gt_one : (1 : ℝ) < n := by exact_mod_cast (by omega : 1 < n)
+          exact ((Real.one_lt_rpow_iff hn_pos.le).2 (Or.inl ⟨hn_gt_one, by linarith⟩)).le
+        have hpow_pos : 0 < Real.rpow (n : ℝ) s := Real.rpow_pos_of_pos hn_pos s
+        rw [Real.norm_eq_abs, abs_of_nonneg (one_div_nonneg.mpr hpow_pos.le)]
+        exact (div_le_one₀ hpow_pos).2 hpow_ge_one
+      exact hderiv_int.mul_bdd hkernel_meas hkernel_bound
+    · have hf := reciprocal_zeta_tendsto_one_right
+      have hkernel : Filter.Tendsto
+          (fun s : ℝ => 1 / Real.rpow (n : ℝ) s)
+          (nhdsWithin (1 : ℝ) (Set.Ioi (1 : ℝ)))
+          (nhds (1 / Real.rpow (n : ℝ) (1 : ℝ))) := by
+        have hcont : ContinuousAt (fun s : ℝ => 1 / Real.rpow (n : ℝ) s) 1 := by
+          have hcont_pow : ContinuousAt (fun s : ℝ => Real.rpow (n : ℝ) s) 1 :=
+            Real.continuousAt_const_rpow hn_pos.ne'
+          exact continuousAt_const.div hcont_pow (Real.rpow_pos_of_pos hn_pos (1 : ℝ)).ne'
+        exact hcont.tendsto.mono_left nhdsWithin_le_nhds
+      have hmul := hf.mul hkernel
+      have hzero : (0 : ℝ) * (1 / Real.rpow (n : ℝ) (1 : ℝ)) = 0 := by ring
+      simpa [hzero] using hmul
+    · have hf := reciprocal_zeta_tendsto_at_top
+      have hbase_pos : 0 < (n : ℝ)⁻¹ := inv_pos.mpr hn_pos
+      have hbase_gt : -1 < (n : ℝ)⁻¹ := by linarith [hbase_pos]
+      have hbase_lt : (n : ℝ)⁻¹ < 1 := by
+        have hn_gt_one : (1 : ℝ) < n := by exact_mod_cast (by omega : 1 < n)
+        exact inv_lt_one_of_one_lt₀ hn_gt_one
+      have hkernel' : Filter.Tendsto (fun s : ℝ => ((n : ℝ)⁻¹) ^ s)
+          Filter.atTop (nhds (0 : ℝ)) :=
+        tendsto_rpow_atTop_of_base_lt_one ((n : ℝ)⁻¹) hbase_gt hbase_lt
+      have hkernel : Filter.Tendsto
+          (fun s : ℝ => 1 / Real.rpow (n : ℝ) s)
+          Filter.atTop (nhds (0 : ℝ)) := by
+        simpa [one_div, Real.inv_rpow hn_pos.le] using hkernel'
+      have hmul := hf.mul hkernel
+      simpa using hmul
 
 @[blueprint "lem:reciprocal-zeta-derivative-integral-one"
   (statement := /-- The improper integral of the derivative of the real
