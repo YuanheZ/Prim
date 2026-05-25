@@ -5043,19 +5043,368 @@ lemma reciprocal_zeta_second_order_bound :
       _ ≤ (u * B) * (2 * u) := by gcongr
       _ = 2 * B * u ^ 2 := by ring
 
+@[blueprint "lem:mangoldt-weight-integral-change-of-variables-ioi-translate-one"
+  (statement := /-- For every real-valued function $F$ on the real line,
+  translating by $s=u+1$ carries the integral of $F$ over $(1,\infty)$ to the
+  integral of $F(u+1)$ over $(0,\infty)$. -/)
+  (proof := /-- Rewrite both set integrals as whole-line integrals of indicator
+  functions.  Translation-invariance of Lebesgue measure changes the left
+  integral into the integral of the same indicator after the map $u\mapsto u+1$.
+  The indicators agree pointwise because $1<u+1$ is equivalent to $0<u$. -/)
+  (title := /-- Translating an open ray by one -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_integral_change_of_variables_ioi_translate_one (F : ℝ → ℝ) :
+    (∫ s : ℝ in Set.Ioi (1 : ℝ), F s) =
+      ∫ u : ℝ in Set.Ioi (0 : ℝ), F (u + 1) := by
+  rw [← MeasureTheory.integral_indicator
+    (measurableSet_Ioi : MeasurableSet (Set.Ioi (1 : ℝ)))]
+  rw [← MeasureTheory.integral_add_right_eq_self
+    (f := (Set.Ioi (1 : ℝ)).indicator F) (g := (1 : ℝ))]
+  rw [← MeasureTheory.integral_indicator
+    (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))]
+  apply MeasureTheory.integral_congr_ae
+  filter_upwards with u
+  by_cases hu : 0 < u
+  · have hmem1 : u + 1 ∈ Set.Ioi (1 : ℝ) := by
+      simpa [Set.mem_Ioi] using add_lt_add_right hu (1 : ℝ)
+    have hmem0 : u ∈ Set.Ioi (0 : ℝ) := by
+      simpa [Set.mem_Ioi] using hu
+    simp [Set.indicator_of_mem hmem1, Set.indicator_of_mem hmem0]
+  · have hnot1 : u + 1 ∉ Set.Ioi (1 : ℝ) := by
+      simp [Set.mem_Ioi] at hu ⊢
+      linarith
+    have hnot0 : u ∉ Set.Ioi (0 : ℝ) := by
+      simpa [Set.mem_Ioi] using hu
+    simp [Set.indicator_of_notMem hnot1, Set.indicator_of_notMem hnot0]
+
+@[blueprint "lem:mangoldt-weight-integral-change-of-variables-erdos-laplace"
+  (statement := /-- For every natural number $n$ with $n\geq2$, the Erd\H{o}s
+  weight is
+  \[
+    \nu_0(n)={1\over n}\int_0^\infty u\log n\,n^{-u}\,du.
+  \] -/)
+  (proof := /-- By \cref{def:erdos-weight}, $\nu_0(n)=1/(n\log n)$.  Since
+  $n\geq2$, $\log n>0$, and \cref{lem:log-square-integral-kernel-local}
+  applied with $r=\log n$ gives
+  $\int_0^\infty u e^{-(\log n)u}\,du=1/(\log n)^2$.  Rewriting
+  $n^{-u}$ as $e^{-(\log n)u}$ and multiplying by $\log n/n$ gives the stated
+  identity. -/)
+  (title := /-- Laplace formula for the Erd\H{o}s weight -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_integral_change_of_variables_erdos_laplace
+    (n : ℕ) (hn : 2 ≤ n) :
+    erdos_weight n =
+      (1 / (n : ℝ)) *
+        (∫ u : ℝ in Set.Ioi (0 : ℝ),
+          Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) * u) := by
+  have hn_pos_nat : 0 < n := lt_of_lt_of_le (by norm_num : 0 < 2) hn
+  have hn_pos : 0 < (n : ℝ) := by
+    exact_mod_cast hn_pos_nat
+  have hlog_pos : 0 < Real.log (n : ℝ) := by
+    exact Real.log_pos (by exact_mod_cast hn : (1 : ℝ) < n)
+  have hkernel :
+      (∫ u : ℝ in Set.Ioi (0 : ℝ),
+          Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) * u) =
+        1 / Real.log (n : ℝ) := by
+    have hfun :
+        (fun u : ℝ => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) * u) =
+          fun u : ℝ => Real.log (n : ℝ) *
+            (u * Real.exp (-(Real.log (n : ℝ) * u))) := by
+      funext u
+      change Real.log (n : ℝ) * ((n : ℝ) ^ (-u)) * u =
+        Real.log (n : ℝ) * (u * Real.exp (-(Real.log (n : ℝ) * u)))
+      rw [Real.rpow_def_of_pos hn_pos]
+      ring_nf
+    calc
+      (∫ u : ℝ in Set.Ioi (0 : ℝ),
+          Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) * u)
+          = ∫ u : ℝ in Set.Ioi (0 : ℝ),
+              Real.log (n : ℝ) * (u * Real.exp (-(Real.log (n : ℝ) * u))) := by
+              rw [hfun]
+      _ = Real.log (n : ℝ) *
+            (∫ u : ℝ in Set.Ioi (0 : ℝ),
+              u * Real.exp (-(Real.log (n : ℝ) * u))) := by
+              rw [MeasureTheory.integral_const_mul]
+      _ = Real.log (n : ℝ) * (1 / Real.log (n : ℝ) ^ 2) := by
+              rw [log_square_integral_kernel_local (Real.log (n : ℝ)) hlog_pos]
+      _ = 1 / Real.log (n : ℝ) := by
+              field_simp [hlog_pos.ne']
+  rw [erdos_weight, hkernel]
+  field_simp [hlog_pos.ne', hn_pos.ne']
+
+@[blueprint "lem:mangoldt-weight-integral-change-of-variables-mangoldt-laplace"
+  (statement := /-- For every natural number $n$ with $n\geq2$, the invariant
+  von Mangoldt weight satisfies
+  \[
+    \nu_\Lambda(n)={1\over n}\int_0^\infty
+      {\log n\,n^{-u}\over \operatorname{Re}\zeta(1+u)}\,du,
+  \]
+  where the zeta value is interpreted on the real axis. -/)
+  (proof := /-- Since $n\geq2$, the nontrivial branch of
+  \cref{def:mangoldt-weight} is the integral over $s>1$.  Apply
+  \cref{lem:mangoldt-weight-integral-change-of-variables-ioi-translate-one}
+  with $s=u+1$.  The identity $n^{u+1}=n\,n^u$ and
+  $n^{-u}=(n^u)^{-1}$ then rewrites the translated integrand as
+  $n^{-1}\log n\,n^{-u}/\operatorname{Re}\zeta(1+u)$, and the constant factor
+  $n^{-1}$ is pulled outside the integral. -/)
+  (title := /-- Laplace formula for the invariant von Mangoldt weight -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_integral_change_of_variables_mangoldt_laplace
+    (n : ℕ) (hn : 2 ≤ n) :
+    mangoldt_weight n =
+      (1 / (n : ℝ)) *
+        (∫ u : ℝ in Set.Ioi (0 : ℝ),
+          Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re))) := by
+  have hn_ne_one : n ≠ 1 := by omega
+  have hn_pos_nat : 0 < n := lt_of_lt_of_le (by norm_num : 0 < 2) hn
+  have hn_pos : 0 < (n : ℝ) := by
+    exact_mod_cast hn_pos_nat
+  rw [mangoldt_weight, if_neg hn_ne_one]
+  rw [mangoldt_weight_integral_change_of_variables_ioi_translate_one]
+  rw [← MeasureTheory.integral_const_mul]
+  apply MeasureTheory.integral_congr_ae
+  filter_upwards [MeasureTheory.ae_restrict_mem
+    (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))] with u hu
+  have hu_pos : 0 < u := by
+    simpa [Set.mem_Ioi] using hu
+  have hz_pos : 0 < (riemannZeta ((u + 1 : ℝ) : ℂ)).re := by
+    exact riemannZeta_re_pos_of_one_lt (by linarith : 1 < u + 1)
+  have hz_pos' : 0 < (riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+    exact riemannZeta_re_pos_of_one_lt (by linarith : 1 < 1 + u)
+  have hrpow_pos : 0 < Real.rpow (n : ℝ) u := Real.rpow_pos_of_pos hn_pos u
+  have hrpow_add_pos : 0 < Real.rpow (n : ℝ) (u + 1) :=
+    Real.rpow_pos_of_pos hn_pos (u + 1)
+  rw [show (↑(u + 1 : ℝ) : ℂ) = ((1 + u : ℝ) : ℂ) by norm_num [add_comm]]
+  change Real.log (n : ℝ) /
+      ((riemannZeta ((1 + u : ℝ) : ℂ)).re * ((n : ℝ) ^ (u + 1))) =
+    1 / (n : ℝ) *
+      (Real.log (n : ℝ) * ((n : ℝ) ^ (-u)) *
+        (1 / (riemannZeta ((1 + u : ℝ) : ℂ)).re))
+  rw [Real.rpow_add hn_pos u 1, Real.rpow_one]
+  rw [Real.rpow_neg hn_pos.le u]
+  field_simp [hz_pos'.ne', hn_pos.ne', hrpow_pos.ne']
+
+@[blueprint "lem:mangoldt-weight-integral-change-of-variables-one-le-zeta-re"
+  (statement := /-- If $x>1$ is real, then
+  $1\leq \operatorname{Re}\zeta(x)$. -/)
+  (proof := /-- Use the absolutely convergent Dirichlet-series expansion of the
+  Riemann zeta function on the half-plane $\operatorname{Re}s>1$.  On the real
+  axis every term $(n+1)^{-x}$ is nonnegative, and the first term is exactly
+  $1$, so the real part of the whole sum is at least $1$. -/)
+  (title := /-- The real zeta value is at least one to the right of one -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_integral_change_of_variables_one_le_zeta_re
+    {x : ℝ} (hx : 1 < x) :
+    1 ≤ (riemannZeta (x : ℂ)).re := by
+  let f : ℕ → ℝ := fun n => (1 / (((n + 1 : ℕ) : ℂ) ^ (x : ℂ))).re
+  have hxC : 1 < ((x : ℂ).re) := by
+    simpa using hx
+  have hfC : Summable (fun n : ℕ => 1 / (((n + 1 : ℕ) : ℂ) ^ (x : ℂ))) := by
+    simpa using
+      (summable_nat_add_iff (f := fun n : ℕ => 1 / ((n : ℂ) ^ (x : ℂ))) 1).2
+        (Complex.summable_one_div_nat_cpow.mpr hxC)
+  have hf : Summable f := by
+    simpa [f] using Complex.reCLM.summable hfC
+  have hf_nonneg : ∀ n : ℕ, 0 ≤ f n := by
+    intro n
+    have hterm : f n = 1 / (((n + 1 : ℕ) : ℝ) ^ x) := by
+      have hbase_nonneg : 0 ≤ ((n + 1 : ℕ) : ℝ) := by positivity
+      calc
+        f n = (1 / (((((n + 1 : ℕ) : ℝ) : ℂ) ^ (x : ℂ)))).re := by
+          simp [f]
+        _ = (1 / ((((n + 1 : ℕ) : ℝ) ^ x : ℝ) : ℂ)).re := by
+          rw [← Complex.ofReal_cpow hbase_nonneg x]
+        _ = 1 / (((n + 1 : ℕ) : ℝ) ^ x) := by
+          simp
+    rw [hterm]
+    positivity
+  have hle_tsum : f 0 ≤ ∑' n : ℕ, f n := by
+    have htail_nonneg : 0 ≤ ∑' n : ℕ, f (n + 1) := by
+      exact tsum_nonneg fun n => hf_nonneg (n + 1)
+    have hsum_split : (∑' n : ℕ, f n) = f 0 + ∑' n : ℕ, f (n + 1) := by
+      exact hf.tsum_eq_zero_add
+    rw [hsum_split]
+    exact le_add_of_nonneg_right htail_nonneg
+  have hf_zero : f 0 = 1 := by
+    simp [f]
+  have hzeta : (riemannZeta (x : ℂ)).re = ∑' n : ℕ, f n := by
+    rw [zeta_eq_tsum_one_div_nat_add_one_cpow (s := (x : ℂ)) hxC]
+    simpa [f, Nat.cast_add, Nat.cast_one] using Complex.re_tsum hfC
+  linarith
+
+@[blueprint "lem:mangoldt-weight-integral-change-of-variables-erdos-kernel-integrable"
+  (statement := /-- For every natural number $n$ with $n\geq2$, the kernel
+  $u\mapsto \log n\,n^{-u}u$ is integrable on $(0,\infty)$. -/)
+  (proof := /-- Since $n\geq2$, $\log n>0$.  Rewriting $n^{-u}$ as
+  $e^{-(\log n)u}$ identifies the kernel,
+  up to the constant factor $\log n$, with the integrable kernel supplied by
+  \cref{lem:log-square-integral-kernel-integrable-local}. -/)
+  (title := /-- Integrability of the Erd\H{o}s Laplace kernel -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_integral_change_of_variables_erdos_kernel_integrable
+    (n : ℕ) (hn : 2 ≤ n) :
+    MeasureTheory.IntegrableOn
+      (fun u : ℝ => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) * u)
+      (Set.Ioi 0) := by
+  have hn_pos_nat : 0 < n := lt_of_lt_of_le (by norm_num : 0 < 2) hn
+  have hn_pos : 0 < (n : ℝ) := by
+    exact_mod_cast hn_pos_nat
+  have hlog_pos : 0 < Real.log (n : ℝ) := by
+    exact Real.log_pos (by exact_mod_cast hn : (1 : ℝ) < n)
+  have hfun :
+      (fun u : ℝ => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) * u) =
+        fun u : ℝ => Real.log (n : ℝ) *
+          (u * Real.exp (-(Real.log (n : ℝ) * u))) := by
+    funext u
+    change Real.log (n : ℝ) * ((n : ℝ) ^ (-u)) * u =
+      Real.log (n : ℝ) * (u * Real.exp (-(Real.log (n : ℝ) * u)))
+    rw [Real.rpow_def_of_pos hn_pos]
+    ring_nf
+  rw [hfun]
+  exact (log_square_integral_kernel_integrable_local
+    (Real.log (n : ℝ)) hlog_pos).const_mul (Real.log (n : ℝ))
+
+@[blueprint "lem:mangoldt-weight-integral-change-of-variables-zeta-kernel-integrable"
+  (statement := /-- For every natural number $n$ with $n\geq2$, the kernel
+  $u\mapsto \log n\,n^{-u}/\operatorname{Re}\zeta(1+u)$ is integrable on
+  $(0,\infty)$. -/)
+  (proof := /-- The function $u\mapsto \log n\,n^{-u}$ is an integrable
+  exponential on $(0,\infty)$ because $\log n>0$.  For $u>0$,
+  \cref{lem:mangoldt-weight-integral-change-of-variables-one-le-zeta-re}
+  gives $1\leq\operatorname{Re}\zeta(1+u)$, while positivity of the same zeta
+  value gives $0\leq1/\operatorname{Re}\zeta(1+u)\leq1$.  The reciprocal-zeta
+  kernel is therefore dominated in norm by the integrable exponential kernel. -/)
+  (title := /-- Integrability of the reciprocal-zeta Laplace kernel -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_integral_change_of_variables_zeta_kernel_integrable
+    (n : ℕ) (hn : 2 ≤ n) :
+    MeasureTheory.IntegrableOn
+      (fun u : ℝ => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+        (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)))
+      (Set.Ioi 0) := by
+  have hn_pos_nat : 0 < n := lt_of_lt_of_le (by norm_num : 0 < 2) hn
+  have hn_pos : 0 < (n : ℝ) := by
+    exact_mod_cast hn_pos_nat
+  have hlog_pos : 0 < Real.log (n : ℝ) := by
+    exact Real.log_pos (by exact_mod_cast hn : (1 : ℝ) < n)
+  have hbase_int : MeasureTheory.IntegrableOn
+      (fun u : ℝ => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u))
+      (Set.Ioi 0) := by
+    have hexp : MeasureTheory.IntegrableOn
+        (fun u : ℝ => Real.exp ((-Real.log (n : ℝ)) * u))
+        (Set.Ioi 0) := by
+      exact integrableOn_exp_mul_Ioi (by linarith : -Real.log (n : ℝ) < 0) 0
+    have hfun :
+        (fun u : ℝ => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u)) =
+          fun u : ℝ => Real.log (n : ℝ) *
+            Real.exp ((-Real.log (n : ℝ)) * u) := by
+      funext u
+      change Real.log (n : ℝ) * ((n : ℝ) ^ (-u)) =
+        Real.log (n : ℝ) * Real.exp ((-Real.log (n : ℝ)) * u)
+      rw [Real.rpow_def_of_pos hn_pos]
+      ring_nf
+    rw [hfun]
+    exact hexp.const_mul (Real.log (n : ℝ))
+  refine MeasureTheory.Integrable.mono' hbase_int ?_ ?_
+  · have hfun_meas :
+        (fun u : ℝ => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+          (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re))) =
+          fun u : ℝ => Real.log (n : ℝ) *
+            Real.exp ((-Real.log (n : ℝ)) * u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) := by
+      funext u
+      change Real.log (n : ℝ) * ((n : ℝ) ^ (-u)) *
+          (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) =
+        Real.log (n : ℝ) * Real.exp ((-Real.log (n : ℝ)) * u) *
+          (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re))
+      rw [Real.rpow_def_of_pos hn_pos]
+      ring_nf
+    rw [hfun_meas]
+    have hzeta_cont : ContinuousOn
+        (fun u : ℝ => riemannZeta ((1 + u : ℝ) : ℂ)) (Set.Ioi (0 : ℝ)) := by
+      intro u hu
+      have hu_pos : 0 < u := by
+        simpa [Set.mem_Ioi] using hu
+      have hne : ((1 + u : ℝ) : ℂ) ≠ 1 := by
+        norm_num [Complex.ext_iff]
+        linarith
+      have hzeta_ofReal_cont : ContinuousAt
+          (fun y : ℝ => riemannZeta (y : ℂ)) (1 + u) := by
+        simpa [Function.comp_def] using
+          (differentiableAt_riemannZeta hne).continuousAt.comp
+            Complex.continuous_ofReal.continuousAt
+      have hlin : ContinuousAt (fun u : ℝ => 1 + u) u := by
+        fun_prop
+      simpa [Function.comp_def] using
+        (hzeta_ofReal_cont.comp hlin).continuousWithinAt
+    have hden_cont : ContinuousOn
+        (fun u : ℝ => (riemannZeta ((1 + u : ℝ) : ℂ)).re) (Set.Ioi (0 : ℝ)) := by
+      simpa [Function.comp_def] using Complex.continuous_re.comp_continuousOn hzeta_cont
+    have hrec_cont : ContinuousOn
+        (fun u : ℝ => 1 / (riemannZeta ((1 + u : ℝ) : ℂ)).re) (Set.Ioi (0 : ℝ)) := by
+      have hinv := hden_cont.inv₀ (fun u hu => by
+        exact (riemannZeta_re_pos_of_one_lt (by
+          have hu_pos : 0 < u := by simpa [Set.mem_Ioi] using hu
+          linarith : 1 < 1 + u)).ne')
+      simpa [one_div] using hinv
+    have hnum_cont : ContinuousOn
+        (fun u : ℝ => Real.log (n : ℝ) * Real.exp ((-Real.log (n : ℝ)) * u))
+        (Set.Ioi (0 : ℝ)) := by
+      fun_prop
+    exact (hnum_cont.mul hrec_cont).aestronglyMeasurable measurableSet_Ioi
+  · filter_upwards [MeasureTheory.ae_restrict_mem
+      (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))] with u hu
+    have hu_pos : 0 < u := by
+      simpa [Set.mem_Ioi] using hu
+    have hz_pos : 0 < (riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+      exact riemannZeta_re_pos_of_one_lt (by linarith : 1 < 1 + u)
+    have hz_one_le : 1 ≤ (riemannZeta ((1 + u : ℝ) : ℂ)).re :=
+      mangoldt_weight_integral_change_of_variables_one_le_zeta_re
+        (by linarith : 1 < 1 + u)
+    have hrec_nonneg : 0 ≤ 1 / (riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+      exact one_div_nonneg.mpr hz_pos.le
+    have hrec_le_one : 1 / (riemannZeta ((1 + u : ℝ) : ℂ)).re ≤ 1 := by
+      exact (div_le_one₀ hz_pos).2 hz_one_le
+    have hrpow_nonneg : 0 ≤ Real.rpow (n : ℝ) (-u) :=
+      Real.rpow_nonneg hn_pos.le (-u)
+    have hbase_nonneg : 0 ≤ Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) :=
+      mul_nonneg hlog_pos.le hrpow_nonneg
+    have hprod_nonneg :
+        0 ≤ Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+          (1 / (riemannZeta ((1 + u : ℝ) : ℂ)).re) :=
+      mul_nonneg hbase_nonneg hrec_nonneg
+    rw [Real.norm_of_nonneg hprod_nonneg]
+    exact mul_le_of_le_one_right hbase_nonneg hrec_le_one
+
 @[blueprint "lem:mangoldt-weight-integral-change-of-variables"
-  (statement := /-- For every $n\geq2$, subtracting the Erd\H{o}s weight from
-  the invariant von Mangoldt weight is the Laplace integral obtained from the
-  change of variables $s=1+u$ and from the identity
-  $1/(n\log n)=n^{-1}\int_0^\infty u\log n\,n^{-u}\,du$. -/)
-  (proof := /-- Since $n\geq2$, the defining branch of
-  \cref{def:mangoldt-weight} is the integral over $s>1$.  Substitute
-  $s=1+u$ to rewrite it as
-  $n^{-1}\int_0^\infty \log n\,n^{-u}/\zeta(1+u)\,du$.  The elementary
-  Laplace identity for the same kernel gives
-  \cref{def:erdos-weight} as
-  $n^{-1}\int_0^\infty u\log n\,n^{-u}\,du$.  Subtracting the two integrals
-  gives the stated formula. -/)
+  (statement := /-- For every natural number $n$ with $n\geq 2$, the
+  discrepancy between the invariant von Mangoldt weight and the Erd\H{o}s
+  weight is
+  \[
+    \nu_\Lambda(n)-\nu_0(n)
+      = {1\over n}\int_0^\infty
+        \log n\, n^{-u}\left({1\over \operatorname{Re}\zeta(1+u)}-u\right)
+        \,du,
+  \]
+  where the zeta factor is interpreted as the real part of Mathlib's
+  complex-valued Riemann zeta function on the real axis. -/)
+  (proof := /-- Fix a natural number $n$ with $n\geq2$.  The identity
+  \cref{lem:mangoldt-weight-integral-change-of-variables-mangoldt-laplace}
+  rewrites $\nu_\Lambda(n)$ as $n^{-1}$ times the reciprocal-zeta Laplace
+  integral, and
+  \cref{lem:mangoldt-weight-integral-change-of-variables-erdos-laplace}
+  rewrites $\nu_0(n)$ as $n^{-1}$ times the elementary Erd\H{o}s Laplace
+  integral.  The integrability hypotheses needed to subtract these two
+  integrals are supplied by
+  \cref{lem:mangoldt-weight-integral-change-of-variables-zeta-kernel-integrable}
+  and
+  \cref{lem:mangoldt-weight-integral-change-of-variables-erdos-kernel-integrable}.
+  Linearity of the Bochner integral gives the integral of the difference of the
+  two kernels, and the pointwise identity
+  $\log n\,n^{-u}/\operatorname{Re}\zeta(1+u)-\log n\,n^{-u}u
+   =\log n\,n^{-u}(1/\operatorname{Re}\zeta(1+u)-u)$
+  gives the displayed formula. -/)
   (title := /-- Laplace form of the Mangoldt--Erd\H{o}s discrepancy -/)
   (latexEnv := "lemma")]
 lemma mangoldt_weight_integral_change_of_variables :
@@ -5065,7 +5414,42 @@ lemma mangoldt_weight_integral_change_of_variables :
           (∫ u : ℝ in Set.Ioi 0,
             Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
               (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u)) := by
-  sorry
+  intro n hn
+  let f : ℝ → ℝ := fun u => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+    (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re))
+  let g : ℝ → ℝ := fun u => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) * u
+  have hz_int : MeasureTheory.IntegrableOn f (Set.Ioi 0) := by
+    simpa [f] using mangoldt_weight_integral_change_of_variables_zeta_kernel_integrable n hn
+  have he_int : MeasureTheory.IntegrableOn g (Set.Ioi 0) := by
+    simpa [g] using mangoldt_weight_integral_change_of_variables_erdos_kernel_integrable n hn
+  have hsub := MeasureTheory.integral_sub
+    (μ := MeasureTheory.volume.restrict (Set.Ioi (0 : ℝ))) hz_int he_int
+  rw [mangoldt_weight_integral_change_of_variables_mangoldt_laplace n hn,
+    mangoldt_weight_integral_change_of_variables_erdos_laplace n hn]
+  change (1 / (n : ℝ)) * (∫ u : ℝ in Set.Ioi 0, f u) -
+      (1 / (n : ℝ)) * (∫ u : ℝ in Set.Ioi 0, g u) =
+    (1 / (n : ℝ)) *
+      (∫ u : ℝ in Set.Ioi 0,
+        Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+          (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u))
+  calc
+    (1 / (n : ℝ)) * (∫ u : ℝ in Set.Ioi 0, f u) -
+        (1 / (n : ℝ)) * (∫ u : ℝ in Set.Ioi 0, g u)
+        = (1 / (n : ℝ)) *
+          ((∫ u : ℝ in Set.Ioi 0, f u) - (∫ u : ℝ in Set.Ioi 0, g u)) := by
+          ring
+    _ = (1 / (n : ℝ)) *
+          (∫ u : ℝ in Set.Ioi 0, f u - g u) := by
+          rw [← hsub]
+    _ = (1 / (n : ℝ)) *
+          (∫ u : ℝ in Set.Ioi 0,
+            Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+              (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u)) := by
+          congr 1
+          apply MeasureTheory.integral_congr_ae
+          filter_upwards with u
+          dsimp [f, g]
+          ring
 
 @[blueprint "lem:mangoldt-weight-laplace-error-bound"
   (statement := /-- There is a constant $C\geq0$ such that the absolute value
