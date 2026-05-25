@@ -5561,17 +5561,36 @@ lemma mangoldt_weight_integral_change_of_variables :
           ring
 
 @[blueprint "lem:mangoldt-weight-laplace-error-bound"
-  (statement := /-- There is a constant $C\geq0$ such that the absolute value
-  of the exact Laplace discrepancy integral for every $n\geq2$ is at most
-  $C/(n(\log n)^2)$. -/)
-  (proof := /-- Split the integral at the fixed right-neighborhood supplied by
-  \cref{lem:reciprocal-zeta-second-order-bound}.  On the near interval, the
-  reciprocal-zeta error is at most a constant times $u^2$, so the Laplace
-  integral is bounded by a constant multiple of
-  $n^{-1}\log n\int_0^\infty u^2 n^{-u}\,du$, which is
-  $O(1/(n(\log n)^2))$.  On the remaining interval the reciprocal-zeta factor
-  is bounded, and the exponential factor $n^{-u}$ gives an error smaller than
-  the same comparison after enlarging the constant. -/)
+  (statement := /-- There is a real constant $C\geq0$ such that, for every
+  natural number $n\geq2$,
+  \[
+    \left|{1\over n}\int_0^\infty (\log n)n^{-u}
+      \left({1\over \operatorname{Re}(\zeta(1+u))}-u\right)\,du\right|
+    \leq {C\over n(\log n)^2},
+  \]
+  where $1+u$ is viewed as a complex number in the zeta factor. -/)
+  (proof := /-- Let $\delta>0$ and $C_0\geq0$ be supplied by
+  \cref{lem:reciprocal-zeta-second-order-bound}.  For $0<u\leq\delta$ this
+  gives the bound $|1/\operatorname{Re}\zeta(1+u)-u|\leq C_0u^2$.  For
+  $u>\delta$, \cref{lem:mangoldt-weight-integral-change-of-variables-one-le-zeta-re}
+  gives $1\leq\operatorname{Re}\zeta(1+u)$, hence
+  $0\leq1/\operatorname{Re}\zeta(1+u)\leq1$ and
+  $|1/\operatorname{Re}\zeta(1+u)-u|\leq1+u$.  Since $u>\delta$, the last
+  quantity is at most $(\delta^{-2}+\delta^{-1})u^2$.  Thus, with
+  $K=\max(C_0,\delta^{-2}+\delta^{-1})$, the reciprocal-zeta error is bounded
+  by $Ku^2$ for every $u>0$.
+
+  Fix $n\geq2$ and put $L=\log n>0$.  The integral norm inequality and the
+  nonnegativity of $Ln^{-u}$ give
+  \[
+    \left|{1\over n}\int_0^\infty Ln^{-u}
+      \left({1\over\operatorname{Re}\zeta(1+u)}-u\right)\,du\right|
+    \leq {K\over n}\int_0^\infty Ln^{-u}u^2\,du.
+  \]
+  Rewriting $n^{-u}=e^{-Lu}$ and evaluating the Gamma integral yields
+  $\int_0^\infty Ln^{-u}u^2\,du=2/L^2$.  Therefore the displayed expression is
+  at most $(2K)/(n(\log n)^2)$, which is the claimed bound with constant
+  $2K\geq0$. -/)
   (title := /-- Uniform Laplace error bound for the Mangoldt weight -/)
   (latexEnv := "lemma")]
 lemma mangoldt_weight_laplace_error_bound :
@@ -5581,7 +5600,162 @@ lemma mangoldt_weight_laplace_error_bound :
           Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
             (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u))| ≤
         C * (1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2)) := by
-  sorry_using [reciprocal_zeta_second_order_bound]
+  rcases reciprocal_zeta_second_order_bound with ⟨δ, C₀, hδ_pos, hC₀_nonneg, hlocal⟩
+  let K : ℝ := max C₀ (δ⁻¹ ^ 2 + δ⁻¹)
+  have hK_nonneg : 0 ≤ K := le_trans hC₀_nonneg (le_max_left _ _)
+  have hglobal : ∀ u : ℝ, 0 < u ->
+      |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| ≤ K * u ^ 2 := by
+    intro u hu_pos
+    by_cases hu_le_delta : u ≤ δ
+    · exact le_trans (hlocal u hu_pos hu_le_delta) (by gcongr; exact le_max_left _ _)
+    · have hdelta_lt_u : δ < u := lt_of_not_ge hu_le_delta
+      have hdelta_le_u : δ ≤ u := le_of_lt hdelta_lt_u
+      have hz_pos : 0 < (riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+        exact riemannZeta_re_pos_of_one_lt (by linarith : 1 < 1 + u)
+      have hz_one_le : 1 ≤ (riemannZeta ((1 + u : ℝ) : ℂ)).re :=
+        mangoldt_weight_integral_change_of_variables_one_le_zeta_re
+          (by linarith : 1 < 1 + u)
+      have hrec_nonneg : 0 ≤ 1 / (riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+        exact one_div_nonneg.mpr hz_pos.le
+      have hrec_le_one : 1 / (riemannZeta ((1 + u : ℝ) : ℂ)).re ≤ 1 := by
+        exact (div_le_one₀ hz_pos).2 hz_one_le
+      have herr_linear : |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| ≤ 1 + u := by
+        calc
+          |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| ≤
+              |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)| + |u| := by
+              simpa [sub_eq_add_neg, abs_neg] using
+                abs_add_le (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) (-u)
+          _ = 1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) + u := by
+              rw [abs_of_nonneg hrec_nonneg, abs_of_pos hu_pos]
+          _ ≤ 1 + u := by linarith
+      have hinv_mul : 1 ≤ δ⁻¹ * u := by
+        have hmul := mul_le_mul_of_nonneg_left hdelta_le_u (le_of_lt (inv_pos.mpr hδ_pos))
+        rwa [inv_mul_cancel₀ hδ_pos.ne'] at hmul
+      have h_one_quad : 1 ≤ δ⁻¹ ^ 2 * u ^ 2 := by
+        nlinarith [sq_nonneg (δ⁻¹ * u), hinv_mul]
+      have h_u_quad : u ≤ δ⁻¹ * u ^ 2 := by
+        have hmul := mul_le_mul_of_nonneg_right hinv_mul hu_pos.le
+        nlinarith
+      have htail_quad : 1 + u ≤ (δ⁻¹ ^ 2 + δ⁻¹) * u ^ 2 := by
+        nlinarith
+      exact le_trans herr_linear (le_trans htail_quad (by gcongr; exact le_max_right _ _))
+  refine ⟨2 * K, by nlinarith [hK_nonneg], ?_⟩
+  intro n hn
+  have hn_pos_nat : 0 < n := lt_of_lt_of_le (by norm_num : 0 < 2) hn
+  have hn_pos : 0 < (n : ℝ) := by exact_mod_cast hn_pos_nat
+  have hlog_pos : 0 < Real.log (n : ℝ) := by
+    exact Real.log_pos (by exact_mod_cast hn : (1 : ℝ) < n)
+  let L : ℝ := Real.log (n : ℝ)
+  have hL_pos : 0 < L := by simpa [L] using hlog_pos
+  have hquad_base_int : MeasureTheory.IntegrableOn
+      (fun u : ℝ => u ^ 2 * Real.exp (-(L * u))) (Set.Ioi 0) := by
+    have hhalf_ne : L / 2 ≠ 0 := by positivity
+    have hrate_pos : -L + L / 2 < 0 := by linarith
+    have hrate_neg : -L - L / 2 < 0 := by linarith
+    have hint_pos : MeasureTheory.Integrable
+        (fun u : ℝ => Real.exp ((-L + L / 2) * u))
+        (MeasureTheory.volume.restrict (Set.Ioi 0)) :=
+      integrableOn_exp_mul_Ioi hrate_pos 0
+    have hint_neg : MeasureTheory.Integrable
+        (fun u : ℝ => Real.exp ((-L - L / 2) * u))
+        (MeasureTheory.volume.restrict (Set.Ioi 0)) :=
+      integrableOn_exp_mul_Ioi hrate_neg 0
+    have h := ProbabilityTheory.integrable_pow_mul_exp_of_integrable_exp_mul
+      (μ := MeasureTheory.volume.restrict (Set.Ioi 0))
+      (X := fun u : ℝ => u) (v := -L) (t := L / 2)
+      hhalf_ne hint_pos hint_neg 2
+    simpa [pow_two, mul_comm, mul_left_comm, mul_assoc] using h
+  have hquad_int : MeasureTheory.Integrable
+      (fun u : ℝ => L * Real.rpow (n : ℝ) (-u) * (K * u ^ 2))
+      (MeasureTheory.volume.restrict (Set.Ioi 0)) := by
+    have hscaled := hquad_base_int.const_mul (K * L)
+    convert hscaled using 1
+    ext u
+    change L * ((n : ℝ) ^ (-u)) * (K * u ^ 2) = K * L * (u ^ 2 * Real.exp (-(L * u)))
+    rw [Real.rpow_def_of_pos hn_pos]
+    simp [L, mul_comm, mul_left_comm, mul_assoc]
+  have hquad_base_eval :
+      (∫ u : ℝ in Set.Ioi 0, u ^ 2 * Real.exp (-(L * u))) = 2 / L ^ 3 := by
+    have h := Real.integral_rpow_mul_exp_neg_mul_Ioi
+      (a := (3 : ℝ)) (r := L) (by norm_num) hL_pos
+    calc
+      (∫ u : ℝ in Set.Ioi 0, u ^ 2 * Real.exp (-(L * u))) =
+          ∫ u : ℝ in Set.Ioi 0, u ^ ((3 : ℝ) - 1) * Real.exp (-(L * u)) := by
+            apply MeasureTheory.setIntegral_congr_fun measurableSet_Ioi
+            intro u hu
+            have hu_nonneg : 0 ≤ u := le_of_lt (by simpa [Set.mem_Ioi] using hu)
+            norm_num [Real.rpow_natCast, hu_nonneg]
+      _ = (1 / L) ^ (3 : ℝ) * Real.Gamma 3 := h
+      _ = 2 / L ^ 3 := by
+            norm_num [Real.Gamma_ofNat_eq_factorial]
+            field_simp [hL_pos.ne']
+  have hquad_eval :
+      (∫ u : ℝ in Set.Ioi 0, L * Real.rpow (n : ℝ) (-u) * (K * u ^ 2)) =
+        K * (2 / L ^ 2) := by
+    have hfun : (fun u : ℝ => L * Real.rpow (n : ℝ) (-u) * (K * u ^ 2)) =
+        fun u : ℝ => (K * L) * (u ^ 2 * Real.exp (-(L * u))) := by
+      funext u
+      change L * ((n : ℝ) ^ (-u)) * (K * u ^ 2) = K * L * (u ^ 2 * Real.exp (-(L * u)))
+      rw [Real.rpow_def_of_pos hn_pos]
+      simp [L, mul_comm, mul_left_comm, mul_assoc]
+    calc
+      (∫ u : ℝ in Set.Ioi 0, L * Real.rpow (n : ℝ) (-u) * (K * u ^ 2)) =
+          ∫ u : ℝ in Set.Ioi 0, (K * L) * (u ^ 2 * Real.exp (-(L * u))) := by
+            rw [hfun]
+      _ = (K * L) * (∫ u : ℝ in Set.Ioi 0, u ^ 2 * Real.exp (-(L * u))) := by
+            rw [MeasureTheory.integral_const_mul]
+      _ = (K * L) * (2 / L ^ 3) := by rw [hquad_base_eval]
+      _ = K * (2 / L ^ 2) := by
+            field_simp [hL_pos.ne']
+  have hintegral_bound :
+      |∫ u : ℝ in Set.Ioi 0,
+        L * Real.rpow (n : ℝ) (-u) *
+          (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u)| ≤ K * (2 / L ^ 2) := by
+    have hnorm := MeasureTheory.norm_integral_le_of_norm_le
+      (μ := MeasureTheory.volume.restrict (Set.Ioi 0))
+      (f := fun u : ℝ => L * Real.rpow (n : ℝ) (-u) *
+        (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u))
+      (g := fun u : ℝ => L * Real.rpow (n : ℝ) (-u) * (K * u ^ 2))
+      hquad_int ?_
+    · change ‖∫ u : ℝ in Set.Ioi 0,
+        L * Real.rpow (n : ℝ) (-u) *
+          (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u)‖ ≤
+          (∫ u : ℝ in Set.Ioi 0, L * Real.rpow (n : ℝ) (-u) * (K * u ^ 2)) at hnorm
+      rw [hquad_eval] at hnorm
+      simpa [Real.norm_eq_abs] using hnorm
+    · filter_upwards [MeasureTheory.ae_restrict_mem
+        (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))] with u hu
+      have hu_pos : 0 < u := by simpa [Set.mem_Ioi] using hu
+      have hrpow_nonneg : 0 ≤ Real.rpow (n : ℝ) (-u) := Real.rpow_nonneg hn_pos.le (-u)
+      have hbase_nonneg : 0 ≤ L * Real.rpow (n : ℝ) (-u) := mul_nonneg hL_pos.le hrpow_nonneg
+      have herr := hglobal u hu_pos
+      calc
+        ‖L * Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u)‖ =
+            |L * Real.rpow (n : ℝ) (-u) *
+              (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u)| := by
+              rw [Real.norm_eq_abs]
+        _ = L * Real.rpow (n : ℝ) (-u) *
+              |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| := by
+              rw [abs_mul, abs_of_nonneg hbase_nonneg]
+        _ ≤ L * Real.rpow (n : ℝ) (-u) * (K * u ^ 2) := by
+              exact mul_le_mul_of_nonneg_left herr hbase_nonneg
+  have hscale_nonneg : 0 ≤ 1 / (n : ℝ) := by positivity
+  calc
+    |(1 / (n : ℝ)) *
+        (∫ u : ℝ in Set.Ioi 0,
+          Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u))| =
+        (1 / (n : ℝ)) *
+          |∫ u : ℝ in Set.Ioi 0,
+            L * Real.rpow (n : ℝ) (-u) *
+              (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u)| := by
+          rw [abs_mul, abs_of_nonneg hscale_nonneg]
+    _ ≤ (1 / (n : ℝ)) * (K * (2 / L ^ 2)) := by
+          exact mul_le_mul_of_nonneg_left hintegral_bound hscale_nonneg
+    _ = (2 * K) * (1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2)) := by
+          field_simp [hn_pos.ne', hL_pos.ne']
+          simp [L]
 
 @[blueprint "lem:mangoldt-weight-erdos-pointwise-error-bound"
   (statement := /-- There is an absolute constant $C\geq0$ such that, for every
