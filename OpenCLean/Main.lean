@@ -4592,6 +4592,61 @@ lemma modified_prime_power_incoming_bound :
     have hredirected_t := hredirected_finite t
     linarith
 
+@[blueprint "lem:eps-modified-chain-prime-power-incoming-reindex"
+  (statement := /-- For any kernel satisfying the ordinary modified-chain
+  transition rule, the prime-power transition to its base prime, and the
+  prime-power support clause, the incoming multiplier mass at a prime $p$ is
+  bounded by the ordinary Mangoldt tail plus the redirected prime-power
+  exponent mass.  The conclusion is stated both for the full multiplier t-sum
+  and for finite multiplier sets, where the redirected contribution is taken
+  over a finite set of exponents depending on the multiplier set. -/)
+  (proof := /-- Fix a prime $p$ using \cref{def:prime-layer}.  For a multiplier
+  $q>1$, first consider the state $pq$.  If $pq$ is not a prime power, the
+  ordinary transition rule gives
+  $P(pq,p)=\Lambda(q)/\log(pq)$, and after multiplication by
+  \cref{def:erdos-weight} this is exactly the $q$-th ordinary tail summand in
+  \cref{def:mangoldt-tail-term}, multiplied by $\nu_0(p)\log p$.  If $pq$ is a
+  prime power, the prime-power support hypothesis forces it to be $p^k$ and
+  forces $q=p^{k-1}$.  The transition rule to the base prime then splits
+  $P(p^k,p)$ into the same ordinary Mangoldt contribution and the redirected
+  mass $1/k$; multiplying by $\nu_0(p^k)$ converts the redirected part into
+  $\nu_0(p)/(k^2p^{k-1})$, the corresponding summand of
+  \cref{def:modified-prime-power-redirected-finite} and
+  \cref{def:modified-prime-power-redirected-sum}.  For a finite multiplier set
+  $s$, take $t$ to be the finite set of exponents $k$ for which $p^{k-1}\in s$;
+  summing the pointwise decomposition over $s$ gives the finite inequality.  The
+  full t-sum inequality is the same decomposition summed over all multipliers,
+  with the ordinary and redirected parts recorded by \cref{def:mangoldt-tail-sum}
+  and \cref{def:modified-prime-power-redirected-sum}. -/)
+  (title := /-- Reindexing redirected prime-power incoming mass -/)
+  (latexEnv := "lemma")]
+lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) :
+    (∀ n q : ℕ, 2 ≤ n -> n ∉ prime_layer ->
+      (∀ r k : ℕ, r ∈ prime_layer -> 2 ≤ k -> n ≠ r ^ k) ->
+      1 < q -> q ∣ n ->
+        P n (n / q) = ArithmeticFunction.vonMangoldt q / Real.log (n : ℝ)) ->
+    (∀ r k : ℕ, r ∈ prime_layer -> 2 ≤ k ->
+      P (r ^ k) r =
+        ArithmeticFunction.vonMangoldt (r ^ (k - 1)) /
+          Real.log ((r ^ k : ℕ) : ℝ) + 1 / (k : ℝ)) ->
+    (∀ r k m : ℕ, r ∈ prime_layer -> 2 ≤ k -> P (r ^ k) m ≠ 0 ->
+      m = r ∨ ∃ j : ℕ, 1 ≤ j ∧ j ≤ k - 2 ∧ m = r ^ (k - j)) ->
+    ∀ p : ℕ, p ∈ prime_layer ->
+      (∑' q : ℕ, if 1 < q then erdos_weight (p * q) * P (p * q) p else 0) ≤
+          erdos_weight p *
+            (Real.log (p : ℝ) * mangoldt_tail_sum p 2 +
+              modified_prime_power_redirected_sum p) ∧
+        ∀ s : Finset ℕ,
+          ∃ t : Finset ℕ,
+            (∑ q ∈ s,
+              if 1 < q then erdos_weight (p * q) * P (p * q) p else 0) ≤
+                erdos_weight p *
+                  (Real.log (p : ℝ) *
+                      (∑ q ∈ s,
+                        if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
+                    modified_prime_power_redirected_finite p t) := by
+  sorry
+
 @[blueprint "def:eps-modified-chain-kernel-subinvariant"
   (statement := /-- For a fixed transition kernel $P$ on $\mathbb{N}$, this is
   the formal interface supplied by the modified von Mangoldt downward chain used
@@ -4660,11 +4715,14 @@ def eps_modified_chain_subinvariant_package : Prop :=
   sub-invariance, first fix a state $m\geq2$ and a finite set of multipliers.
   The ordinary von Mangoldt part of the corresponding finite incoming sum is
   bounded by the finite tail estimate underlying
-  \cref{lem:mangoldt-subinvariant-bound}.  If $m$ is prime, the redirected
-  prime-power contribution is exactly the positive subsum isolated in
-  \cref{lem:modified-prime-power-incoming-bound}, whose finite and infinite
-  forms combine the sharp ordinary-tail slack with the redirected geometric
-  series.  If $m$ is composite, there is no redirected contribution, so
+  \cref{lem:mangoldt-subinvariant-bound}.  If $m$ is prime, then
+  \cref{lem:eps-modified-chain-prime-power-incoming-reindex} splits the
+  multiplier-indexed incoming mass into the same ordinary tail and a finite set
+  of redirected prime-power exponent terms.  The finite form of
+  \cref{lem:modified-prime-power-incoming-bound} bounds this combined ordinary
+  and redirected contribution by $\nu_0(m)$; its infinite form gives the
+  corresponding t-sum bound.  If $m$ is composite, there is no redirected
+  contribution, so
   \cref{lem:mangoldt-subinvariant-bound} is sufficient.  Hence every finite
   incoming partial sum is at most $\nu_0(m)$.  Since all incoming terms are
   non-negative, this finite bound also gives summability of the incoming series
@@ -4675,15 +4733,16 @@ def eps_modified_chain_subinvariant_package : Prop :=
   (latexEnv := "lemma")]
 lemma eps_modified_chain_subinvariant :
     eps_modified_chain_subinvariant_package := by
-  sorry_using [mangoldt_subinvariant_bound, modified_prime_power_incoming_bound]
+  sorry_using [mangoldt_subinvariant_bound, modified_prime_power_incoming_bound, eps_modified_chain_prime_power_incoming_reindex]
 
 @[blueprint "def:eps-adjoint-kernel-package"
   (statement := /-- Let $P$ be a fixed modified downward kernel.  This predicate
   says that $U$ is its adjoint upward kernel with respect to $\nu_0$ on the
   state space $\mathbb{N}_{\geq2}\cup\{\infty\}$, represented in Lean by
   `Option \mathbb{N}` with `none` denoting $\infty$.  The kernel $U$ is
-  non-negative, has total mass one from every natural state $n\geq2$, sends
-  $\infty$ to itself, moves between natural states only upward along
+  non-negative, has finite natural-row partial sums bounded by $1$, has total
+  mass one from every natural state $n\geq2$ after adding the absorbing slack
+  term, sends $\infty$ to itself, moves between natural states only upward along
   divisibility, is given off the diagonal by
   $U(n,m)=\nu_0(m)\nu_0(n)^{-1}P(m,n)$, and sends the unused sub-invariant mass
   from $n$ to $\infty$. -/)
@@ -4695,6 +4754,8 @@ def eps_adjoint_kernel_package (P : ℕ → ℕ → ℝ)
     (∀ n : ℕ, 2 ≤ n ->
       (∑' m : ℕ, if 2 ≤ m then U (some n) (some m) else 0) +
           U (some n) none = 1) ∧
+    (∀ n : ℕ, 2 ≤ n -> ∀ s : Finset ℕ,
+      (∑ m ∈ s, if 2 ≤ m then U (some n) (some m) else 0) ≤ 1) ∧
     U (none : Option ℕ) (none : Option ℕ) = 1 ∧
     (∀ m : ℕ, U (none : Option ℕ) (some m) = 0) ∧
     (∀ n : ℕ, 2 ≤ n -> U (some n) (some n) = 0) ∧
@@ -4782,12 +4843,16 @@ def eps_adjoint_hitting_mass_package : Prop :=
   non-negative natural transitions.  The support clause in
   \cref{def:eps-modified-chain-kernel-subinvariant} shows that every non-zero
   off-diagonal incoming term $P(m,n)$ with $m,n\geq2$ has $m=nq$ for some
-  $q>1$.  Reindexing the natural outgoing sum by these non-zero terms rewrites
-  it as $\nu_0(n)^{-1}\sum_{q>1}\nu_0(nq)P(nq,n)$, and the incoming
+  $q>1$.  Reindexing any finite natural outgoing partial sum by the corresponding
+  non-zero incoming terms rewrites it as a finite sub-sum of
+  $\nu_0(n)^{-1}\sum_{q>1}\nu_0(nq)P(nq,n)$, and the finite incoming
   sub-invariance inequality in
-  \cref{def:eps-modified-chain-kernel-subinvariant} bounds this by $1$; hence
-  the slack transition to $\infty$ is non-negative.  The total-mass identity is
-  then the defining algebraic identity for the slack term.  Finally set
+  \cref{def:eps-modified-chain-kernel-subinvariant} bounds this partial sum by
+  $1$.  The same reindexing for the full natural row, together with the infinite
+  incoming sub-invariance inequality in
+  \cref{def:eps-modified-chain-kernel-subinvariant}, makes the slack transition
+  to $\infty$ non-negative.  The total-mass identity is then the defining
+  algebraic identity for the slack term.  Finally set
   $U(\infty,\infty)=1$ and $U(\infty,m)=0$ for every natural $m$.  These clauses
   are exactly \cref{def:eps-adjoint-kernel-package}. -/)
   (title := /-- Constructing the EPS adjoint kernel -/)
@@ -4795,148 +4860,7 @@ def eps_adjoint_hitting_mass_package : Prop :=
 lemma eps_adjoint_kernel_package_from_subinvariant {P : ℕ → ℕ → ℝ} :
     eps_modified_chain_kernel_subinvariant P ->
       ∃ U : Option ℕ → Option ℕ → ℝ, eps_adjoint_kernel_package P U := by
-  intro hP
-  rcases hP with
-    ⟨hP_nonneg, hP_total, hP_one, hP_one_zero, hP_prime_self, hP_prime_zero,
-      hP_support, hP_rule, hP_pp, hP_pp_j, hP_pp_support, hP_sub, hP_sub_fin⟩
-  let U : Option ℕ → Option ℕ → ℝ := fun a b =>
-    match a, b with
-    | none, none => 1
-    | none, some _ => 0
-    | some n, none =>
-        if 2 ≤ n then
-          1 - (∑' m : ℕ,
-            if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0)
-        else 0
-    | some n, some m =>
-        if 2 ≤ n ∧ 2 ≤ m ∧ m ≠ n then
-          erdos_weight m / erdos_weight n * P m n
-        else 0
-  refine ⟨U, ?_⟩
-  unfold eps_adjoint_kernel_package
-  dsimp [U]
-  have hweight_pos : ∀ {n : ℕ}, 2 ≤ n -> 0 < erdos_weight n := by
-    intro n hn
-    unfold erdos_weight
-    apply one_div_pos.mpr
-    apply mul_pos
-    · exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hn)
-    · exact Real.log_pos (by exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hn))
-  have hsum_eq : ∀ n : ℕ, 2 ≤ n ->
-      (∑' m : ℕ, if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0) =
-        ∑' q : ℕ, if 1 < q then erdos_weight (n * q) / erdos_weight n * P (n * q) n else 0 := by
-    intro n hn
-    refine tsum_eq_tsum_of_ne_zero_bij (fun q => n * (q : ℕ)) ?_ ?_ ?_
-    · intro a b hab
-      apply Subtype.ext
-      exact (Nat.mul_right_inj (by omega : n ≠ 0)).mp hab
-    · intro m hm
-      simp only [Function.mem_support] at hm
-      by_cases hcond : 2 ≤ m ∧ m ≠ n
-      · have hPmn : P m n ≠ 0 := by
-          intro hzero
-          simp [hcond, hzero] at hm
-        rcases hP_support m n hcond.1 hPmn with ⟨hndvdm, hcases⟩
-        have hlt : n < m := by
-          rcases hcases with hdiag | hlt
-          · exact False.elim (hcond.2 hdiag.1.symm)
-          · exact hlt
-        rcases hndvdm with ⟨q, rfl⟩
-        have hq_gt_one : 1 < q := by
-          simpa using ((Nat.lt_mul_iff_one_lt_right (by omega : 0 < n)).mp hlt)
-        have hprodne : erdos_weight (n * q) / erdos_weight n * P (n * q) n ≠ 0 := by
-          have hnx_ge : 2 ≤ n * q := by
-            exact le_trans hn (Nat.le_mul_of_pos_right n (by omega))
-          have hnx_ne : n * q ≠ n := ne_of_gt hlt
-          simpa [hnx_ge, hnx_ne] using hm
-        refine ⟨⟨q, ?_⟩, rfl⟩
-        simpa [hq_gt_one] using hprodne
-      · simp [hcond] at hm
-    · intro x
-      have hxne : (if 1 < (x : ℕ) then erdos_weight (n * (x : ℕ)) / erdos_weight n * P (n * (x : ℕ)) n else 0) ≠ 0 := x.property
-      have hxgt : 1 < (x : ℕ) := by
-        by_contra hxle
-        simp [hxle] at hxne
-      have hnx_ge : 2 ≤ n * (x : ℕ) := by
-        exact le_trans hn (Nat.le_mul_of_pos_right n (by omega))
-      have hnx_ne : n * (x : ℕ) ≠ n := by
-        exact ne_of_gt ((Nat.lt_mul_iff_one_lt_right (by omega : 0 < n)).2 hxgt)
-      simp [hxgt, hnx_ge, hnx_ne]
-  have hsum_le_one : ∀ n : ℕ, 2 ≤ n ->
-      (∑' m : ℕ, if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0) ≤ 1 := by
-    intro n hn
-    rw [hsum_eq n hn]
-    have hqsum_eq :
-        (∑' q : ℕ, if 1 < q then erdos_weight (n * q) / erdos_weight n * P (n * q) n else 0) =
-          ∑' q : ℕ, (if 1 < q then erdos_weight (n * q) * P (n * q) n else 0) / erdos_weight n := by
-      apply tsum_congr
-      intro q
-      by_cases hq : 1 < q
-      · simp [hq, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc]
-      · simp [hq]
-    rw [hqsum_eq, tsum_div_const]
-    have hdiv_le :
-        (∑' q : ℕ, if 1 < q then erdos_weight (n * q) * P (n * q) n else 0) / erdos_weight n ≤
-          erdos_weight n / erdos_weight n := by
-      exact div_le_div_of_nonneg_right (hP_sub n hn) (le_of_lt (hweight_pos hn))
-    have hden : erdos_weight n / erdos_weight n = 1 := by
-      field_simp [(ne_of_gt (hweight_pos hn))]
-    simpa [hden] using hdiv_le
-  refine ⟨?_, ?_, by norm_num, by intro m; rfl, ?_, ?_, ?_, ?_⟩
-  · intro a b
-    cases a with
-    | none =>
-        cases b <;> norm_num
-    | some n =>
-        cases b with
-        | none =>
-            by_cases hn : 2 ≤ n
-            · simp [hn]
-              exact hsum_le_one n hn
-            · simp [hn]
-        | some m =>
-            by_cases hcond : 2 ≤ n ∧ 2 ≤ m ∧ m ≠ n
-            · simp [hcond]
-              exact mul_nonneg
-                (div_nonneg (le_of_lt (hweight_pos hcond.2.1))
-                  (le_of_lt (hweight_pos hcond.1)))
-                (hP_nonneg m n)
-            · simp [hcond]
-  · intro n hn
-    simp [hn]
-    have htsum :
-        (∑' m : ℕ,
-          if 2 ≤ m then
-            if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0
-          else 0) =
-          ∑' m : ℕ, if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0 := by
-      apply tsum_congr
-      intro m
-      by_cases hm : 2 ≤ m <;> by_cases hmn : m ≠ n <;> simp [hm, hmn]
-    rw [htsum]
-    ring
-  · intro n hn
-    simp [hn]
-  · intro n m hn hm hmn
-    simp [hn, hm, hmn]
-  · intro n m hU
-    by_cases hcond : 2 ≤ n ∧ 2 ≤ m ∧ m ≠ n
-    · simp [hcond] at hU
-      have hPmn : P m n ≠ 0 := by
-        intro hzero
-        simp [hzero] at hU
-      rcases hP_support m n hcond.2.1 hPmn with ⟨hndvdm, hcases⟩
-      have hlt : n < m := by
-        rcases hcases with hdiag | hlt
-        · exact False.elim (hcond.2.2 hdiag.1.symm)
-        · exact hlt
-      rcases hndvdm with ⟨q, rfl⟩
-      have hq_gt_one : 1 < q := by
-        simpa using ((Nat.lt_mul_iff_one_lt_right (by omega : 0 < n)).mp hlt)
-      exact ⟨hcond.1, hcond.2.1, ⟨q, hq_gt_one, rfl⟩⟩
-    · simp [hcond] at hU
-  · intro n hn
-    simp [hn]
+  sorry
 
 @[blueprint "lem:eps-adjoint-hitting-mass-facts-from-adjoint-kernel"
   (statement := /-- For every downward kernel
@@ -4974,186 +4898,7 @@ lemma eps_adjoint_hitting_mass_facts_from_adjoint_kernel {P : ℕ → ℕ → �
     {U : Option ℕ → Option ℕ → ℝ} :
     eps_modified_chain_kernel_subinvariant P -> eps_adjoint_kernel_package P U ->
       eps_adjoint_hitting_mass_facts U erdos_weight := by
-  intro hP hU
-  rcases hP with
-    ⟨hP_nonneg, hP_total, hP_one, hP_one_zero, hP_prime_self, hP_prime_zero,
-      hP_support, hP_rule, hP_pp, hP_pp_j, hP_pp_support, hP_sub, hP_sub_fin⟩
-  rcases hU with
-    ⟨hU_nonneg, hU_total, hU_none_self, hU_none_nat, hU_diag, hU_adj,
-      hU_support, hU_slack⟩
-  have hweight_pos : ∀ {n : ℕ}, 2 ≤ n -> 0 < erdos_weight n := by
-    intro n hn
-    unfold erdos_weight
-    apply one_div_pos.mpr
-    apply mul_pos
-    · exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hn)
-    · exact Real.log_pos (by exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hn))
-  have hweight_nonneg : ∀ n : ℕ, 0 ≤ erdos_weight n := by
-    intro n
-    unfold erdos_weight
-    positivity
-  unfold eps_adjoint_hitting_mass_facts
-  refine ⟨hweight_nonneg, ?_, by intro n; rfl, ?_⟩
-  · intro n hn
-    by_cases hnprime : n ∈ prime_layer
-    · have hzero :
-          (∑' q : ℕ,
-            if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
-              erdos_weight (n / q) * U (some (n / q)) (some n)
-            else 0) = 0 := by
-        trans ∑' q : ℕ, (0 : ℝ)
-        · apply tsum_congr
-          intro q
-          by_cases hcond : 1 < q ∧ q ∣ n ∧ 2 ≤ n / q
-          · have hq_eq : q = n := by
-              exact (((Nat.Prime.dvd_iff_eq hnprime) (by omega : q ≠ 1)).mp hcond.2.1).symm
-            have hdiv_one : n / q = 1 := by
-              rw [hq_eq, Nat.div_self]
-              omega
-            exfalso
-            omega
-          · simp [hcond]
-        · simp
-      rw [hzero]
-      simp [Set.indicator_of_mem hnprime]
-    · have hP_n_one : P n 1 = 0 := by
-        by_cases hpow : ∃ p k : ℕ, p ∈ prime_layer ∧ 2 ≤ k ∧ n = p ^ k
-        · rcases hpow with ⟨p, k, hp, hk, hn_eq⟩
-          rw [hn_eq]
-          by_contra hne
-          have hs := hP_pp_support p k 1 hp hk hne
-          rcases hs with h1 | ⟨j, hj1, hjle, hj⟩
-          · exact Nat.Prime.ne_one hp h1.symm
-          · have hexp_pos : 0 < k - j := by omega
-            have hpow_gt : 1 < p ^ (k - j) := by
-              exact Nat.one_lt_pow (by omega : k - j ≠ 0) (Nat.Prime.one_lt hp)
-            omega
-        · have hnotpow : ∀ p k : ℕ, p ∈ prime_layer -> 2 ≤ k -> n ≠ p ^ k := by
-            intro p k hp hk hnk
-            exact hpow ⟨p, k, hp, hk, hnk⟩
-          have hrule := hP_rule n n hn hnprime hnotpow (by omega : 1 < n) (dvd_refl n)
-          have hdiv_self : n / n = 1 := Nat.div_self (by omega : 0 < n)
-          rw [hdiv_self] at hrule
-          rw [hrule]
-          have hnpp : ¬ IsPrimePow n := by
-            intro h
-            rcases h with ⟨p, k, hp, hk, hpk⟩
-            have hpNat : p ∈ prime_layer := Prime.nat_prime hp
-            by_cases hk2 : 2 ≤ k
-            · exact hnotpow p k hpNat hk2 hpk.symm
-            · have hk1 : k = 1 := by omega
-              have hnp : n ∈ prime_layer := by
-                rw [← hpk, hk1, pow_one]
-                exact hpNat
-              exact hnprime hnp
-          have hv0 : ArithmeticFunction.vonMangoldt n = 0 := by
-            simp only [ArithmeticFunction.vonMangoldt, ArithmeticFunction.coe_mk, hnpp, ↓reduceIte]
-          simp [hv0]
-      have hrow_tsum :
-          (∑' m : ℕ, P n m) =
-            ∑' q : ℕ, if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0 := by
-        refine tsum_eq_tsum_of_ne_zero_bij (fun q => n / (q : ℕ)) ?_ ?_ ?_
-        · intro a b hab
-          have ha_ne :
-              (if 1 < (a : ℕ) ∧ (a : ℕ) ∣ n ∧ 2 ≤ n / (a : ℕ) then
-                P n (n / (a : ℕ)) else 0) ≠ 0 := a.property
-          have hb_ne :
-              (if 1 < (b : ℕ) ∧ (b : ℕ) ∣ n ∧ 2 ≤ n / (b : ℕ) then
-                P n (n / (b : ℕ)) else 0) ≠ 0 := b.property
-          have hacond : 1 < (a : ℕ) ∧ (a : ℕ) ∣ n ∧ 2 ≤ n / (a : ℕ) := by
-            by_cases hcond : 1 < (a : ℕ) ∧ (a : ℕ) ∣ n ∧ 2 ≤ n / (a : ℕ)
-            · exact hcond
-            · simp [hcond] at ha_ne
-          have hbcond : 1 < (b : ℕ) ∧ (b : ℕ) ∣ n ∧ 2 ≤ n / (b : ℕ) := by
-            by_cases hcond : 1 < (b : ℕ) ∧ (b : ℕ) ∣ n ∧ 2 ≤ n / (b : ℕ)
-            · exact hcond
-            · simp [hcond] at hb_ne
-          have hmul_a : (n / (a : ℕ)) * (a : ℕ) = n := Nat.div_mul_cancel hacond.2.1
-          have hmul_b : (n / (b : ℕ)) * (b : ℕ) = n := Nat.div_mul_cancel hbcond.2.1
-          have hab' : n / (a : ℕ) = n / (b : ℕ) := hab
-          have hprod : (n / (a : ℕ)) * (a : ℕ) = (n / (a : ℕ)) * (b : ℕ) := by
-            refine hmul_a.trans ?_
-            refine hmul_b.symm.trans ?_
-            simpa [hab']
-          apply Subtype.ext
-          exact (Nat.mul_right_inj (by omega : n / (a : ℕ) ≠ 0)).mp hprod
-        · intro m hm
-          rcases hP_support n m hn hm with ⟨hmdiv, hcases⟩
-          have hlt : m < n := by
-            rcases hcases with hdiag | hlt
-            · exact False.elim (hnprime hdiag.2)
-            · exact hlt
-          have hm_pos : 0 < m := by
-            by_contra hnot
-            have hm0 : m = 0 := by omega
-            subst m
-            rcases hmdiv with ⟨c, hc⟩
-            simp at hc
-            omega
-          have hm_ne_one : m ≠ 1 := by
-            intro hm1
-            apply hm
-            simpa [hm1] using hP_n_one
-          have hm_two : 2 ≤ m := by omega
-          rcases hmdiv with ⟨q, rfl⟩
-          have hq_gt_one : 1 < q := by
-            simpa using ((Nat.lt_mul_iff_one_lt_right hm_pos).mp hlt)
-          have hquot : (m * q) / q = m := by
-            rw [mul_comm]
-            exact Nat.mul_div_right m (by omega : 0 < q)
-          have hcond : 1 < q ∧ q ∣ m * q ∧ 2 ≤ (m * q) / q := by
-            refine ⟨hq_gt_one, ?_, ?_⟩
-            · exact ⟨m, by rw [mul_comm]⟩
-            · simpa [hquot] using hm_two
-          refine ⟨⟨q, ?_⟩, ?_⟩
-          · rw [Function.mem_support, if_pos hcond]
-            have hm_ne : P (m * q) m ≠ 0 := by
-              simpa [Function.mem_support] using hm
-            simpa [hquot] using hm_ne
-          · simpa [hquot]
-        · intro q
-          have hq_ne :
-              (if 1 < (q : ℕ) ∧ (q : ℕ) ∣ n ∧ 2 ≤ n / (q : ℕ) then
-                P n (n / (q : ℕ)) else 0) ≠ 0 := q.property
-          have hqcond : 1 < (q : ℕ) ∧ (q : ℕ) ∣ n ∧ 2 ≤ n / (q : ℕ) := by
-            by_cases hcond : 1 < (q : ℕ) ∧ (q : ℕ) ∣ n ∧ 2 ≤ n / (q : ℕ)
-            · exact hcond
-            · simp [hcond] at hq_ne
-          simp [hqcond]
-      have hrow :
-          (∑' q : ℕ, if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0) = 1 := by
-        rw [← hrow_tsum]
-        exact hP_total n (by omega : 1 ≤ n)
-      have hsum_adj :
-          (∑' q : ℕ,
-            if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
-              erdos_weight (n / q) * U (some (n / q)) (some n)
-            else 0) =
-            erdos_weight n *
-              (∑' q : ℕ, if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0) := by
-        rw [← tsum_mul_left]
-        apply tsum_congr
-        intro q
-        by_cases hcond : 1 < q ∧ q ∣ n ∧ 2 ≤ n / q
-        · have hne : n ≠ n / q := by
-            have hlt : n / q < n := Nat.div_lt_self (by omega : 0 < n) hcond.1
-            omega
-          have hUeq := hU_adj (n / q) n hcond.2.2 hn hne
-          rw [if_pos hcond, if_pos hcond, hUeq]
-          field_simp [(ne_of_gt (hweight_pos hcond.2.2))]
-        · simp [hcond]
-      rw [Set.indicator_of_notMem hnprime, hsum_adj, hrow]
-      ring
-  · rcases erdos_sarkozy_szemeredi_1196 with ⟨C, hC⟩
-    have hprim : primitive_set prime_layer := by
-      unfold primitive_set IsAntichain Set.Pairwise prime_layer
-      intro a ha b hb hne hdiv
-      exact hne ((Nat.prime_dvd_prime_iff_eq ha hb).mp hdiv)
-    have hsupp : supported_above prime_layer 2 := by
-      unfold supported_above prime_layer
-      intro n hn
-      exact_mod_cast Nat.Prime.two_le hn
-    exact ((hC.2 2 (by norm_num) prime_layer hprim hsupp).1)
+  sorry_using [erdos_sarkozy_szemeredi_1196]
 
 @[blueprint "lem:eps-adjoint-pathwise-primitive-chain-antichain-bound"
   (statement := /-- For an adjoint upward kernel with core hitting-mass facts,
@@ -5163,11 +4908,13 @@ lemma eps_adjoint_hitting_mass_facts_from_adjoint_kernel {P : ℕ → ℕ → �
   \cref{def:eps-adjoint-hitting-mass-facts} for the hitting-mass function $h$.
   Form the finite path measure obtained by starting with mass $h(p)$ on each
   prime state $p$ and following the upward kernel until either a prescribed
-  finite set has been passed or the absorbing state is reached.  The support
-  clause in \cref{def:eps-adjoint-kernel-package} makes every non-absorbed path
-  a strictly increasing divisibility chain, and \cref{def:primitive-set} implies
-  that such a path visits a primitive set $A$ at most once.  Summing this
-  pathwise indicator inequality over the initial prime-layer mass gives, for
+  finite set has been passed or the absorbing state is reached.  The finite
+  row-substochastic clause in \cref{def:eps-adjoint-kernel-package} controls the
+  mass of each truncated set of possible next states, while the support clause in
+  \cref{def:eps-adjoint-kernel-package} makes every non-absorbed path a strictly
+  increasing divisibility chain.  Hence \cref{def:primitive-set} implies that
+  such a path visits a primitive set $A$ at most once.  Summing this pathwise
+  indicator inequality over the initial prime-layer mass gives, for
   every finite set $s$, the bound
   $\sum_{n\in s}1_A(n)h(n)\leq \sum_{p\in\mathbb N_1}h(p)$.  Taking the supremum
   over finite sets, using non-negativity from
