@@ -8617,19 +8617,88 @@ lemma mangoldt_weight_incoming_integral_bridge :
 @[blueprint "lem:reciprocal-zeta-tendsto-one-right"
   (statement := /-- The reciprocal of the real part of the Riemann zeta
   function tends to $0$ as the real variable tends to $1$ from the right. -/)
-  (proof := /-- Write $s=1+u$ with $u>0$.  The estimate
-  \cref{lem:reciprocal-zeta-second-order-bound} gives
-  $|1/\operatorname{Re}\zeta(1+u)-u|\leq C u^2$ for all sufficiently small
-  positive $u$.  Since $u\to0$ and $u^2\to0$ along $u\to0^+$, this estimate
-  implies $1/\operatorname{Re}\zeta(1+u)\to0$, which is the claimed
-  right-hand limit after translating back to $s$. -/)
+  (proof := /-- Choose $\delta>0$ and $C\geq0$ from
+  \cref{lem:reciprocal-zeta-second-order-bound}.  For all sufficiently small
+  positive $u$, the estimate
+  $|1/\operatorname{Re}\zeta(1+u)-u|\leq C u^2$ and the triangle inequality give
+  $|1/\operatorname{Re}\zeta(1+u)|\leq u+C u^2$.  The function
+  $u\mapsto u+C u^2$ tends to $0$ as $u\to0^+$, so the squeeze theorem gives
+  $1/\operatorname{Re}\zeta(1+u)\to0$ as $u\to0^+$.  The map $s\mapsto s-1$
+  sends the right-neighborhood of $1$ to the right-neighborhood of $0$, and
+  composing with this translation gives the stated right-hand limit in the
+  variable $s$. -/)
   (title := /-- Right endpoint limit of the real reciprocal zeta factor -/)
   (latexEnv := "lemma")]
 lemma reciprocal_zeta_tendsto_one_right :
     Filter.Tendsto
       (fun s : ℝ => 1 / ((riemannZeta (s : ℂ)).re))
       (nhdsWithin (1 : ℝ) (Set.Ioi (1 : ℝ))) (nhds (0 : ℝ)) := by
-  sorry_using [reciprocal_zeta_second_order_bound]
+  rcases reciprocal_zeta_second_order_bound with ⟨δ, C, hδ_pos, hC_nonneg, hbound⟩
+  have hδ_event :
+      ∀ᶠ u in nhdsWithin (0 : ℝ) (Set.Ioi 0), u ≤ δ := by
+    refine eventually_nhdsWithin_iff.mpr ?_
+    filter_upwards [Metric.ball_mem_nhds (0 : ℝ) hδ_pos] with u hu _
+    rw [Metric.mem_ball, Real.dist_eq, sub_zero] at hu
+    exact le_of_lt (lt_of_le_of_lt (le_abs_self u) hu)
+  have hshifted :
+      Filter.Tendsto
+        (fun u : ℝ => 1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re))
+        (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (0 : ℝ)) := by
+    have hupper :
+        ∀ᶠ u in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+          |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)| ≤ u + C * u ^ 2 := by
+      filter_upwards [self_mem_nhdsWithin, hδ_event] with u hu hule
+      rw [Set.mem_Ioi] at hu
+      have hlocal := hbound u hu hule
+      calc
+        |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)|
+            = |(1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u) + u| := by
+              ring_nf
+        _ ≤ |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| + |u| :=
+              abs_add_le _ _
+        _ ≤ C * u ^ 2 + u := by
+              exact add_le_add hlocal (le_of_eq (abs_of_pos hu))
+        _ = u + C * u ^ 2 := by ring
+    have hnonneg :
+        ∀ᶠ u in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+          0 ≤ |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)| := by
+      filter_upwards with u
+      exact abs_nonneg _
+    have hu_tend :
+        Filter.Tendsto (fun u : ℝ => u) (nhdsWithin (0 : ℝ) (Set.Ioi 0))
+          (nhds (0 : ℝ)) := by
+      exact continuousAt_id.tendsto.mono_left nhdsWithin_le_nhds
+    have hquad_tend :
+        Filter.Tendsto (fun u : ℝ => C * u ^ 2)
+          (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (0 : ℝ)) := by
+      simpa using (hu_tend.pow 2).const_mul C
+    have hrhs_tend :
+        Filter.Tendsto (fun u : ℝ => u + C * u ^ 2)
+          (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (0 : ℝ)) := by
+      simpa using hu_tend.add hquad_tend
+    have habs_tend :
+        Filter.Tendsto
+          (fun u : ℝ => |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)|)
+          (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds (0 : ℝ)) :=
+      squeeze_zero' hnonneg hupper hrhs_tend
+    exact (tendsto_zero_iff_abs_tendsto_zero
+      (fun u : ℝ => 1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re))).mpr habs_tend
+  have hsub :
+      Filter.Tendsto (fun s : ℝ => s - 1)
+        (nhdsWithin (1 : ℝ) (Set.Ioi (1 : ℝ)))
+        (nhdsWithin (0 : ℝ) (Set.Ioi 0)) := by
+    refine tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within _ ?_ ?_
+    · have hcont : ContinuousAt (fun s : ℝ => s - 1) 1 :=
+        continuousAt_id.sub continuousAt_const
+      simpa using hcont.tendsto.mono_left nhdsWithin_le_nhds
+    · filter_upwards [self_mem_nhdsWithin] with s hs
+      rw [Set.mem_Ioi] at hs ⊢
+      linarith
+  have hcomp := hshifted.comp hsub
+  refine Filter.Tendsto.congr' ?_ hcomp
+  filter_upwards [self_mem_nhdsWithin] with s hs
+  have hone : (1 + (s - 1) : ℝ) = s := by ring
+  simp [hone]
 
 @[blueprint "lem:reciprocal-zeta-tendsto-at-top"
   (statement := /-- The reciprocal of the real part of the Riemann zeta
