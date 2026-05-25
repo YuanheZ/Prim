@@ -4560,27 +4560,23 @@ lemma modified_prime_power_incoming_bound :
   sorry_using [mangoldt_tail_finite_sum_le, mangoldt_tail_sharp_prime_slack,
     modified_prime_power_redirected_bound]
 
-@[blueprint "def:eps-modified-chain-subinvariant-package"
-  (statement := /-- This package records the formal interface supplied by the
-  modified von Mangoldt downward chain used in the proof of the
-  Erd\H{o}s primitive set conjecture.  It consists of transition weights
-  $P(n,m)$ on the positive natural numbers, non-negative and of total mass one
-  from every positive starting state.  The auxiliary state $1$ is isolated,
-  every prime is absorbing, non-zero transitions from states $n\geq2$ move
-  downward in the divisibility poset except at absorbing primes, and the exact
-  transition rule is the source proof's modified von Mangoldt rule: away from
-  prime powers it is the ordinary von Mangoldt transition, while for
-  $p^k$, $k\geq2$, the jump that would divide by $p^{k-1}$ is redirected to the
-  prime state $p$.  The Erd\H{o}s weight is sub-invariant for the incoming
-  transitions from larger states, both as the infinite inequality
-  $\sum_{q>1}\nu_0(mq)P(mq,m)\leq\nu_0(m)$ and as the Lean-usable finite
-  assertion that every partial incoming sum over $q$ is bounded by
-  $\nu_0(m)$, for every $m\geq2$. -/)
-  (title := /-- Modified-chain sub-invariance package -/)
+@[blueprint "def:eps-modified-chain-kernel-subinvariant"
+  (statement := /-- For a fixed transition kernel $P$ on $\mathbb{N}$, this is
+  the formal interface supplied by the modified von Mangoldt downward chain used
+  in the proof of the Erd\H{o}s primitive set conjecture.  The kernel is
+  non-negative and has total mass one from every positive state.  The auxiliary
+  state $1$ is isolated, every prime is absorbing, and every non-zero transition
+  from a state $n\geq2$ either stays at an absorbing prime or moves downward in
+  the divisibility poset.  Away from prime powers the transition rule is the
+  ordinary von Mangoldt rule, while at $p^k$, $k\geq2$, the transition that
+  would divide by $p^{k-1}$ is redirected to the prime state $p$.  Finally,
+  $\nu_0$ is sub-invariant for incoming transitions, both as the infinite
+  inequality $\sum_{q>1}\nu_0(mq)P(mq,m)\leq\nu_0(m)$ and as the corresponding
+  finite partial-sum inequality, for every $m\geq2$. -/)
+  (title := /-- Fixed modified-chain sub-invariance interface -/)
   (latexEnv := "definition")]
-def eps_modified_chain_subinvariant_package : Prop :=
-  ∃ P : ℕ → ℕ → ℝ,
-    (∀ n m : ℕ, 0 ≤ P n m) ∧
+def eps_modified_chain_kernel_subinvariant (P : ℕ → ℕ → ℝ) : Prop :=
+  (∀ n m : ℕ, 0 ≤ P n m) ∧
     (∀ n : ℕ, 1 ≤ n -> (∑' m : ℕ, P n m) = 1) ∧
     P 1 1 = 1 ∧
     (∀ m : ℕ, m ≠ 1 -> P 1 m = 0) ∧
@@ -4608,6 +4604,15 @@ def eps_modified_chain_subinvariant_package : Prop :=
       (∑ q ∈ s, if 1 < q then erdos_weight (m * q) * P (m * q) m else 0) ≤
         erdos_weight m)
 
+@[blueprint "def:eps-modified-chain-subinvariant-package"
+  (statement := /-- This package asserts that the modified von Mangoldt
+  downward chain exists with the fixed-kernel interface of
+  \cref{def:eps-modified-chain-kernel-subinvariant}. -/)
+  (title := /-- Modified-chain sub-invariance package -/)
+  (latexEnv := "definition")]
+def eps_modified_chain_subinvariant_package : Prop :=
+  ∃ P : ℕ → ℕ → ℝ, eps_modified_chain_kernel_subinvariant P
+
 @[blueprint "lem:eps-modified-chain-subinvariant"
   (statement := /-- The modified von Mangoldt downward chain with absorbing
   states the primes satisfies the sub-invariance package of
@@ -4632,25 +4637,64 @@ def eps_modified_chain_subinvariant_package : Prop :=
   incoming partial sum is at most $\nu_0(m)$.  Since all incoming terms are
   non-negative, this finite bound also gives summability of the incoming series
   and the stated infinite sub-invariance inequality.  These verifications give
-  every clause of \cref{def:eps-modified-chain-subinvariant-package}. -/)
+  every clause of \cref{def:eps-modified-chain-kernel-subinvariant}, and hence
+  the existential package \cref{def:eps-modified-chain-subinvariant-package}. -/)
   (title := /-- Sub-invariance of the modified chain -/)
   (latexEnv := "lemma")]
 lemma eps_modified_chain_subinvariant :
     eps_modified_chain_subinvariant_package := by
   sorry_using [mangoldt_subinvariant_bound, modified_prime_power_incoming_bound]
 
-@[blueprint "def:eps-adjoint-hitting-mass-package"
-  (statement := /-- This is the Lean-usable output of the adjoint upward chain
-  constructed from the modified sub-invariant downward chain.  It consists of a
-  non-negative hitting-mass function $h$ on $\mathbb N$ which agrees with the
-  Erd\H{o}s weight $\nu_0$ at every Lean-natural state, has summable mass on the
-  prime layer, and satisfies the finite chain-antichain inequality and the
-  resulting t-sum inequality for every primitive set. -/)
-  (title := /-- Adjoint hitting-mass package for the EPS chain -/)
+@[blueprint "def:eps-adjoint-kernel-package"
+  (statement := /-- Let $P$ be a fixed modified downward kernel.  This predicate
+  says that $U$ is its adjoint upward kernel with respect to $\nu_0$ on the
+  state space $\mathbb{N}_{\geq2}\cup\{\infty\}$, represented in Lean by
+  `Option \mathbb{N}` with `none` denoting $\infty$.  The kernel $U$ is
+  non-negative, has total mass one from every natural state $n\geq2$, sends
+  $\infty$ to itself, moves between natural states only upward along
+  divisibility, is given off the diagonal by
+  $U(n,m)=\nu_0(m)\nu_0(n)^{-1}P(m,n)$, and sends the unused sub-invariant mass
+  from $n$ to $\infty$. -/)
+  (title := /-- Adjoint upward kernel package -/)
   (latexEnv := "definition")]
-def eps_adjoint_hitting_mass_package : Prop :=
-  ∃ h : ℕ → ℝ,
-    (∀ n : ℕ, 0 ≤ h n) ∧
+def eps_adjoint_kernel_package (P : ℕ → ℕ → ℝ)
+    (U : Option ℕ → Option ℕ → ℝ) : Prop :=
+  (∀ a b : Option ℕ, 0 ≤ U a b) ∧
+    (∀ n : ℕ, 2 ≤ n ->
+      (∑' m : ℕ, if 2 ≤ m then U (some n) (some m) else 0) +
+          U (some n) none = 1) ∧
+    U (none : Option ℕ) (none : Option ℕ) = 1 ∧
+    (∀ m : ℕ, U (none : Option ℕ) (some m) = 0) ∧
+    (∀ n : ℕ, 2 ≤ n -> U (some n) (some n) = 0) ∧
+    (∀ n m : ℕ, 2 ≤ n -> 2 ≤ m -> m ≠ n ->
+      U (some n) (some m) = erdos_weight m / erdos_weight n * P m n) ∧
+    (∀ n m : ℕ, U (some n) (some m) ≠ 0 ->
+      2 ≤ n ∧ 2 ≤ m ∧ ∃ q : ℕ, 1 < q ∧ m = n * q) ∧
+    (∀ n : ℕ, 2 ≤ n ->
+      U (some n) none =
+        1 - (∑' m : ℕ,
+          if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0))
+
+@[blueprint "def:eps-adjoint-hitting-mass-facts"
+  (statement := /-- For an adjoint upward kernel $U$, this predicate records the
+  hitting-mass conclusions used in the Erd\H{o}s primitive set argument.  The
+  function $h$ is non-negative, obeys the upward hitting-mass recursion with
+  prime-layer initial mass, is equal to $\nu_0$ on every Lean-natural state, has
+  summable mass on the prime layer, and satisfies both the finite
+  chain-antichain partial-sum inequality and the resulting t-sum inequality for
+  every primitive set. -/)
+  (title := /-- Adjoint hitting-mass facts -/)
+  (latexEnv := "definition")]
+def eps_adjoint_hitting_mass_facts (U : Option ℕ → Option ℕ → ℝ)
+    (h : ℕ → ℝ) : Prop :=
+  (∀ n : ℕ, 0 ≤ h n) ∧
+    (∀ n : ℕ, 2 ≤ n ->
+      h n =
+        prime_layer.indicator erdos_weight n +
+          (∑' q : ℕ,
+            if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+              h (n / q) * U (some (n / q)) (some n)
+            else 0)) ∧
     (∀ n : ℕ, h n = erdos_weight n) ∧
     Summable (fun n : ℕ => prime_layer.indicator h n) ∧
     (∀ A : Set ℕ, primitive_set A ->
@@ -4661,26 +4705,91 @@ def eps_adjoint_hitting_mass_package : Prop :=
         (∑' n : ℕ, A.indicator h n) ≤
           ∑' n : ℕ, prime_layer.indicator h n)
 
+@[blueprint "def:eps-adjoint-hitting-mass-package"
+  (statement := /-- This is the Lean-usable output of the adjoint upward chain
+  constructed from the modified sub-invariant downward chain.  It consists of a
+  fixed downward kernel satisfying
+  \cref{def:eps-modified-chain-kernel-subinvariant}, an adjoint upward kernel
+  satisfying \cref{def:eps-adjoint-kernel-package}, and a hitting-mass function
+  satisfying \cref{def:eps-adjoint-hitting-mass-facts}. -/)
+  (title := /-- Adjoint hitting-mass package for the EPS chain -/)
+  (latexEnv := "definition")]
+def eps_adjoint_hitting_mass_package : Prop :=
+  ∃ P : ℕ → ℕ → ℝ,
+    ∃ U : Option ℕ → Option ℕ → ℝ,
+      ∃ h : ℕ → ℝ,
+        eps_modified_chain_kernel_subinvariant P ∧
+          eps_adjoint_kernel_package P U ∧
+            eps_adjoint_hitting_mass_facts U h
+
+@[blueprint "lem:eps-adjoint-kernel-package-from-subinvariant"
+  (statement := /-- If a fixed modified downward kernel satisfies the
+  sub-invariance interface, then its adjoint upward kernel with the absorbing
+  slack state exists. -/)
+  (proof := /-- Assume \cref{def:eps-modified-chain-kernel-subinvariant} for a
+  fixed kernel $P$.  Define $U(n,m)=\nu_0(m)\nu_0(n)^{-1}P(m,n)$ when
+  $n,m\geq2$ are distinct natural states, set $U(n,n)=0$, and let the transition
+  from $n$ to $\infty$ be the unused mass
+  $1-\sum_m\nu_0(m)\nu_0(n)^{-1}P(m,n)$.  The finite incoming inequalities in
+  \cref{def:eps-modified-chain-kernel-subinvariant} give the non-negativity of
+  this slack term, the infinite incoming inequality gives the total mass one
+  identity, and the support clauses for $P$ show that non-zero natural
+  transitions of $U$ move upward along divisibility.  Finally set
+  $U(\infty,\infty)=1$ and $U(\infty,m)=0$ for every natural $m$.  These clauses
+  are exactly \cref{def:eps-adjoint-kernel-package}. -/)
+  (title := /-- Constructing the EPS adjoint kernel -/)
+  (latexEnv := "lemma")]
+lemma eps_adjoint_kernel_package_from_subinvariant {P : ℕ → ℕ → ℝ} :
+    eps_modified_chain_kernel_subinvariant P ->
+      ∃ U : Option ℕ → Option ℕ → ℝ, eps_adjoint_kernel_package P U := by
+  sorry
+
+@[blueprint "lem:eps-adjoint-hitting-mass-facts-from-adjoint-kernel"
+  (statement := /-- For the adjoint upward kernel attached to a modified
+  sub-invariant downward kernel, the prime-layer initial mass has hitting mass
+  $\nu_0$ and satisfies the primitive-set chain-antichain inequalities. -/)
+  (proof := /-- Assume \cref{def:eps-modified-chain-kernel-subinvariant} for the
+  downward kernel $P$ and \cref{def:eps-adjoint-kernel-package} for its adjoint
+  upward kernel $U$.  Start the upward chain with initial mass $\nu_0(p)$ on
+  each prime $p$ and zero initial mass elsewhere.  The source identity
+  $\nu_0(n)=\sum_{q>1}\nu_0(n/q)U(n/q,n)$ follows from the adjoint formula in
+  \cref{def:eps-adjoint-kernel-package} and the sub-invariance recursion in
+  \cref{def:eps-modified-chain-kernel-subinvariant}; induction over the natural
+  divisibility order therefore identifies the hitting mass with $\nu_0$ at every
+  natural state $n\geq2$, while the Lean-totalized states $0$ and $1$ have zero
+  Erd\H{o}s weight.  Every realized upward path is a strictly increasing
+  divisibility chain until it reaches the absorbing state, so a primitive set
+  can meet each path at most once.  Integrating this pathwise inequality over
+  the prime-layer initial mass gives the finite chain-antichain partial-sum
+  bound; monotone passage to the t-sum gives summability and the final
+  primitive-set inequality.  These are precisely the clauses of
+  \cref{def:eps-adjoint-hitting-mass-facts} for $h=\nu_0$. -/)
+  (title := /-- Hitting-mass facts for the EPS adjoint kernel -/)
+  (latexEnv := "lemma")]
+lemma eps_adjoint_hitting_mass_facts_from_adjoint_kernel {P : ℕ → ℕ → ℝ}
+    {U : Option ℕ → Option ℕ → ℝ} :
+    eps_modified_chain_kernel_subinvariant P -> eps_adjoint_kernel_package P U ->
+      eps_adjoint_hitting_mass_facts U erdos_weight := by
+  sorry
+
 @[blueprint "lem:eps-adjoint-hitting-mass-package-from-subinvariant"
   (statement := /-- The modified-chain sub-invariance package supplies the
   adjoint hitting-mass package for the EPS argument. -/)
-  (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package}.  Form
-  the adjoint upward transition kernel with respect to $\nu_0$, adding the
-  absorbing state $\infty$ for the unused sub-invariant mass.  The finite
-  incoming inequalities in the sub-invariance package make the adjoint
-  transition probabilities non-negative and of total mass one.  Starting with
-  initial mass $\nu_0(p)$ on each prime $p$, the adjoint recursion gives a
-  hitting-mass function $h$ satisfying $h(n)=\nu_0(n)$ for every natural state.
-  Since every realized upward path is a divisibility chain until absorption,
-  a primitive set meets each path at most once; summing this finite
-  chain-antichain inequality over the initial prime mass gives the finite
-  partial-sum bounds, summability, and t-sum inequality recorded in
+  (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package} and
+  choose a fixed downward kernel $P$ satisfying
+  \cref{def:eps-modified-chain-kernel-subinvariant}.  By
+  \cref{lem:eps-adjoint-kernel-package-from-subinvariant}, $P$ has an adjoint
+  upward kernel $U$ with the absorbing slack state.  Applying
+  \cref{lem:eps-adjoint-hitting-mass-facts-from-adjoint-kernel} to this kernel
+  gives the hitting-mass recursion, the identity $h=\nu_0$, and the finite and
+  infinite primitive-set chain-antichain inequalities.  These data are exactly
+  the existential witnesses required by
   \cref{def:eps-adjoint-hitting-mass-package}. -/)
   (title := /-- Constructing the EPS adjoint hitting-mass package -/)
   (latexEnv := "lemma")]
 lemma eps_adjoint_hitting_mass_package_from_subinvariant :
     eps_modified_chain_subinvariant_package -> eps_adjoint_hitting_mass_package := by
-  sorry
+  sorry_using [eps_adjoint_kernel_package_from_subinvariant, eps_adjoint_hitting_mass_facts_from_adjoint_kernel]
 
 @[blueprint "lem:eps-modified-chain-hitting-mass-identity"
   (statement := /-- If the modified-chain sub-invariance package holds, then
