@@ -5957,7 +5957,13 @@ lemma mangoldt_weight_erdos_pointwise_error_bound :
   (latexEnv := "lemma")]
 lemma mangoldt_weight_erdos_summable_error :
     Summable (fun n : ℕ => |mangoldt_weight n - erdos_weight n|) := by
-  sorry_using [mangoldt_weight_erdos_pointwise_error_bound, log_square_tail_summable]
+  rcases mangoldt_weight_erdos_pointwise_error_bound with ⟨C, hC_nonneg, hC_bound⟩
+  have hmajorant : Summable (fun n : ℕ =>
+      C * (if 2 ≤ n then 1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2) else 0)) := by
+    exact log_square_tail_summable.mul_left C
+  refine Summable.of_norm_bounded_eventually_nat hmajorant ?_
+  filter_upwards [Filter.eventually_ge_atTop 2] with n hn
+  simpa [hn, Real.norm_eq_abs] using hC_bound n hn
 
 @[blueprint "lem:summable-error-limsup-transfer-vanishing-perturbation"
   (statement := /-- Let $f,g:\mathbb R\to\mathbb R$.  If
