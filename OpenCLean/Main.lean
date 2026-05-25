@@ -7233,9 +7233,11 @@ lemma summable_error_limsup_transfer {w v : ℕ → ℝ}
   exact squeeze_zero' hnonneg hscaled_bound hCdiv
 
 @[blueprint "lem:mangoldt-weight-aggregate-comparison"
-  (statement := /-- For every set $A\subseteq\mathbb N$, replacing the
-  Erd\H{o}s weight by the invariant von Mangoldt weight does not change the
-  upper doubly logarithmic density of the truncated sums. -/)
+  (statement := /-- For every set $A\subseteq\mathbb N$, the limit superior,
+  as the real variable $x$ tends to infinity, of the truncated von
+  Mangoldt-weight sum over $A\cap[1,x]$, normalized by $\log\log x$, is equal
+  to the upper doubly logarithmic density of $A$ defined using the
+  Erd\H{o}s weight. -/)
   (proof := /-- The absolute discrepancy between the two pointwise weights is
   summable by \cref{lem:mangoldt-weight-erdos-summable-error}.  Applying the
   transfer principle \cref{lem:summable-error-limsup-transfer} with
@@ -7252,7 +7254,10 @@ lemma mangoldt_weight_aggregate_comparison :
       Filter.limsup
         (fun x : ℝ => mangoldt_weight_sum_up_to A x / Real.log (Real.log x))
         Filter.atTop = upper_doubly_log_density A := by
-  sorry_using [mangoldt_weight_erdos_summable_error, summable_error_limsup_transfer]
+  intro A
+  simpa [mangoldt_weight_sum_up_to, upper_doubly_log_density, erdos_sum_up_to, erdos_sum]
+    using (summable_error_limsup_transfer (w := mangoldt_weight) (v := erdos_weight)
+      mangoldt_weight_erdos_summable_error A)
 
 @[blueprint "lem:probabilistic-dense-ambient-chain"
   (statement := /-- If $A\subseteq\mathbb N$ has positive upper doubly
