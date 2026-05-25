@@ -4284,17 +4284,61 @@ def chain_hits_density_at_least (n : ℕ → ℕ) (A : Set ℕ) (Delta : ℝ) : 
   (statement := /-- The comparison series
   $\sum_{n\geq2}1/(n(\log n)^2)$ is summable over the natural numbers, with the
   finitely many terms below $2$ set equal to zero. -/)
-  (proof := /-- The function $x\mapsto 1/(x(\log x)^2)$ is positive and
-  eventually decreasing on $[2,\infty)$.  Its improper integral is
-  $1/\log 2$, after the substitution $u=\log x$.  The integral test therefore
-  gives convergence of the tail over $n\geq2$, and changing the terms below
-  $2$ to zero does not affect summability. -/)
+  (proof := /-- The summand is eventually non-negative and decreasing: for
+  $n\geq2$ the denominator is positive, and both $n$ and $\log n$ increase with
+  $n$.  Cauchy's condensation test therefore reduces the claim to summability
+  of the condensed series.  For $k\geq1$, the condensed term is
+  $2^k/(2^k(\log(2^k))^2)=1/(k^2(\log 2)^2)$, while the exceptional term
+  $k=0$ is finite.  This is a constant multiple of the convergent
+  $p$-series with exponent $2$, so the original series is summable. -/)
   (title := /-- Summability of the logarithmic square tail -/)
   (latexEnv := "lemma")]
 lemma log_square_tail_summable :
     Summable (fun n : ℕ =>
       if 2 ≤ n then 1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2) else 0) := by
-  sorry
+  refine
+    (summable_condensed_iff_of_eventually_nonneg
+      (f := fun n : ℕ =>
+        if 2 ≤ n then 1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2) else 0) ?_ ?_).mp ?_
+  · filter_upwards [Filter.eventually_ge_atTop 2] with n hn
+    simp [hn]
+    have hn_pos : (0 : ℝ) < (n : ℝ) := by
+      exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hn)
+    have hn_one : (1 : ℝ) < (n : ℝ) := by
+      exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hn)
+    have hlog_pos : 0 < Real.log (n : ℝ) := Real.log_pos hn_one
+    have hden_pos : 0 < (n : ℝ) * Real.log (n : ℝ) ^ 2 :=
+      mul_pos hn_pos (pow_pos hlog_pos 2)
+    simpa [one_div, mul_comm, mul_left_comm, mul_assoc] using
+      le_of_lt (one_div_pos.mpr hden_pos)
+  · filter_upwards [Filter.eventually_ge_atTop 2] with k hk
+    have hk_succ : 2 ≤ k + 1 := le_trans hk (Nat.le_succ k)
+    simp [hk, hk_succ]
+    have hk_pos : (0 : ℝ) < (k : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hk)
+    have hk_one : (1 : ℝ) < (k : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hk)
+    have hk_le_succ : (k : ℝ) ≤ ((k + 1 : ℕ) : ℝ) := by exact_mod_cast Nat.le_succ k
+    have hlog_nonneg : 0 ≤ Real.log (k : ℝ) := Real.log_nonneg (le_of_lt hk_one)
+    have hlog_pos : 0 < Real.log (k : ℝ) := Real.log_pos hk_one
+    have hlog_le : Real.log (k : ℝ) ≤ Real.log ((k + 1 : ℕ) : ℝ) :=
+      Real.log_le_log hk_pos hk_le_succ
+    have hlog_sq_le : Real.log (k : ℝ) ^ 2 ≤ Real.log ((k + 1 : ℕ) : ℝ) ^ 2 := by
+      nlinarith [mul_self_le_mul_self hlog_nonneg hlog_le]
+    have hden_le :
+        (k : ℝ) * Real.log (k : ℝ) ^ 2 ≤
+          ((k + 1 : ℕ) : ℝ) * Real.log ((k + 1 : ℕ) : ℝ) ^ 2 := by
+      exact mul_le_mul hk_le_succ hlog_sq_le (sq_nonneg _) (by exact_mod_cast Nat.zero_le (k + 1))
+    have hden_pos : 0 < (k : ℝ) * Real.log (k : ℝ) ^ 2 :=
+      mul_pos hk_pos (pow_pos hlog_pos 2)
+    simpa [one_div, mul_comm, mul_left_comm, mul_assoc] using
+      one_div_le_one_div_of_le hden_pos hden_le
+  · refine
+      ((Real.summable_one_div_nat_rpow.mpr (by norm_num : (1 : ℝ) < 2)).mul_left
+        (1 / (Real.log 2) ^ 2)).congr_atTop ?_
+    filter_upwards [Filter.eventually_ge_atTop 1] with k hk
+    have hk_ne : k ≠ 0 := Nat.ne_of_gt (Nat.succ_le_iff.mp hk)
+    have hpow_ge : 2 ≤ 2 ^ k := by
+      exact Nat.succ_le_of_lt (Nat.one_lt_two_pow hk_ne)
+    simp [hpow_ge, Nat.cast_pow, Real.log_pow, one_div, mul_comm, mul_left_comm, mul_assoc, mul_pow]
 
 @[blueprint "lem:mangoldt-weight-erdos-pointwise-error-bound"
   (statement := /-- There is an absolute constant $C\geq0$ such that, for every
