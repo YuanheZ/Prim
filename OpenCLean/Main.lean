@@ -4019,8 +4019,10 @@ def prime_layer : Set ℕ :=
   prime powers it is the ordinary von Mangoldt transition, while for
   $p^k$, $k\geq2$, the jump that would divide by $p^{k-1}$ is redirected to the
   prime state $p$.  The Erd\H{o}s weight is sub-invariant for the incoming
-  transitions from larger states, namely
-  $\sum_{q>1}\nu_0(mq)P(mq,m)\leq\nu_0(m)$ for every $m\geq2$. -/)
+  transitions from larger states, both as the infinite inequality
+  $\sum_{q>1}\nu_0(mq)P(mq,m)\leq\nu_0(m)$ and as the Lean-usable finite
+  assertion that every partial incoming sum over $q$ is bounded by
+  $\nu_0(m)$, for every $m\geq2$. -/)
   (title := /-- Modified-chain sub-invariance package -/)
   (latexEnv := "definition")]
 def eps_modified_chain_subinvariant_package : Prop :=
@@ -4048,6 +4050,9 @@ def eps_modified_chain_subinvariant_package : Prop :=
       m = p ∨ ∃ j : ℕ, 1 ≤ j ∧ j ≤ k - 2 ∧ m = p ^ (k - j)) ∧
     (∀ m : ℕ, 2 ≤ m ->
       (∑' q : ℕ, if 1 < q then erdos_weight (m * q) * P (m * q) m else 0) ≤
+        erdos_weight m) ∧
+    (∀ m : ℕ, 2 ≤ m -> ∀ s : Finset ℕ,
+      (∑ q ∈ s, if 1 < q then erdos_weight (m * q) * P (m * q) m else 0) ≤
         erdos_weight m)
 
 @[blueprint "lem:eps-modified-chain-subinvariant"
@@ -4062,12 +4067,17 @@ def eps_modified_chain_subinvariant_package : Prop :=
   kernel.  The Markov property follows from
   $\sum_{q\mid n}\Lambda(q)=\log n$ and the identity $(k-2)/k+2/k=1$, and the
   support clauses follow directly from the displayed transition rules.  For
-  the sub-invariance inequality, the ordinary von Mangoldt contribution from
-  larger states is bounded by \cref{lem:mangoldt-subinvariant-bound}.  If the
-  target state is prime, the redirected prime-power contribution is precisely
-  the additional positive series displayed in the source proof, and the
-  elementary estimates there bound it by the remaining slack in the inequality.
-  These verifications give every clause of
+  sub-invariance, first fix a state $m\geq2$ and a finite set of multipliers.
+  The ordinary von Mangoldt part of the corresponding finite incoming sum is
+  bounded by the finite tail estimate underlying
+  \cref{lem:mangoldt-subinvariant-bound}.  If $m$ is prime, the redirected
+  prime-power contribution is the additional positive finite subsum displayed
+  in the source proof, and the elementary geometric estimate there bounds it by
+  the remaining slack in the same inequality; if $m$ is composite, there is no
+  redirected contribution.  Hence every finite incoming partial sum is at most
+  $\nu_0(m)$.  Since all incoming terms are non-negative, this finite bound also
+  gives summability of the incoming series and the stated infinite
+  sub-invariance inequality.  These verifications give every clause of
   \cref{def:eps-modified-chain-subinvariant-package}. -/)
   (title := /-- Sub-invariance of the modified chain -/)
   (latexEnv := "lemma")]
@@ -4084,9 +4094,12 @@ lemma eps_modified_chain_subinvariant :
   layer. -/)
   (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package} and
   use its transition kernel to form the adjoint upward chain with respect to
-  the weight $\nu_0$.  The incoming sub-invariance clause supplies the missing
-  transition mass to the absorbing state $\infty$, so the adjoint transition
-  probabilities have total mass one.  The divisibility-support clauses ensure
+  the weight $\nu_0$.  The finite incoming-mass clause in
+  \cref{def:eps-modified-chain-subinvariant-package} supplies, for each finite
+  set of incoming states, a bound by the available mass $\nu_0(m)$; passing to
+  the associated non-negative series defines the missing transition mass to the
+  absorbing state $\infty$, so the adjoint transition probabilities have total
+  mass one.  The divisibility-support clauses ensure
   that, before absorption at $\infty$, every realized upward trajectory is a
   strictly increasing divisibility chain.  Start the chain with mass
   $\nu_0(p)$ at each prime $p$; this total initial mass is the prime-layer
@@ -4094,11 +4107,12 @@ lemma eps_modified_chain_subinvariant :
   the downward chain, the upward hitting mass on a prime equals its initial
   mass.  The adjoint recursion and induction on divisibility rank then give
   hitting mass $\nu_0(n)$ for every positive natural number $n$.  A primitive
-  set meets any upward divisibility chain in at most one state, hence the
-  chain-antichain inequality bounds every finite partial sum of the
-  nonnegative series defining its Erd\H{o}s sum by the total initial mass on the
-  primes.  The bounded-partial-sums criterion for nonnegative real series gives
-  summability for the primitive set and the resulting inequality of
+  set meets any upward divisibility chain in at most one state.  Applying the
+  finite incoming-mass inequality at each stage therefore bounds every finite
+  partial sum of the non-negative series defining its Erd\H{o}s sum by the
+  total initial mass on the primes.  The bounded-partial-sums criterion for
+  non-negative real series gives summability for the primitive set and the
+  resulting inequality of
   \cref{def:erdos-sum}. -/)
   (title := /-- Hitting masses for the modified adjoint chain -/)
   (latexEnv := "lemma")]
@@ -4266,22 +4280,62 @@ noncomputable def upper_chain_hit_density (n : ℕ → ℕ) (A : Set ℕ) : ℝ 
 def chain_hits_density_at_least (n : ℕ → ℕ) (A : Set ℕ) (Delta : ℝ) : Prop :=
   Delta ≤ upper_chain_hit_density n A
 
+@[blueprint "lem:log-square-tail-summable"
+  (statement := /-- The comparison series
+  $\sum_{n\geq2}1/(n(\log n)^2)$ is summable over the natural numbers, with the
+  finitely many terms below $2$ set equal to zero. -/)
+  (proof := /-- The function $x\mapsto 1/(x(\log x)^2)$ is positive and
+  eventually decreasing on $[2,\infty)$.  Its improper integral is
+  $1/\log 2$, after the substitution $u=\log x$.  The integral test therefore
+  gives convergence of the tail over $n\geq2$, and changing the terms below
+  $2$ to zero does not affect summability. -/)
+  (title := /-- Summability of the logarithmic square tail -/)
+  (latexEnv := "lemma")]
+lemma log_square_tail_summable :
+    Summable (fun n : ℕ =>
+      if 2 ≤ n then 1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2) else 0) := by
+  sorry
+
+@[blueprint "lem:mangoldt-weight-erdos-pointwise-error-bound"
+  (statement := /-- There is an absolute constant $C\geq0$ such that, for every
+  natural number $n\geq2$, the invariant von Mangoldt weight and the
+  Erd\H{o}s weight satisfy
+  $|\nu_\Lambda(n)-\nu_0(n)|\leq C/(n(\log n)^2)$. -/)
+  (proof := /-- By \cref{def:mangoldt-weight} and \cref{def:erdos-weight}, the
+  discrepancy is the difference between the Laplace transform with kernel
+  $1/\zeta(1+u)$ and the Laplace transform with kernel $u$, after writing
+  $s=1+u$.  The standard real-axis expansion
+  $1/\zeta(1+u)=u+O(u^2)$ as $u\downarrow0$, together with the boundedness of
+  the remaining tail for $u$ bounded away from $0$, gives an integrand error
+  bounded by a constant multiple of $u^2 n^{-1-u}\log n$.  Evaluating this
+  Laplace-transform majorant gives a bound by a constant multiple of
+  $1/(n(\log n)^2)$.  Enlarging the constant to cover the compact range
+  $2\leq n\leq N$ gives the asserted uniform estimate for all $n\geq2$. -/)
+  (title := /-- Pointwise error between $\nu_\Lambda$ and $\nu_0$ -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_erdos_pointwise_error_bound :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ n : ℕ, 2 ≤ n ->
+      |mangoldt_weight n - erdos_weight n| ≤
+        C * (1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2)) := by
+  sorry
+
 @[blueprint "lem:mangoldt-weight-erdos-summable-error"
   (statement := /-- The pointwise discrepancy between the invariant von
   Mangoldt weight and the Erd\H{o}s weight is absolutely summable over
   $\mathbb N$. -/)
-  (proof := /-- By \cref{def:mangoldt-weight} and \cref{def:erdos-weight}, the
-  reciprocal-zeta expansion at $s=1$ gives
-  $\nu_\Lambda(n)-\nu_0(n)=O(1/(n\log^2 n))$ for $n\geq2$, while $n=0$ and
-  $n=1$ contribute only finitely many terms under Lean's totalization of the
-  weights.  The comparison series
-  $\sum_{n\geq2}1/(n\log^2 n)$ converges by the integral test, so the absolute
-  error series is summable. -/)
+  (proof := /-- The pointwise estimate
+  \cref{lem:mangoldt-weight-erdos-pointwise-error-bound} gives a constant
+  $C\geq0$ such that, for every $n\geq2$, the absolute error is at most
+  $C/(n(\log n)^2)$.  The comparison series is summable by
+  \cref{lem:log-square-tail-summable}, and multiplication by the fixed
+  non-negative constant $C$ preserves summability.  The terms $n=0$ and $n=1$
+  form a finite exceptional set under Lean's totalization of the weights, so
+  adding them back preserves summability of the full absolute-error series. -/)
   (title := /-- Summable error between $\nu_\Lambda$ and $\nu_0$ -/)
   (latexEnv := "lemma")]
 lemma mangoldt_weight_erdos_summable_error :
     Summable (fun n : ℕ => |mangoldt_weight n - erdos_weight n|) := by
-  sorry
+  sorry_using [mangoldt_weight_erdos_pointwise_error_bound, log_square_tail_summable]
 
 @[blueprint "lem:summable-error-limsup-transfer-vanishing-perturbation"
   (statement := /-- Let $f,g:\mathbb R\to\mathbb R$.  If
