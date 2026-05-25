@@ -8614,6 +8614,143 @@ lemma mangoldt_weight_incoming_integral_bridge :
   rw [mangoldt_weight_incoming_integral_bridge_lhs_laplace n hn,
     ← mangoldt_weight_incoming_integral_bridge_rhs_laplace n hn]
 
+@[blueprint "lem:reciprocal-zeta-tendsto-one-right"
+  (statement := /-- The reciprocal of the real part of the Riemann zeta
+  function tends to $0$ as the real variable tends to $1$ from the right. -/)
+  (proof := /-- Write $s=1+u$ with $u>0$.  The estimate
+  \cref{lem:reciprocal-zeta-second-order-bound} gives
+  $|1/\operatorname{Re}\zeta(1+u)-u|\leq C u^2$ for all sufficiently small
+  positive $u$.  Since $u\to0$ and $u^2\to0$ along $u\to0^+$, this estimate
+  implies $1/\operatorname{Re}\zeta(1+u)\to0$, which is the claimed
+  right-hand limit after translating back to $s$. -/)
+  (title := /-- Right endpoint limit of the real reciprocal zeta factor -/)
+  (latexEnv := "lemma")]
+lemma reciprocal_zeta_tendsto_one_right :
+    Filter.Tendsto
+      (fun s : ℝ => 1 / ((riemannZeta (s : ℂ)).re))
+      (nhdsWithin (1 : ℝ) (Set.Ioi (1 : ℝ))) (nhds (0 : ℝ)) := by
+  sorry_using [reciprocal_zeta_second_order_bound]
+
+@[blueprint "lem:reciprocal-zeta-tendsto-at-top"
+  (statement := /-- The reciprocal of the real part of the Riemann zeta
+  function tends to $1$ as the real variable tends to $+\infty$. -/)
+  (proof := /-- On the real half-line $s>1$, the Dirichlet series for
+  $\zeta(s)$ is $1+\sum_{m\geq2}m^{-s}$.  The tail is bounded by a geometric
+  comparison after $s$ is large, and therefore tends to $0$ as
+  $s\to+\infty$.  Hence $\operatorname{Re}\zeta(s)\to1$.  Since inversion is
+  continuous at the non-zero limit $1$, the reciprocal real zeta factor tends
+  to $1$. -/)
+  (title := /-- At-infinity limit of the real reciprocal zeta factor -/)
+  (latexEnv := "lemma")]
+lemma reciprocal_zeta_tendsto_at_top :
+    Filter.Tendsto
+      (fun s : ℝ => 1 / ((riemannZeta (s : ℂ)).re))
+      Filter.atTop (nhds (1 : ℝ)) := by
+  sorry
+
+@[blueprint "lem:reciprocal-zeta-ibp-regularity"
+  (statement := /-- The real reciprocal zeta factor and the kernels
+  $s\mapsto n^{-s}$ satisfy the analytic hypotheses needed for improper
+  integration by parts on $(1,\infty)$.  More precisely, the reciprocal zeta
+  factor is differentiable on $(1,\infty)$ with derivative equal to the Lean
+  derivative, its derivative is integrable on $(1,\infty)$, and for every
+  integer $n\geq2$ the function $s\mapsto n^{-s}$ has derivative
+  $-(\log n)n^{-s}$, both products required by integration by parts are
+  integrable, and the boundary product
+  $(\operatorname{Re}\zeta(s))^{-1}n^{-s}$ tends to $0$ at both endpoints. -/)
+  (proof := /-- The endpoint at $1+$ is
+  \cref{lem:reciprocal-zeta-tendsto-one-right}, and the endpoint at infinity
+  is \cref{lem:reciprocal-zeta-tendsto-at-top} combined with the exponential
+  decay of $n^{-s}$ for $n\geq2$.  Differentiability of the reciprocal zeta
+  factor follows from differentiability of $\zeta$ to the right of $1$ and
+  the positivity of its real part there; the derivative identity used to
+  control the derivative kernel is the one isolated in
+  \cref{lem:mangoldt-weight-incoming-integral-bridge-deriv-identity}.  The
+  reciprocal-zeta product kernel is integrable after the translation
+  $u=s-1$ by
+  \cref{lem:mangoldt-weight-integral-change-of-variables-zeta-kernel-integrable}.
+  These estimates give exactly the two product integrability hypotheses and
+  the two endpoint hypotheses required by the improper integration-by-parts
+  theorem on $(1,\infty)$. -/)
+  (title := /-- Regularity package for reciprocal-zeta integration by parts -/)
+  (latexEnv := "lemma")]
+lemma reciprocal_zeta_ibp_regularity :
+    (∀ s : ℝ, s ∈ Set.Ioi (1 : ℝ) ->
+      HasDerivAt
+        (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re))
+        (deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s) s) ∧
+    MeasureTheory.IntegrableOn
+      (fun s : ℝ => deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s)
+      (Set.Ioi (1 : ℝ)) ∧
+    (∀ n : ℕ, 2 ≤ n ->
+      (∀ s : ℝ, s ∈ Set.Ioi (1 : ℝ) ->
+        HasDerivAt
+          (fun t : ℝ => 1 / Real.rpow (n : ℝ) t)
+          (-(Real.log (n : ℝ) / Real.rpow (n : ℝ) s)) s) ∧
+      MeasureTheory.IntegrableOn
+        (fun s : ℝ =>
+          (1 / ((riemannZeta (s : ℂ)).re)) *
+            (-(Real.log (n : ℝ) / Real.rpow (n : ℝ) s)))
+        (Set.Ioi (1 : ℝ)) ∧
+      MeasureTheory.IntegrableOn
+        (fun s : ℝ =>
+          deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s *
+            (1 / Real.rpow (n : ℝ) s))
+        (Set.Ioi (1 : ℝ)) ∧
+      Filter.Tendsto
+        (fun s : ℝ =>
+          (1 / ((riemannZeta (s : ℂ)).re)) * (1 / Real.rpow (n : ℝ) s))
+        (nhdsWithin (1 : ℝ) (Set.Ioi (1 : ℝ))) (nhds (0 : ℝ)) ∧
+      Filter.Tendsto
+        (fun s : ℝ =>
+          (1 / ((riemannZeta (s : ℂ)).re)) * (1 / Real.rpow (n : ℝ) s))
+        Filter.atTop (nhds (0 : ℝ))) := by
+  sorry_using [reciprocal_zeta_tendsto_one_right, reciprocal_zeta_tendsto_at_top,
+    mangoldt_weight_integral_change_of_variables_zeta_kernel_integrable,
+    mangoldt_weight_incoming_integral_bridge_deriv_identity]
+
+@[blueprint "lem:reciprocal-zeta-derivative-integral-one"
+  (statement := /-- The improper integral of the derivative of the real
+  reciprocal zeta factor over $(1,\infty)$ is $1$. -/)
+  (proof := /-- Apply the improper fundamental theorem of calculus on
+  $(1,\infty)$ to the real reciprocal zeta factor.  The differentiability and
+  integrability hypotheses are supplied by
+  \cref{lem:reciprocal-zeta-ibp-regularity}; the endpoint value at $1+$ is
+  $0$ by \cref{lem:reciprocal-zeta-tendsto-one-right}, and the endpoint value
+  at infinity is $1$ by \cref{lem:reciprocal-zeta-tendsto-at-top}.  The
+  endpoint difference is therefore $1-0=1$. -/)
+  (title := /-- Integral of the reciprocal-zeta derivative at $n=1$ -/)
+  (latexEnv := "lemma")]
+lemma reciprocal_zeta_derivative_integral_one :
+    (∫ s : ℝ in Set.Ioi (1 : ℝ),
+      deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s) = 1 := by
+  sorry_using [reciprocal_zeta_ibp_regularity, reciprocal_zeta_tendsto_one_right,
+    reciprocal_zeta_tendsto_at_top]
+
+@[blueprint "lem:mangoldt-weight-reciprocal-zeta-integration-by-parts"
+  (statement := /-- For every integer $n\geq2$, improper integration by parts
+  on $(1,\infty)$ transforms the reciprocal-zeta derivative integral with
+  kernel $n^{-s}$ into the defining reciprocal-zeta Mangoldt-weight integral. -/)
+  (proof := /-- Apply the improper integration-by-parts theorem on
+  $(1,\infty)$ with
+  $u(s)=(\operatorname{Re}\zeta(s))^{-1}$ and $v(s)=n^{-s}$.
+  The hypotheses of that theorem are exactly those packaged in
+  \cref{lem:reciprocal-zeta-ibp-regularity}: differentiability of both
+  factors, integrability of $u'v$ and $uv'$, and vanishing of the product
+  $uv$ at both endpoints.  Since $v'(s)=-(\log n)n^{-s}$, the boundary term is
+  zero and rearranging gives the stated identity. -/)
+  (title := /-- Reciprocal-zeta integration by parts for the Mangoldt integral -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_reciprocal_zeta_integration_by_parts
+    (n : ℕ) (hn : 2 ≤ n) :
+    (∫ s : ℝ in Set.Ioi (1 : ℝ),
+        deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s /
+          Real.rpow (n : ℝ) s) =
+      ∫ s : ℝ in Set.Ioi (1 : ℝ),
+        Real.log (n : ℝ) /
+          (((riemannZeta (s : ℂ)).re) * Real.rpow (n : ℝ) s) := by
+  sorry_using [reciprocal_zeta_ibp_regularity]
+
 @[blueprint "lem:mangoldt-weight-reciprocal-zeta-endpoint-evaluation"
   (statement := /-- For every positive integer $n$, the reciprocal-zeta
   derivative integral appearing in the incoming-mass computation evaluates to
@@ -8623,14 +8760,15 @@ lemma mangoldt_weight_incoming_integral_bridge :
   For $n=1$ this is the endpoint change of $1/\zeta(s)$ from $0$ at $1+$ to
   $1$ at infinity; for $n>1$ it is the corresponding integration-by-parts
   identity. -/)
-  (proof := /-- The second-order reciprocal-zeta estimate
-  \cref{lem:reciprocal-zeta-second-order-bound} gives
-  $1/\zeta(s)\to0$ as $s\to1+$ on the real axis.  At infinity the reciprocal
-  zeta factor tends to $1$, while $n^{-s}$ tends to $0$ for $n>1$ and is
-  identically $1$ for $n=1$.  Hence the boundary contribution is $1$ in the
-  case $n=1$ and vanishes in the case $n>1$.  Applying integration by parts on
-  $(1,\infty)$ to $(1/\zeta(s))'n^{-s}$ therefore gives exactly the integral
-  formula defining \cref{def:mangoldt-weight}. -/)
+  (proof := /-- Split into the cases $n=1$ and $n\geq2$.  In the first case,
+  the denominator $n^s$ is identically $1$, and
+  \cref{lem:reciprocal-zeta-derivative-integral-one} evaluates the derivative
+  integral as the endpoint difference $1-0$, which is exactly
+  \cref{def:mangoldt-weight} at $1$.  In the second case,
+  \cref{lem:mangoldt-weight-reciprocal-zeta-integration-by-parts} applies
+  improper integration by parts to identify the derivative integral with
+  $\int_1^\infty \log n/(\operatorname{Re}\zeta(s)n^s)\,ds$, and this is the
+  defining value of \cref{def:mangoldt-weight} for $n\neq1$. -/)
   (title := /-- Reciprocal-zeta endpoint evaluation for the Mangoldt weight -/)
   (latexEnv := "lemma")]
 lemma mangoldt_weight_reciprocal_zeta_endpoint_evaluation :
@@ -8638,7 +8776,8 @@ lemma mangoldt_weight_reciprocal_zeta_endpoint_evaluation :
       (∫ s : ℝ in Set.Ioi (1 : ℝ),
         deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s /
           Real.rpow (n : ℝ) s) = mangoldt_weight n := by
-  sorry_using [reciprocal_zeta_second_order_bound]
+  sorry_using [reciprocal_zeta_derivative_integral_one,
+    mangoldt_weight_reciprocal_zeta_integration_by_parts]
 
 @[blueprint "lem:mangoldt-weight-von-mangoldt-invariant-recurrence"
   (statement := /-- For every positive integer $n$, the von Mangoldt weight
