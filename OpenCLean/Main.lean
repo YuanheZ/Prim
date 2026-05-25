@@ -6703,23 +6703,24 @@ lemma eps_adjoint_hitting_mass_package_from_subinvariant :
   exact ⟨P, U, erdos_weight, hP, hU, hh, hprim⟩
 
 @[blueprint "lem:eps-modified-chain-hitting-mass-identity"
-  (statement := /-- If the modified-chain sub-invariance package holds, then
-  the adjoint upward chain started from initial mass $\nu_0$ on the prime layer
-  has hitting mass exactly $\nu_0$ at every natural number.  Consequently the
-  prime-layer Erd\H{o}s series is summable, and every primitive set has a
-  summable Erd\H{o}s series whose sum is at most the Erd\H{o}s sum of the prime
-  layer. -/)
+  (statement := /-- If
+  \cref{def:eps-modified-chain-subinvariant-package} holds, then the
+  prime-layer Erd\H{o}s series is summable.  Moreover, for every primitive set
+  $A\subseteq\mathbb{N}$, the Erd\H{o}s series of $A$ is summable and its sum is
+  at most the Erd\H{o}s sum of the prime layer. -/)
   (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package}.  By
-  \cref{lem:eps-adjoint-hitting-mass-package-from-subinvariant}, this package
-  yields an adjoint hitting-mass function satisfying
-  \cref{def:eps-adjoint-hitting-mass-package}.  The package states that the
-  hitting mass agrees with $\nu_0$ at every Lean-natural state, that the prime
-  layer has summable initial mass, and that every primitive set satisfies the
-  finite chain-antichain bounds and the resulting t-sum inequality.  Rewriting
-  the hitting mass as \cref{def:erdos-weight} and the t-sums as
-  \cref{def:erdos-sum} gives exactly the stated prime-layer summability and the
-  primitive-set extremal inequality. -/)
-  (title := /-- Hitting masses for the modified adjoint chain -/)
+  \cref{lem:eps-adjoint-hitting-mass-package-from-subinvariant}, obtain the
+  witnesses in \cref{def:eps-adjoint-hitting-mass-package}.  The
+  \cref{def:eps-adjoint-hitting-mass-facts} component gives both summability on
+  the prime layer and the pointwise identity $h(n)=\nu_0(n)$ for every natural
+  number $n$.  Rewriting by this identity, with
+  \cref{def:erdos-weight}, gives the prime-layer summability in the statement.
+  For a set $A$ satisfying \cref{def:primitive-set}, the
+  \cref{def:eps-adjoint-primitive-chain-antichain-facts} component gives
+  summability of the $h$-weighted indicator of $A$ and bounds its t-sum by the
+  prime-layer $h$-mass.  Rewriting again by $h=\nu_0$ and unfolding
+  \cref{def:erdos-sum} gives the stated summability and inequality for $A$. -/)
+  (title := /-- Primitive-set bound from modified-chain sub-invariance -/)
   (latexEnv := "lemma")]
 lemma eps_modified_chain_hitting_mass_identity :
     eps_modified_chain_subinvariant_package ->
@@ -6727,7 +6728,17 @@ lemma eps_modified_chain_hitting_mass_identity :
         ∀ A : Set ℕ, primitive_set A ->
           Summable (fun n : ℕ => A.indicator erdos_weight n) ∧
             erdos_sum A ≤ erdos_sum prime_layer := by
-  sorry_using [eps_adjoint_hitting_mass_package_from_subinvariant]
+  intro hsub
+  rcases eps_adjoint_hitting_mass_package_from_subinvariant hsub with
+    ⟨_, _, h, _, _, hh, hprim⟩
+  rcases hh with ⟨_, _, h_eq, hprime⟩
+  constructor
+  · simpa [Set.indicator, h_eq] using hprime
+  · intro A hA
+    rcases hprim A hA with ⟨_, hAsumm, hAle⟩
+    constructor
+    · simpa [Set.indicator, h_eq] using hAsumm
+    · simpa [erdos_sum, Set.indicator, h_eq] using hAle
 
 @[blueprint "lem:eps-chain-antichain-bound"
   (statement := /-- The prime-layer Erd\H{o}s series is summable, and every
