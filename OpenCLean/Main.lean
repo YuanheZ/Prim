@@ -5151,25 +5151,36 @@ lemma eps_adjoint_hitting_mass_facts_from_adjoint_kernel {P : ℕ → ℕ → �
   sorry_using [erdos_sarkozy_szemeredi_1196]
 
 @[blueprint "lem:eps-adjoint-pathwise-primitive-chain-antichain-bound"
-  (statement := /-- For an adjoint upward kernel with core hitting-mass facts,
-  the pathwise chain-antichain argument gives the finite primitive-set partial
-  sum inequality and the corresponding summability and t-sum inequality. -/)
+  (statement := /-- For every downward kernel
+  $P:\mathbb{N}\to\mathbb{N}\to\mathbb{R}$, every upward kernel
+  $U:\operatorname{Option}\mathbb{N}\to\operatorname{Option}\mathbb{N}\to
+  \mathbb{R}$, and every function $h:\mathbb{N}\to\mathbb{R}$, if $U$
+  satisfies \cref{def:eps-adjoint-kernel-package} for $P$ and $h$ satisfies
+  \cref{def:eps-adjoint-hitting-mass-facts} for $U$, then
+  \cref{def:eps-adjoint-primitive-chain-antichain-facts} holds for $h$. -/)
   (proof := /-- Assume \cref{def:eps-adjoint-kernel-package} for $U$ and
   \cref{def:eps-adjoint-hitting-mass-facts} for the hitting-mass function $h$.
-  Form the finite path measure obtained by starting with mass $h(p)$ on each
-  prime state $p$ and following the upward kernel until either a prescribed
-  finite set has been passed or the absorbing state is reached.  The finite
-  row-substochastic clause in \cref{def:eps-adjoint-kernel-package} controls the
-  mass of each truncated set of possible next states, while the support clause in
-  \cref{def:eps-adjoint-kernel-package} makes every non-absorbed path a strictly
-  increasing divisibility chain.  Hence \cref{def:primitive-set} implies that
-  such a path visits a primitive set $A$ at most once.  Summing this pathwise
-  indicator inequality over the initial prime-layer mass gives, for
-  every finite set $s$, the bound
-  $\sum_{n\in s}1_A(n)h(n)\leq \sum_{p\in\mathbb N_1}h(p)$.  Taking the supremum
-  over finite sets, using non-negativity from
-  \cref{def:eps-adjoint-hitting-mass-facts}, gives summability of the
-  $A$-series and the same t-sum bound.  These are exactly the clauses of
+  Fix a primitive set $A$ and a finite set $s$.  By the pointwise identity in
+  \cref{def:eps-adjoint-hitting-mass-facts}, the terms with $n<2$ have zero
+  $h$-mass, so the left side may be restricted to
+  $T=\{n\in s\cap A:2\leq n\}$.  Let $D$ be the finite set of all divisors
+  $d\geq2$ of elements of $T$, and let $N=D\setminus T$.  The support clause in
+  \cref{def:eps-adjoint-kernel-package} implies that every incoming predecessor
+  of a state in $D$ also lies in $D$.  If a state of $T$ had a non-zero
+  transition to another state of $D$, then it would divide an element of $T$;
+  \cref{def:primitive-set} would force those two elements of $T$ to be equal,
+  contradicting the strict upward support.  Hence all incoming mass to $D$ comes
+  from $N$.  Summing the recursion in
+  \cref{def:eps-adjoint-hitting-mass-facts} over $D$ gives the total $D$-mass
+  bounded by the \cref{def:prime-layer} initial mass on $D$ plus the outgoing
+  mass from $N$ into $D$.  The finite row-substochastic clause in
+  \cref{def:eps-adjoint-kernel-package}, together with non-negativity from
+  \cref{def:eps-adjoint-hitting-mass-facts}, bounds this outgoing mass by the
+  total $N$-mass.  Cancelling the $N$-mass gives the finite inequality
+  $\sum_{n\in s}1_A(n)h(n)\leq\sum_n1_{\mathbb N_1}(n)h(n)$.  Since this holds
+  for every finite $s$, non-negativity and prime-layer summability from
+  \cref{def:eps-adjoint-hitting-mass-facts} give summability of the $A$-series
+  and the corresponding t-sum inequality, which are exactly the clauses of
   \cref{def:eps-adjoint-primitive-chain-antichain-facts}. -/)
   (title := /-- Pathwise primitive bound for the EPS adjoint chain -/)
   (latexEnv := "lemma")]
@@ -5177,7 +5188,241 @@ lemma eps_adjoint_pathwise_primitive_chain_antichain_bound {P : ℕ → ℕ → 
     {U : Option ℕ → Option ℕ → ℝ} {h : ℕ → ℝ} :
     eps_adjoint_kernel_package P U -> eps_adjoint_hitting_mass_facts U h ->
       eps_adjoint_primitive_chain_antichain_facts h := by
-  sorry
+  classical
+  intro hU hh
+  have hfinite : ∀ A : Set ℕ, primitive_set A -> ∀ s : Finset ℕ,
+      (∑ n ∈ s, A.indicator h n) ≤
+        ∑' n : ℕ, prime_layer.indicator h n := by
+    intro A hA s
+    rcases hU with
+      ⟨hU_nonneg, hU_row_tsum, hU_row_fin, hU_none_none, hU_none_some,
+        hU_diag, hU_adjoint, hU_support, hU_slack⟩
+    rcases hh with ⟨hh_nonneg, hh_rec, hh_eq, hh_prime_summ⟩
+    let T : Finset ℕ := s.filter (fun n => n ∈ A ∧ 2 ≤ n)
+    let D : Finset ℕ := T.biUnion (fun a => a.divisors.filter (fun d => 2 ≤ d))
+    let N : Finset ℕ := D.filter (fun n => n ∉ T)
+    have hD_two : ∀ n : ℕ, n ∈ D -> 2 ≤ n := by
+      intro n hn
+      dsimp [D] at hn
+      rcases Finset.mem_biUnion.mp hn with ⟨a, haT, hn⟩
+      exact (Finset.mem_filter.mp hn).2
+    have hT_subset_D : T ⊆ D := by
+      intro n hnT
+      have hnT' : n ∈ s ∧ n ∈ A ∧ 2 ≤ n := by
+        simpa [T] using hnT
+      dsimp [D]
+      refine Finset.mem_biUnion.mpr ⟨n, hnT, ?_⟩
+      have hn_ne : n ≠ 0 := by omega
+      simp [hnT'.2.2, hn_ne]
+    have hD_dvd_active : ∀ n : ℕ, n ∈ D -> ∃ a : ℕ, a ∈ T ∧ n ∣ a := by
+      intro n hn
+      dsimp [D] at hn
+      rcases Finset.mem_biUnion.mp hn with ⟨a, haT, hn⟩
+      have hn' := Finset.mem_filter.mp hn
+      exact ⟨a, haT, (Nat.mem_divisors.mp hn'.1).1⟩
+    have hD_pred : ∀ {n p : ℕ}, n ∈ D -> p ∣ n -> 2 ≤ p -> p ∈ D := by
+      intro n p hnD hpn hp2
+      rcases hD_dvd_active n hnD with ⟨a, haT, hna⟩
+      have hpa : p ∣ a := dvd_trans hpn hna
+      have haT' : a ∈ s ∧ a ∈ A ∧ 2 ≤ a := by
+        simpa [T] using haT
+      dsimp [D]
+      refine Finset.mem_biUnion.mpr ⟨a, haT, ?_⟩
+      have ha_ne : a ≠ 0 := by omega
+      simp [hp2, Nat.mem_divisors.mpr ⟨hpa, ha_ne⟩]
+    have hsmall : ∀ n : ℕ, ¬ 2 ≤ n -> h n = 0 := by
+      intro n hn
+      have hcases : n = 0 ∨ n = 1 := by omega
+      rcases hcases with rfl | rfl
+      · rw [hh_eq 0, erdos_weight]
+        norm_num
+      · rw [hh_eq 1, erdos_weight]
+        norm_num
+    have hleft_eq : (∑ n ∈ s, A.indicator h n) = ∑ n ∈ T, h n := by
+      rw [Finset.sum_filter]
+      apply Finset.sum_congr rfl
+      intro n hn
+      by_cases hnA : n ∈ A
+      · by_cases hn2 : 2 ≤ n
+        · simp [T, hnA, hn2, Set.indicator_of_mem hnA]
+        · simp [T, hnA, hn2, Set.indicator_of_mem hnA, hsmall n hn2]
+      · simp [T, hnA, Set.indicator_of_notMem hnA]
+    have hsum_D_split : (∑ n ∈ D, h n) = (∑ n ∈ T, h n) + ∑ n ∈ N, h n := by
+      have hfilter_T : D.filter (fun n => n ∈ T) = T := by
+        ext n
+        by_cases hnT : n ∈ T
+        · simp [hnT, hT_subset_D hnT]
+        · simp [hnT]
+      have hpartition := Finset.sum_filter_add_sum_filter_not
+        (s := D) (p := fun n => n ∈ T) (f := fun n => h n)
+      rw [hfilter_T] at hpartition
+      simpa [N, add_comm] using hpartition.symm
+    have hincoming_le_N : ∀ n : ℕ, n ∈ D ->
+        (∑' q : ℕ,
+          if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+            h (n / q) * U (some (n / q)) (some n)
+          else 0) ≤ ∑ p ∈ N, h p * U (some p) (some n) := by
+      intro n hnD
+      let f : ℕ → ℝ := fun q =>
+        if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+          h (n / q) * U (some (n / q)) (some n)
+        else 0
+      let Q : Finset ℕ := n.divisors.filter (fun q => 1 < q ∧ q ∣ n ∧ 2 ≤ n / q)
+      have hn_ne : n ≠ 0 := by
+        have hn2 := hD_two n hnD
+        omega
+      have htsum_eq : (∑' q : ℕ, f q) = ∑ q ∈ n.divisors, f q := by
+        exact tsum_eq_sum (s := n.divisors) (fun q hq => by
+          dsimp [f]
+          by_cases hcond : 1 < q ∧ q ∣ n ∧ 2 ≤ n / q
+          · exfalso
+            exact hq (Nat.mem_divisors.mpr ⟨hcond.2.1, hn_ne⟩)
+          · simp [hcond])
+      have hsum_filter : (∑ q ∈ n.divisors, f q) =
+          ∑ q ∈ Q, h (n / q) * U (some (n / q)) (some n) := by
+        dsimp [Q, f]
+        exact (Finset.sum_filter (s := n.divisors)
+          (p := fun q => 1 < q ∧ q ∣ n ∧ 2 ≤ n / q)
+          (f := fun q => h (n / q) * U (some (n / q)) (some n))).symm
+      have hinj : ∀ q ∈ Q, ∀ r ∈ Q, n / q = n / r -> q = r := by
+        intro q hq r hr hqr
+        have hq' : 1 < q ∧ q ∣ n ∧ 2 ≤ n / q := (Finset.mem_filter.mp hq).2
+        have hr' : 1 < r ∧ r ∣ n ∧ 2 ≤ n / r := (Finset.mem_filter.mp hr).2
+        have hqmul : n / q * q = n := Nat.div_mul_cancel hq'.2.1
+        have hrmul : n / r * r = n := Nat.div_mul_cancel hr'.2.1
+        have hqpos : 0 < n / q := by omega
+        apply Nat.mul_left_cancel hqpos
+        calc
+          n / q * q = n := hqmul
+          _ = n / r * r := hrmul.symm
+          _ = n / q * r := by rw [hqr]
+      have hsum_image : (∑ q ∈ Q, h (n / q) * U (some (n / q)) (some n)) =
+          ∑ p ∈ Q.image (fun q => n / q), h p * U (some p) (some n) := by
+        symm
+        rw [Finset.sum_image]
+        intro q hq r hr hqr
+        exact hinj q hq r hr hqr
+      have himage_subset : Q.image (fun q => n / q) ⊆ N := by
+        intro p hp
+        rcases Finset.mem_image.mp hp with ⟨q, hqQ, rfl⟩
+        have hq' : 1 < q ∧ q ∣ n ∧ 2 ≤ n / q := (Finset.mem_filter.mp hqQ).2
+        have hpred_dvd : n / q ∣ n := ⟨q, (Nat.div_mul_cancel hq'.2.1).symm⟩
+        have hpredD : n / q ∈ D := hD_pred hnD hpred_dvd hq'.2.2
+        have hpred_not_T : n / q ∉ T := by
+          intro hpT
+          rcases hD_dvd_active n hnD with ⟨a, haT, hna⟩
+          have hpT' : n / q ∈ s ∧ n / q ∈ A ∧ 2 ≤ n / q := by
+            simpa [T] using hpT
+          have haT' : a ∈ s ∧ a ∈ A ∧ 2 ≤ a := by
+            simpa [T] using haT
+          have hp_dvd_a : n / q ∣ a := dvd_trans hpred_dvd hna
+          have hpa_eq : n / q = a := hA.eq hpT'.2.1 haT'.2.1 hp_dvd_a
+          subst a
+          have hn_le_pred : n ≤ n / q := Nat.le_of_dvd (by omega) hna
+          have hpred_lt_n : n / q < n := by
+            have hqmul : n / q * q = n := Nat.div_mul_cancel hq'.2.1
+            calc
+              n / q < n / q * q :=
+                (Nat.lt_mul_iff_one_lt_right (a := n / q) (b := q) (by omega)).mpr hq'.1
+              _ = n := hqmul
+          omega
+        simp [N, hpredD, hpred_not_T]
+      calc
+        (∑' q : ℕ,
+          if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+            h (n / q) * U (some (n / q)) (some n)
+          else 0) = ∑' q : ℕ, f q := rfl
+        _ = ∑ q ∈ Q, h (n / q) * U (some (n / q)) (some n) := by
+          rw [htsum_eq, hsum_filter]
+        _ = ∑ p ∈ Q.image (fun q => n / q), h p * U (some p) (some n) := hsum_image
+        _ ≤ ∑ p ∈ N, h p * U (some p) (some n) := by
+          apply Finset.sum_le_sum_of_subset_of_nonneg
+          · exact himage_subset
+          · intro p hpN hpnot
+            exact mul_nonneg (hh_nonneg p) (hU_nonneg (some p) (some n))
+    have hbalance : (∑ n ∈ D, h n) ≤
+        (∑ n ∈ D, prime_layer.indicator h n) +
+          ∑ p ∈ N, ∑ n ∈ D, h p * U (some p) (some n) := by
+      calc
+        (∑ n ∈ D, h n) =
+            ∑ n ∈ D,
+              (prime_layer.indicator h n +
+                ∑' q : ℕ,
+                  if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+                    h (n / q) * U (some (n / q)) (some n)
+                  else 0) := by
+              apply Finset.sum_congr rfl
+              intro n hnD
+              calc
+                h n = prime_layer.indicator erdos_weight n +
+                    ∑' q : ℕ,
+                      if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+                        h (n / q) * U (some (n / q)) (some n)
+                      else 0 := hh_rec n (hD_two n hnD)
+                _ = prime_layer.indicator h n +
+                    ∑' q : ℕ,
+                      if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+                        h (n / q) * U (some (n / q)) (some n)
+                      else 0 := by
+                      congr 1
+                      by_cases hnprime : n ∈ prime_layer
+                      · simp [Set.indicator_of_mem hnprime, hh_eq n]
+                      · simp [Set.indicator_of_notMem hnprime]
+        _ ≤ ∑ n ∈ D,
+              (prime_layer.indicator h n +
+                ∑ p ∈ N, h p * U (some p) (some n)) := by
+              apply Finset.sum_le_sum
+              intro n hnD
+              exact add_le_add le_rfl (hincoming_le_N n hnD)
+        _ = (∑ n ∈ D, prime_layer.indicator h n) +
+              ∑ p ∈ N, ∑ n ∈ D, h p * U (some p) (some n) := by
+              rw [Finset.sum_add_distrib]
+              congr 1
+              rw [Finset.sum_comm]
+    have hout_le : (∑ p ∈ N, ∑ n ∈ D, h p * U (some p) (some n)) ≤
+        ∑ p ∈ N, h p := by
+      apply Finset.sum_le_sum
+      intro p hpN
+      have hpD : p ∈ D := (Finset.mem_filter.mp hpN).1
+      have hp2 : 2 ≤ p := hD_two p hpD
+      have hrow : (∑ n ∈ D, U (some p) (some n)) ≤ 1 := by
+        have hrow' := hU_row_fin p hp2 D
+        convert hrow' using 1
+        apply Finset.sum_congr rfl
+        intro n hnD
+        simp [hD_two n hnD]
+      calc
+        (∑ n ∈ D, h p * U (some p) (some n)) =
+            h p * ∑ n ∈ D, U (some p) (some n) := by
+              rw [Finset.mul_sum]
+        _ ≤ h p * 1 := mul_le_mul_of_nonneg_left hrow (hh_nonneg p)
+        _ = h p := by ring
+    have hinit_le : (∑ n ∈ D, prime_layer.indicator h n) ≤
+        ∑' n : ℕ, prime_layer.indicator h n := by
+      exact hh_prime_summ.sum_le_tsum D (fun n hn => by
+        by_cases hnprime : n ∈ prime_layer
+        · rw [Set.indicator_of_mem hnprime]
+          exact hh_nonneg n
+        · rw [Set.indicator_of_notMem hnprime])
+    have hactive_le_init : (∑ n ∈ T, h n) ≤
+        ∑ n ∈ D, prime_layer.indicator h n := by
+      have hsplit := hsum_D_split
+      have hb := hbalance
+      have ho := hout_le
+      linarith
+    rw [hleft_eq]
+    exact le_trans hactive_le_init hinit_le
+  intro A hA
+  have hnonneg : ∀ n : ℕ, 0 ≤ A.indicator h n := by
+    intro n
+    by_cases hn : n ∈ A
+    · rw [Set.indicator_of_mem hn]
+      exact hh.1 n
+    · rw [Set.indicator_of_notMem hn]
+  have hsumm : Summable (fun n : ℕ => A.indicator h n) :=
+    summable_of_sum_range_le hnonneg (fun N => hfinite A hA (Finset.range N))
+  exact ⟨hfinite A hA, hsumm, hsumm.tsum_le_of_sum_range_le
+    (fun N => hfinite A hA (Finset.range N))⟩
 
 @[blueprint "lem:eps-adjoint-hitting-mass-package-from-subinvariant"
   (statement := /-- The modified-chain sub-invariance package supplies the
