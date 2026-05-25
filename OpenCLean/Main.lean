@@ -4848,10 +4848,9 @@ def eps_adjoint_hitting_mass_package : Prop :=
   $\nu_0(n)^{-1}\sum_{q>1}\nu_0(nq)P(nq,n)$, and the finite incoming
   sub-invariance inequality in
   \cref{def:eps-modified-chain-kernel-subinvariant} bounds this partial sum by
-  $1$.  The same reindexing for the full natural row, together with the infinite
-  incoming sub-invariance inequality in
-  \cref{def:eps-modified-chain-kernel-subinvariant}, makes the slack transition
-  to $\infty$ non-negative.  The total-mass identity is then the defining
+  $1$.  Since this bound holds for every finite natural outgoing partial sum,
+  the corresponding t-sum of the natural row is at most $1$, and this makes the
+  slack transition to $\infty$ non-negative.  The total-mass identity is then the defining
   algebraic identity for the slack term.  Finally set
   $U(\infty,\infty)=1$ and $U(\infty,m)=0$ for every natural $m$.  These clauses
   are exactly \cref{def:eps-adjoint-kernel-package}. -/)
@@ -4860,7 +4859,258 @@ def eps_adjoint_hitting_mass_package : Prop :=
 lemma eps_adjoint_kernel_package_from_subinvariant {P : ℕ → ℕ → ℝ} :
     eps_modified_chain_kernel_subinvariant P ->
       ∃ U : Option ℕ → Option ℕ → ℝ, eps_adjoint_kernel_package P U := by
-  sorry
+  classical
+  intro hP
+  let U : Option ℕ → Option ℕ → ℝ := fun a b =>
+    match a, b with
+    | none, none => 1
+    | none, some _ => 0
+    | some n, none =>
+        if 2 ≤ n then
+          1 - (∑' m : ℕ,
+            if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0)
+        else 0
+    | some n, some m =>
+        if 2 ≤ n ∧ 2 ≤ m ∧ m ≠ n then
+          erdos_weight m / erdos_weight n * P m n
+        else 0
+  refine ⟨U, ?_⟩
+  unfold eps_adjoint_kernel_package
+  rcases hP with
+    ⟨hP_nonneg, hP_row, hP_one, hP_one_zero, hP_prime_absorb,
+      hP_prime_zero, hP_support, hP_rule, hP_pp_redirect,
+      hP_pp_rule, hP_pp_support, hP_subinf, hP_subfin⟩
+  have hweight_pos : ∀ n : ℕ, 2 ≤ n -> 0 < erdos_weight n := by
+    intro n hn
+    rw [erdos_weight]
+    apply div_pos zero_lt_one
+    apply mul_pos
+    · exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hn)
+    · apply Real.log_pos
+      exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hn)
+  have hweight_nonneg : ∀ n : ℕ, 2 ≤ n -> 0 ≤ erdos_weight n := by
+    intro n hn
+    exact (hweight_pos n hn).le
+  have hrow_term_nonneg : ∀ n m : ℕ, 2 ≤ n ->
+      0 ≤ (if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0) := by
+    intro n m hn
+    by_cases hm : 2 ≤ m ∧ m ≠ n
+    · rw [if_pos hm]
+      exact mul_nonneg (div_nonneg (hweight_nonneg m hm.1) (hweight_nonneg n hn))
+        (hP_nonneg m n)
+    · rw [if_neg hm]
+  have hrow_finite_bound : ∀ n : ℕ, 2 ≤ n -> ∀ s : Finset ℕ,
+      (∑ m ∈ s,
+        if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0) ≤ 1 := by
+    intro n hn s
+    let r : Finset ℕ := s.filter (fun m => 2 ≤ m ∧ m ≠ n ∧ P m n ≠ 0)
+    have hmul_div : ∀ m ∈ r, m = n * (m / n) ∧ 1 < m / n := by
+      intro m hm
+      have hm' : 2 ≤ m ∧ m ≠ n ∧ P m n ≠ 0 := by
+        have hm'' : m ∈ s ∧ (2 ≤ m ∧ m ≠ n ∧ P m n ≠ 0) := by
+          simpa [r] using hm
+        exact hm''.2
+      have hsupp := hP_support m n hm'.1 hm'.2.2
+      have hlt : n < m := by
+        rcases hsupp.2 with hdiag | hlt
+        · exact False.elim (hm'.2.1 hdiag.1.symm)
+        · exact hlt
+      have hmul : m = n * (m / n) := (Nat.mul_div_cancel' hsupp.1).symm
+      have hqpos : 0 < m / n := by
+        by_contra hqnot
+        have hqzero : m / n = 0 := Nat.eq_zero_of_not_pos hqnot
+        rw [hmul, hqzero, Nat.mul_zero] at hlt
+        omega
+      have hqne : m / n ≠ 1 := by
+        intro hqone
+        rw [hmul, hqone, Nat.mul_one] at hm'
+        exact hm'.2.1 rfl
+      have hqgt : 1 < m / n := by omega
+      exact ⟨hmul, hqgt⟩
+    have hsum_restrict :
+        (∑ m ∈ s,
+          if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0) =
+            ∑ m ∈ r, erdos_weight m / erdos_weight n * P m n := by
+      dsimp [r]
+      rw [Finset.sum_filter]
+      apply Finset.sum_congr rfl
+      intro m hm
+      by_cases hmcond : 2 ≤ m ∧ m ≠ n
+      · by_cases hpmn : P m n = 0
+        · rw [if_pos hmcond, hpmn, mul_zero]
+          simp [hpmn]
+        · rw [if_pos hmcond]
+          have hpred : 2 ≤ m ∧ m ≠ n ∧ P m n ≠ 0 := ⟨hmcond.1, hmcond.2, hpmn⟩
+          rw [if_pos hpred]
+      · rw [if_neg hmcond]
+        have hpred : ¬(2 ≤ m ∧ m ≠ n ∧ P m n ≠ 0) := by
+          intro h
+          exact hmcond ⟨h.1, h.2.1⟩
+        rw [if_neg hpred]
+    have hsum_image_raw :
+        (∑ q ∈ r.image (fun m => m / n),
+          if 1 < q then erdos_weight (n * q) / erdos_weight n * P (n * q) n else 0) =
+            ∑ m ∈ r,
+              if 1 < m / n then
+                erdos_weight (n * (m / n)) / erdos_weight n * P (n * (m / n)) n
+              else 0 := by
+      rw [Finset.sum_image]
+      intro a ha b hb hab
+      have ha_eq := (hmul_div a ha).1
+      have hb_eq := (hmul_div b hb).1
+      change a / n = b / n at hab
+      rw [ha_eq, hb_eq, hab]
+    have hsum_image_congr :
+        (∑ m ∈ r,
+          if 1 < m / n then
+            erdos_weight (n * (m / n)) / erdos_weight n * P (n * (m / n)) n
+          else 0) =
+            ∑ m ∈ r, erdos_weight m / erdos_weight n * P m n := by
+      apply Finset.sum_congr rfl
+      intro m hm
+      have hmd := hmul_div m hm
+      rw [if_pos hmd.2, ← hmd.1]
+    have hsum_image :
+        (∑ m ∈ r, erdos_weight m / erdos_weight n * P m n) =
+          ∑ q ∈ r.image (fun m => m / n),
+            if 1 < q then erdos_weight (n * q) / erdos_weight n * P (n * q) n else 0 := by
+      exact (hsum_image_raw.trans hsum_image_congr).symm
+    have hscale_eq :
+        (∑ q ∈ r.image (fun m => m / n),
+          if 1 < q then erdos_weight (n * q) / erdos_weight n * P (n * q) n else 0) =
+            (1 / erdos_weight n) *
+              ∑ q ∈ r.image (fun m => m / n),
+                if 1 < q then erdos_weight (n * q) * P (n * q) n else 0 := by
+      rw [Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro q hq
+      by_cases hqone : 1 < q
+      · rw [if_pos hqone, if_pos hqone]
+        ring
+      · rw [if_neg hqone, if_neg hqone]
+        ring
+    have hscaled_le :
+        (1 / erdos_weight n) *
+          (∑ q ∈ r.image (fun m => m / n),
+            if 1 < q then erdos_weight (n * q) * P (n * q) n else 0) ≤ 1 := by
+      have hsub := hP_subfin n hn (r.image (fun m => m / n))
+      have hmul := mul_le_mul_of_nonneg_left hsub
+        (div_nonneg zero_le_one (hweight_nonneg n hn))
+      calc
+        (1 / erdos_weight n) *
+            (∑ q ∈ r.image (fun m => m / n),
+              if 1 < q then erdos_weight (n * q) * P (n * q) n else 0) ≤
+            (1 / erdos_weight n) * erdos_weight n := hmul
+        _ = 1 := by
+            field_simp [(hweight_pos n hn).ne']
+    calc
+      (∑ m ∈ s,
+        if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0) =
+          ∑ m ∈ r, erdos_weight m / erdos_weight n * P m n := hsum_restrict
+      _ = ∑ q ∈ r.image (fun m => m / n),
+            if 1 < q then erdos_weight (n * q) / erdos_weight n * P (n * q) n else 0 := hsum_image
+      _ = (1 / erdos_weight n) *
+            ∑ q ∈ r.image (fun m => m / n),
+              if 1 < q then erdos_weight (n * q) * P (n * q) n else 0 := hscale_eq
+      _ ≤ 1 := hscaled_le
+  have hrow_tsum_bound : ∀ n : ℕ, 2 ≤ n ->
+      (∑' m : ℕ,
+        if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0) ≤ 1 := by
+    intro n hn
+    apply tsum_le_of_sum_le'
+    · norm_num
+    · intro s
+      exact hrow_finite_bound n hn s
+  have hrow_tsum_eq : ∀ n : ℕ, 2 ≤ n ->
+      (∑' m : ℕ, if 2 ≤ m then U (some n) (some m) else 0) =
+        ∑' m : ℕ,
+          if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0 := by
+    intro n hn
+    apply tsum_congr
+    intro m
+    by_cases hm : 2 ≤ m
+    · by_cases hmn : m ≠ n
+      · simp [U, hn, hm, hmn]
+      · simp [U, hn, hm, hmn]
+    · have hnot : ¬(2 ≤ m ∧ m ≠ n) := by
+        intro h
+        exact hm h.1
+      simp [U, hn, hm, hnot]
+  have hrow_finset_eq : ∀ n : ℕ, 2 ≤ n -> ∀ s : Finset ℕ,
+      (∑ m ∈ s, if 2 ≤ m then U (some n) (some m) else 0) =
+        ∑ m ∈ s,
+          if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0 := by
+    intro n hn s
+    apply Finset.sum_congr rfl
+    intro m hm_mem
+    by_cases hm : 2 ≤ m
+    · by_cases hmn : m ≠ n
+      · simp [U, hn, hm, hmn]
+      · simp [U, hn, hm, hmn]
+    · have hnot : ¬(2 ≤ m ∧ m ≠ n) := by
+        intro h
+        exact hm h.1
+      simp [U, hn, hm, hnot]
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro a b
+    cases a with
+    | none =>
+      cases b <;> simp [U]
+    | some n =>
+      cases b with
+      | none =>
+        by_cases hn : 2 ≤ n
+        · simp [U, hn, sub_nonneg.mpr (hrow_tsum_bound n hn)]
+        · simp [U, hn]
+      | some m =>
+        by_cases hcond : 2 ≤ n ∧ 2 ≤ m ∧ m ≠ n
+        · simp [U, hcond]
+          exact mul_nonneg
+            (div_nonneg (hweight_nonneg m hcond.2.1) (hweight_nonneg n hcond.1))
+            (hP_nonneg m n)
+        · simp [U, hcond]
+  · intro n hn
+    rw [hrow_tsum_eq n hn]
+    simp [U, hn]
+  · intro n hn s
+    rw [hrow_finset_eq n hn s]
+    exact hrow_finite_bound n hn s
+  · simp [U]
+  · intro m
+    simp [U]
+  · intro n hn
+    simp [U, hn]
+  · intro n m hn hm hne
+    simp [U, hn, hm, hne]
+  · intro n m hne
+    by_cases hcond : 2 ≤ n ∧ 2 ≤ m ∧ m ≠ n
+    · have hpmn : P m n ≠ 0 := by
+        intro hp
+        apply hne
+        simp [U, hcond, hp]
+      have hsupp := hP_support m n hcond.2.1 hpmn
+      have hlt : n < m := by
+        rcases hsupp.2 with hdiag | hlt
+        · exact False.elim (hcond.2.2 hdiag.1.symm)
+        · exact hlt
+      rcases hsupp.1 with ⟨q, hqeq⟩
+      have hqgt : 1 < q := by
+        have hqpos : 0 < q := by
+          by_contra hqnot
+          have hqzero : q = 0 := Nat.eq_zero_of_not_pos hqnot
+          rw [hqzero, Nat.mul_zero] at hqeq
+          omega
+        have hqne : q ≠ 1 := by
+          intro hqone
+          rw [hqone, Nat.mul_one] at hqeq
+          omega
+        omega
+      exact ⟨hcond.1, hcond.2.1, ⟨q, hqgt, hqeq⟩⟩
+    · exfalso
+      apply hne
+      simp [U, hcond]
+  · intro n hn
+    simp [U, hn]
 
 @[blueprint "lem:eps-adjoint-hitting-mass-facts-from-adjoint-kernel"
   (statement := /-- For every downward kernel
