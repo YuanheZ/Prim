@@ -4049,15 +4049,26 @@ lemma mangoldt_tail_sharp_prime_slack :
   sorry
 
 @[blueprint "lem:modified-prime-power-redirected-bound"
-  (statement := /-- For every prime $p$, both the infinite redirected
-  prime-power contribution and every finite redirected sub-sum are bounded by
-  the slack left by the sharp ordinary tail estimate: with
-  $x=\log p/\log 2$, they are at most $1-x/(x+1/2)$. -/)
-  (proof := /-- For $k\ge2$ each redirected term is bounded by
-  $1/(4p^{k-1})$.  Summing the resulting geometric series gives
-  $1/(4(p-1))$.  Since $x=\log p/\log 2\le p-1$, this is at most
-  $1/(2x+1)=1-x/(x+1/2)$.  The same estimate holds for every finite sub-sum
-  because all redirected terms are non-negative. -/)
+  (statement := /-- For every prime natural number $p$, set
+  $x=\log p/\log 2$.  The redirected prime-power mass satisfies
+  $$\sum_{k\ge2}\frac{1}{k^2p^{k-1}}\le 1-\frac{x}{x+1/2},$$
+  and, for every finite set $s\subset \mathbb N$, the finite redirected mass
+  $$\sum_{k\in s,\ k\ge2}\frac{1}{k^2p^{k-1}}$$
+  satisfies the same bound. -/)
+  (proof := /-- By \cref{def:prime-layer}, $p$ is a prime natural number, so
+  $p\ge2$.  For every $k\ge2$, the inequality $k^2\ge4$ and the bound
+  $p^{k-1}\ge p2^{k-2}$ give
+  $$\frac{1}{k^2p^{k-1}}\le \frac{1}{4p2^{k-2}}.$$
+  Reindexing a finite selected set of exponents by $k\mapsto k-2$ embeds its
+  binary majorant into the geometric series
+  $$\sum_{j\ge0}\frac{1}{4p2^j}=\frac{1}{2p},$$
+  proving the finite bound for \cref{def:modified-prime-power-redirected-finite}.
+  The comparison of non-negative finite partial sums with the t-sum gives the
+  same $1/(2p)$ bound for
+  \cref{def:modified-prime-power-redirected-sum}.  Finally,
+  $p\le2^{p-1}$ implies $x=\log p/\log 2\le p-1$, so
+  $x+1/2\le p$ and hence
+  $$\frac{1}{2p}\le \frac{1/2}{x+1/2}=1-\frac{x}{x+1/2}.$$ -/)
   (title := /-- Geometric bound for redirected prime powers -/)
   (latexEnv := "lemma")]
 lemma modified_prime_power_redirected_bound :
@@ -4069,7 +4080,130 @@ lemma modified_prime_power_redirected_bound :
         modified_prime_power_redirected_finite p s ≤
           1 - (Real.log (p : ℝ) / Real.log 2) /
             (Real.log (p : ℝ) / Real.log 2 + (1 / 2 : ℝ)) := by
-  sorry
+  intro p hp
+  have hpprime : Nat.Prime p := by simpa [prime_layer] using hp
+  let x : ℝ := Real.log (p : ℝ) / Real.log 2
+  let a : ℝ := 1 / (2 * (p : ℝ))
+  have hp_two_real : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hpprime.two_le
+  have hp_pos_real : 0 < (p : ℝ) := by exact_mod_cast hpprime.pos
+  have hpoint : ∀ k : ℕ,
+      (if 2 ≤ k then 1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) else 0) ≤
+        if 2 ≤ k then a / 2 / (2 : ℝ) ^ (k - 2) else 0 := by
+    intro k
+    by_cases hk : 2 ≤ k
+    · rw [if_pos hk, if_pos hk]
+      have hk_real : (2 : ℝ) ≤ (k : ℝ) := by exact_mod_cast hk
+      have hk_sq : (4 : ℝ) ≤ (k : ℝ) ^ 2 := by nlinarith
+      have hpow_le : (2 : ℝ) ^ (k - 2) ≤ (p : ℝ) ^ (k - 2) := by
+        exact pow_le_pow_left₀ (by norm_num) hp_two_real (k - 2)
+      have hppow : (p : ℝ) * (2 : ℝ) ^ (k - 2) ≤ (p : ℝ) ^ (k - 1) := by
+        calc
+          (p : ℝ) * (2 : ℝ) ^ (k - 2) ≤ (p : ℝ) * (p : ℝ) ^ (k - 2) := by
+            exact mul_le_mul_of_nonneg_left hpow_le hp_pos_real.le
+          _ = (p : ℝ) ^ (k - 1) := by
+            have hkpred : k - 1 = (k - 2) + 1 := by omega
+            rw [hkpred, pow_succ]
+            ring
+      have hden0 : (4 : ℝ) * ((p : ℝ) * (2 : ℝ) ^ (k - 2)) ≤
+          ((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1)) := by
+        exact mul_le_mul hk_sq hppow
+          (mul_nonneg hp_pos_real.le (pow_nonneg (by norm_num) _))
+          (sq_nonneg (k : ℝ))
+      have hden_le : ((4 : ℝ) * (p : ℝ)) * (2 : ℝ) ^ (k - 2) ≤
+          ((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1)) := by
+        nlinarith [hden0]
+      calc
+        1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) ≤
+            1 / (((4 : ℝ) * (p : ℝ)) * (2 : ℝ) ^ (k - 2)) :=
+          one_div_le_one_div_of_le (by positivity) hden_le
+        _ = a / 2 / (2 : ℝ) ^ (k - 2) := by
+          dsimp [a]
+          ring_nf
+    · rw [if_neg hk, if_neg hk]
+  have hsumm : Summable (fun n : ℕ => a / 2 / (2 : ℝ) ^ n) :=
+    summable_geometric_two' a
+  have htsum : (∑' n : ℕ, a / 2 / (2 : ℝ) ^ n) = a :=
+    tsum_geometric_two' a
+  have hfinite_binary : ∀ s : Finset ℕ, modified_prime_power_redirected_finite p s ≤ a := by
+    intro s
+    have himage :
+        (∑ j ∈ (s.filter (fun k => 2 ≤ k)).image (fun k => k - 2),
+          a / 2 / (2 : ℝ) ^ j) =
+            ∑ k ∈ s.filter (fun k => 2 ≤ k), a / 2 / (2 : ℝ) ^ (k - 2) := by
+      rw [Finset.sum_image]
+      intro x hx y hy hxy
+      simp at hx hy
+      change x - 2 = y - 2 at hxy
+      omega
+    calc
+      modified_prime_power_redirected_finite p s =
+          ∑ k ∈ s, if 2 ≤ k then
+            1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) else 0 := by
+        rfl
+      _ ≤ ∑ k ∈ s, if 2 ≤ k then a / 2 / (2 : ℝ) ^ (k - 2) else 0 := by
+        apply Finset.sum_le_sum
+        intro k _
+        exact hpoint k
+      _ = ∑ k ∈ s.filter (fun k => 2 ≤ k), a / 2 / (2 : ℝ) ^ (k - 2) := by
+        rw [← Finset.sum_filter]
+      _ = ∑ j ∈ (s.filter (fun k => 2 ≤ k)).image (fun k => k - 2),
+            a / 2 / (2 : ℝ) ^ j := himage.symm
+      _ ≤ ∑' j : ℕ, a / 2 / (2 : ℝ) ^ j := by
+        exact hsumm.sum_le_tsum _ (fun _ _ => by dsimp [a]; positivity)
+      _ = a := htsum
+  have hlog2_pos : 0 < Real.log (2 : ℝ) := Real.log_pos (by norm_num)
+  have hx_nonneg : 0 ≤ x := by
+    dsimp [x]
+    exact div_nonneg (Real.log_nonneg (by exact_mod_cast hpprime.one_le)) hlog2_pos.le
+  have hpred_lt : p - 1 < 2 ^ (p - 1) := Nat.lt_two_pow_self
+  have hpow_nat : p ≤ 2 ^ (p - 1) := by
+    have hp_pos_nat : 0 < p := hpprime.pos
+    omega
+  have hpow_real : (p : ℝ) ≤ (2 : ℝ) ^ (p - 1) := by exact_mod_cast hpow_nat
+  have hlog_le_pow : Real.log (p : ℝ) ≤ Real.log ((2 : ℝ) ^ (p - 1)) :=
+    Real.log_le_log hp_pos_real hpow_real
+  have hlog_le : Real.log (p : ℝ) ≤ ((p - 1 : ℕ) : ℝ) * Real.log 2 := by
+    simpa [Real.log_pow] using hlog_le_pow
+  have hx_le_pred : x ≤ ((p - 1 : ℕ) : ℝ) := by
+    dsimp [x]
+    rw [div_le_iff₀ hlog2_pos]
+    simpa [mul_comm, mul_left_comm, mul_assoc] using hlog_le
+  have hpred_cast : ((p - 1 : ℕ) : ℝ) = (p : ℝ) - 1 := by
+    norm_num [Nat.cast_sub (by exact hpprime.one_le : 1 ≤ p)]
+  have hden_pos : 0 < x + 1 / 2 := by nlinarith
+  have hden_le_p : x + 1 / 2 ≤ (p : ℝ) := by
+    have hx_le_pminus : x ≤ (p : ℝ) - 1 := by simpa [hpred_cast] using hx_le_pred
+    nlinarith
+  have ha_le_slack : a ≤ 1 - x / (x + 1 / 2) := by
+    have hrecip : 1 / (p : ℝ) ≤ 1 / (x + 1 / 2) :=
+      one_div_le_one_div_of_le hden_pos hden_le_p
+    calc
+      a = (1 / 2 : ℝ) * (1 / (p : ℝ)) := by
+        dsimp [a]
+        ring
+      _ ≤ (1 / 2 : ℝ) * (1 / (x + 1 / 2)) := by
+        exact mul_le_mul_of_nonneg_left hrecip (by norm_num)
+      _ = 1 - x / (x + 1 / 2) := by
+        field_simp [hden_pos.ne']
+        ring
+  have hslack_nonneg : 0 ≤ 1 - x / (x + 1 / 2) := by
+    exact (show 0 ≤ a by dsimp [a]; positivity).trans ha_le_slack
+  have hfinite_slack : ∀ s : Finset ℕ,
+      modified_prime_power_redirected_finite p s ≤ 1 - x / (x + 1 / 2) := by
+    intro s
+    exact (hfinite_binary s).trans ha_le_slack
+  constructor
+  · rw [modified_prime_power_redirected_sum]
+    apply tsum_le_of_sum_le'
+    · change 0 ≤ 1 - x / (x + 1 / 2)
+      exact hslack_nonneg
+    · intro s
+      change (∑ k ∈ s, if 2 ≤ k then
+          1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) else 0) ≤ 1 - x / (x + 1 / 2)
+      simpa [modified_prime_power_redirected_finite] using (hfinite_slack s)
+  · intro s
+    change modified_prime_power_redirected_finite p s ≤ 1 - x / (x + 1 / 2)
+    exact hfinite_slack s
 
 @[blueprint "lem:modified-prime-power-incoming-bound"
   (statement := /-- For every prime $p$, the modified prime-power incoming mass
