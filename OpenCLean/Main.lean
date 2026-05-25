@@ -8055,6 +8055,533 @@ noncomputable def mangoldt_von_mangoldt_downward_kernel_invariant
       (∑' q : ℕ, if 1 < q then mangoldt_weight (n * q) * P (n * q) n else 0) =
         mangoldt_weight n)
 
+@[blueprint "lem:mangoldt-weight-incoming-integral-bridge-deriv-identity"
+  (statement := /-- For every real number $s>1$, the derivative on the real
+  axis of the reciprocal real zeta factor is the reciprocal real zeta factor
+  times the real von Mangoldt Dirichlet series with parameter $s-1$. -/)
+  (proof := /-- Apply the logarithmic-derivative identity
+  \cref{lem:mangoldt-dirichlet-series-eq-zeta-log-derivative} with
+  $u=s-1$.  Since $s>1$, the Riemann zeta value on the real axis is positive.
+  Differentiating the reciprocal of the real part of the zeta function and
+  taking real parts of the complex logarithmic-derivative identity gives the
+  claimed product formula. -/)
+  (title := /-- Reciprocal-zeta derivative as a Mangoldt series -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_incoming_integral_bridge_deriv_identity
+    (s : ℝ) (hs : 1 < s) :
+    deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s =
+      (1 / ((riemannZeta (s : ℂ)).re)) * mangoldt_dirichlet_series (s - 1) := by
+  have hu : 0 < s - 1 := by linarith
+  have hz_pos : 0 < (riemannZeta (s : ℂ)).re := riemannZeta_re_pos_of_one_lt hs
+  have hz_diff : DifferentiableAt ℂ riemannZeta (s : ℂ) :=
+    differentiableAt_riemannZeta (by
+      norm_num [Complex.ext_iff]
+      linarith)
+  have hbase_has : HasDerivAt
+      (fun t : ℝ => (riemannZeta (t : ℂ)).re)
+      (deriv riemannZeta (s : ℂ)).re s := by
+    change HasDerivAt (fun t : ℝ => (riemannZeta (t : ℂ)).re)
+      (deriv riemannZeta (s : ℂ)).re s
+    exact hz_diff.hasDerivAt.real_of_complex
+  have hrecip_deriv :
+      deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s =
+        - (deriv riemannZeta (s : ℂ)).re / ((riemannZeta (s : ℂ)).re) ^ 2 := by
+    simpa [one_div] using (hbase_has.inv hz_pos.ne').deriv
+  have hdir_real :
+      mangoldt_dirichlet_series (s - 1) =
+        (- deriv riemannZeta (s : ℂ) / riemannZeta (s : ℂ)).re := by
+    have h := congrArg Complex.re
+      (mangoldt_dirichlet_series_eq_zeta_log_derivative (s - 1) hu)
+    simpa using h
+  have hz_im : (riemannZeta (s : ℂ)).im = 0 :=
+    riemannZeta_im_eq_zero_of_one_lt hs
+  have hdiv_re :
+      (- deriv riemannZeta (s : ℂ) / riemannZeta (s : ℂ)).re =
+        - (deriv riemannZeta (s : ℂ)).re / (riemannZeta (s : ℂ)).re := by
+    rw [Complex.div_re]
+    simp [hz_im]
+    field_simp [Complex.normSq, hz_im, hz_pos.ne']
+    rw [Complex.normSq_apply, hz_im]
+    ring
+  rw [hrecip_deriv, hdir_real, hdiv_re]
+  field_simp [hz_pos.ne']
+
+@[blueprint "lem:mangoldt-weight-incoming-integral-bridge-rhs-laplace"
+  (statement := /-- For every positive integer $n$, the reciprocal-zeta
+  derivative integral over $s>1$ is the translated Laplace integral over
+  $u>0$ whose kernel is the reciprocal real zeta factor at $1+u$ times the
+  real von Mangoldt Dirichlet series. -/)
+  (proof := /-- Translate the integral by $s=u+1$ using
+  \cref{lem:mangoldt-weight-integral-change-of-variables-ioi-translate-one}.
+  Then apply
+  \cref{lem:mangoldt-weight-incoming-integral-bridge-deriv-identity} at
+  $s=1+u$ and rewrite $n^{1+u}=n n^u$, equivalently
+  $n^{-(u)}=(n^u)^{-1}$, pulling the factor $1/n$ outside the integral. -/)
+  (title := /-- Laplace form of the reciprocal-zeta derivative integral -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_incoming_integral_bridge_rhs_laplace
+    (n : ℕ) (hn : 1 ≤ n) :
+    (∫ s : ℝ in Set.Ioi (1 : ℝ),
+        deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s /
+          Real.rpow (n : ℝ) s) =
+      (1 / (n : ℝ)) *
+        (∫ u : ℝ in Set.Ioi (0 : ℝ),
+          Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+            mangoldt_dirichlet_series u) := by
+  have hn_pos_nat : 0 < n := Nat.lt_of_lt_of_le Nat.zero_lt_one hn
+  have hn_pos : 0 < (n : ℝ) := by exact_mod_cast hn_pos_nat
+  rw [mangoldt_weight_integral_change_of_variables_ioi_translate_one]
+  rw [← MeasureTheory.integral_const_mul]
+  apply MeasureTheory.integral_congr_ae
+  filter_upwards [MeasureTheory.ae_restrict_mem
+    (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))] with u hu
+  have hu_pos : 0 < u := by simpa [Set.mem_Ioi] using hu
+  have hs : 1 < u + 1 := by linarith
+  have hpow_pos : 0 < Real.rpow (n : ℝ) u := Real.rpow_pos_of_pos hn_pos u
+  rw [mangoldt_weight_incoming_integral_bridge_deriv_identity (u + 1) hs]
+  rw [show ((u + 1 : ℝ) : ℂ) = ((1 + u : ℝ) : ℂ) by norm_num [add_comm]]
+  simp [show u + 1 - 1 = u by ring, Real.rpow_add hn_pos u 1, Real.rpow_one,
+    Real.rpow_neg hn_pos.le u]
+  field_simp [hn_pos.ne', hpow_pos.ne']
+
+@[blueprint "lem:mangoldt-weight-incoming-integral-bridge-term-laplace"
+  (statement := /-- For positive integers $n$ and $q$ with $q>1$, the single
+  incoming summand obtained from $nq$ is the corresponding Laplace integral
+  term with kernel $\Lambda(q)q^{-1-u}$. -/)
+  (proof := /-- Since $nq\geq2$,
+  \cref{lem:mangoldt-weight-integral-change-of-variables-mangoldt-laplace}
+  expands \cref{def:mangoldt-weight} at $nq$.  The factor $\log(nq)$ cancels,
+  and the identities $(nq)^{-u}=n^{-u}q^{-u}$ and
+  $q^{1+u}=q q^u$ give the displayed integrand. -/)
+  (title := /-- One incoming summand in Laplace form -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_incoming_integral_bridge_term_laplace
+    (n q : ℕ) (hn : 1 ≤ n) (hq : 1 < q) :
+    mangoldt_weight (n * q) *
+        (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ)) =
+      ∫ u : ℝ in Set.Ioi (0 : ℝ),
+        (1 / (n : ℝ)) *
+          (Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+            (ArithmeticFunction.vonMangoldt q /
+              Real.rpow (q : ℝ) (1 + u))) := by
+  have hq_two : 2 ≤ q := by omega
+  have hnq_two : 2 ≤ n * q := by
+    exact Nat.mul_le_mul hn hq_two
+  have hn_pos : 0 < (n : ℝ) := by
+    exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_one hn)
+  have hq_pos : 0 < (q : ℝ) := by
+    exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hq_two)
+  have hnq_pos : 0 < (((n * q : ℕ) : ℝ)) := by
+    exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hnq_two)
+  have hlog_pos : 0 < Real.log (((n * q : ℕ) : ℝ)) := by
+    apply Real.log_pos
+    exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hnq_two)
+  have hlog_mul_ne : Real.log ((n : ℝ) * (q : ℝ)) ≠ 0 := by
+    simpa [Nat.cast_mul] using hlog_pos.ne'
+  have hweight := mangoldt_weight_integral_change_of_variables_mangoldt_laplace
+    (n * q) hnq_two
+  calc
+    mangoldt_weight (n * q) *
+        (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ)) =
+        ((ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ)) *
+          (1 / ((n * q : ℕ) : ℝ))) *
+          (∫ u : ℝ in Set.Ioi (0 : ℝ),
+            Real.log (((n * q : ℕ) : ℝ)) *
+              Real.rpow ((n * q : ℕ) : ℝ) (-u) *
+              (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re))) := by
+      rw [hweight]
+      ring
+    _ = ∫ u : ℝ in Set.Ioi (0 : ℝ),
+        ((ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ)) *
+          (1 / ((n * q : ℕ) : ℝ))) *
+          (Real.log (((n * q : ℕ) : ℝ)) *
+            Real.rpow ((n * q : ℕ) : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re))) := by
+      rw [← MeasureTheory.integral_const_mul]
+    _ = ∫ u : ℝ in Set.Ioi (0 : ℝ),
+        (1 / (n : ℝ)) *
+          (Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+            (ArithmeticFunction.vonMangoldt q /
+              Real.rpow (q : ℝ) (1 + u))) := by
+      apply MeasureTheory.integral_congr_ae
+      filter_upwards [MeasureTheory.ae_restrict_mem
+        (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))] with u hu
+      have hn_rpow_pos : 0 < Real.rpow (n : ℝ) u := Real.rpow_pos_of_pos hn_pos u
+      have hq_rpow_pos : 0 < Real.rpow (q : ℝ) u := Real.rpow_pos_of_pos hq_pos u
+      rw [Nat.cast_mul]
+      simp [Real.mul_rpow hn_pos.le hq_pos.le, Real.rpow_neg hn_pos.le u,
+        Real.rpow_neg hq_pos.le u, Real.rpow_add hq_pos u 1, Real.rpow_one]
+      field_simp [hn_pos.ne', hq_pos.ne', hn_rpow_pos.ne', hq_rpow_pos.ne', hlog_mul_ne]
+      rw [Real.rpow_add hq_pos 1 u, Real.rpow_one]
+      field_simp [hlog_mul_ne]
+
+@[blueprint "lem:mangoldt-weight-incoming-integral-bridge-weighted-summable"
+  (statement := /-- For every positive integer $n$, the absolute values of the
+  incoming von Mangoldt-weight summands from states $nq$ form a summable real
+  series. -/)
+  (proof := /-- Compare $\nu_\Lambda$ with the Erd\H{o}s weight.  The
+  Erd\H{o}s part is, after expanding \cref{def:erdos-weight} and
+  \cref{def:mangoldt-tail-term}, a constant multiple of the von Mangoldt
+  logarithmic-square tail controlled by \cref{lem:mangoldt-tail-upper-bound}.
+  The error part is
+  dominated by the summable pointwise discrepancy from
+  \cref{lem:mangoldt-weight-erdos-summable-error}, because the standard
+  Mathlib bound gives $\Lambda(q)\leq\log(q)\leq\log(nq)$. -/)
+  (title := /-- Summability of incoming weighted Mangoldt terms -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_incoming_integral_bridge_weighted_summable
+    (n : ℕ) (hn : 1 ≤ n) :
+    Summable (fun q : ℕ =>
+      ‖if 1 < q then
+        mangoldt_weight (n * q) *
+          (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+      else 0‖) := by
+  have hn_pos_nat : 0 < n := lt_of_lt_of_le Nat.zero_lt_one hn
+  have hn_pos : 0 < (n : ℝ) := by exact_mod_cast hn_pos_nat
+  obtain ⟨_, _, htail_bound⟩ := mangoldt_tail_upper_bound
+  have htail_summ : Summable (fun q : ℕ =>
+      if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term n q else 0) :=
+    (htail_bound n hn 2 (by norm_num)).1
+  have herdos_summ : Summable (fun q : ℕ =>
+      if 1 < q then
+        erdos_weight (n * q) *
+          (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+      else 0) := by
+    have hscaled := htail_summ.mul_left (1 / (n : ℝ))
+    refine hscaled.congr ?_
+    intro q
+    by_cases hq : 1 < q
+    · have hq_two : 2 ≤ q := by omega
+      have hq_real : (2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq_two
+      have hnq_two : 2 ≤ n * q := Nat.mul_le_mul hn hq_two
+      have hq_pos : 0 < (q : ℝ) := by
+        exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hq_two)
+      have hnq_pos : 0 < (((n * q : ℕ) : ℝ)) := by
+        exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hnq_two)
+      have hlog_pos : 0 < Real.log (((n * q : ℕ) : ℝ)) := by
+        apply Real.log_pos
+        exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hnq_two)
+      simp [hq, hq_real, erdos_weight, mangoldt_tail_term, Nat.cast_mul]
+      field_simp [hn_pos.ne', hq_pos.ne', hlog_pos.ne']
+    · have hq_not_two : ¬ 2 ≤ q := by omega
+      have hq_not_real : ¬ (2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq_not_two
+      simp [hq, hq_not_real]
+  have hinj : Function.Injective (fun q : ℕ => n * q) := by
+    intro a b h
+    exact Nat.mul_left_cancel hn_pos_nat h
+  have herror_subseq : Summable (fun q : ℕ =>
+      |mangoldt_weight (n * q) - erdos_weight (n * q)|) := by
+    simpa [Function.comp_def] using
+      (mangoldt_weight_erdos_summable_error.comp_injective hinj)
+  have herror_if_summ : Summable (fun q : ℕ =>
+      if 1 < q then |mangoldt_weight (n * q) - erdos_weight (n * q)| else 0) := by
+    refine Summable.of_norm_bounded herror_subseq ?_
+    intro q
+    by_cases hq : 1 < q <;> simp [hq, abs_nonneg]
+  refine Summable.of_norm_bounded (herdos_summ.add herror_if_summ) ?_
+  intro q
+  by_cases hq : 1 < q
+  · have hq_two : 2 ≤ q := by omega
+    have hnq_two : 2 ≤ n * q := Nat.mul_le_mul hn hq_two
+    have hq_pos : 0 < (q : ℝ) := by
+      exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hq_two)
+    have hnq_pos : 0 < (((n * q : ℕ) : ℝ)) := by
+      exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hnq_two)
+    have hlog_pos : 0 < Real.log (((n * q : ℕ) : ℝ)) := by
+      apply Real.log_pos
+      exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hnq_two)
+    have hq_le_nq_nat : q ≤ n * q := by
+      simpa using (Nat.mul_le_mul_right q hn)
+    have hq_le_nq : (q : ℝ) ≤ ((n * q : ℕ) : ℝ) := by exact_mod_cast hq_le_nq_nat
+    have hLambda_le_logq : ArithmeticFunction.vonMangoldt q ≤ Real.log (q : ℝ) :=
+      ArithmeticFunction.vonMangoldt_le_log
+    have hlogq_le_lognq : Real.log (q : ℝ) ≤ Real.log (((n * q : ℕ) : ℝ)) :=
+      Real.log_le_log hq_pos hq_le_nq
+    have hlog_mul_pos : 0 < Real.log ((n : ℝ) * (q : ℝ)) := by
+      simpa [Nat.cast_mul] using hlog_pos
+    have hfactor_nonneg :
+        0 ≤ ArithmeticFunction.vonMangoldt q / Real.log (((n * q : ℕ) : ℝ)) :=
+      div_nonneg ArithmeticFunction.vonMangoldt_nonneg hlog_pos.le
+    have hfactor_nonneg_mul :
+        0 ≤ ArithmeticFunction.vonMangoldt q / Real.log ((n : ℝ) * (q : ℝ)) := by
+      simpa [Nat.cast_mul] using hfactor_nonneg
+    have hfactor_le_one :
+        ArithmeticFunction.vonMangoldt q / Real.log (((n * q : ℕ) : ℝ)) ≤ 1 := by
+      exact (div_le_one₀ hlog_pos).2 (le_trans hLambda_le_logq hlogq_le_lognq)
+    have hfactor_le_one_mul :
+        ArithmeticFunction.vonMangoldt q / Real.log ((n : ℝ) * (q : ℝ)) ≤ 1 := by
+      simpa [Nat.cast_mul] using hfactor_le_one
+    have herd_nonneg : 0 ≤ erdos_weight (n * q) := by
+      rw [erdos_weight]
+      positivity
+    have hfactor_abs :
+        |ArithmeticFunction.vonMangoldt q| / |Real.log ((n : ℝ) * (q : ℝ))| =
+          ArithmeticFunction.vonMangoldt q / Real.log ((n : ℝ) * (q : ℝ)) := by
+      rw [abs_of_nonneg ArithmeticFunction.vonMangoldt_nonneg, abs_of_pos hlog_mul_pos]
+    have hweight_abs :
+        |mangoldt_weight (n * q)| ≤
+          erdos_weight (n * q) + |mangoldt_weight (n * q) - erdos_weight (n * q)| := by
+      have hsplit : mangoldt_weight (n * q) =
+          erdos_weight (n * q) + (mangoldt_weight (n * q) - erdos_weight (n * q)) := by
+        ring
+      have hcalc := abs_add_le (erdos_weight (n * q))
+        (mangoldt_weight (n * q) - erdos_weight (n * q))
+      rw [← hsplit] at hcalc
+      simpa [abs_of_nonneg herd_nonneg] using hcalc
+    simp [hq, Real.norm_eq_abs]
+    rw [hfactor_abs]
+    calc
+      |mangoldt_weight (n * q)| *
+          (ArithmeticFunction.vonMangoldt q / Real.log ((n : ℝ) * (q : ℝ))) ≤
+          (erdos_weight (n * q) + |mangoldt_weight (n * q) - erdos_weight (n * q)|) *
+            (ArithmeticFunction.vonMangoldt q / Real.log ((n : ℝ) * (q : ℝ))) := by
+        exact mul_le_mul_of_nonneg_right hweight_abs hfactor_nonneg_mul
+      _ = erdos_weight (n * q) *
+            (ArithmeticFunction.vonMangoldt q / Real.log ((n : ℝ) * (q : ℝ))) +
+            |mangoldt_weight (n * q) - erdos_weight (n * q)| *
+              (ArithmeticFunction.vonMangoldt q / Real.log ((n : ℝ) * (q : ℝ))) := by
+        ring
+      _ ≤ erdos_weight (n * q) *
+            (ArithmeticFunction.vonMangoldt q / Real.log ((n : ℝ) * (q : ℝ))) +
+            |mangoldt_weight (n * q) - erdos_weight (n * q)| := by
+        have hmul := mul_le_of_le_one_right
+          (abs_nonneg (mangoldt_weight (n * q) - erdos_weight (n * q))) hfactor_le_one_mul
+        linarith
+  · simp [hq]
+
+@[blueprint "lem:mangoldt-weight-incoming-integral-bridge-inner-tsum"
+  (statement := /-- For every positive integer $n$ and every real $u>0$, the
+  inner sum of the Laplace integrand over $q>1$ is the constant factor
+  $n^{-1}n^{-u}/\operatorname{Re}\zeta(1+u)$ times the real von Mangoldt
+  Dirichlet series at $u$. -/)
+  (proof := /-- Expand \cref{def:mangoldt-dirichlet-series}.  The terms with
+  $q=0$ and $q=1$ vanish, and all remaining terms have the common factor
+  $n^{-1}n^{-u}/\operatorname{Re}\zeta(1+u)$, which is pulled through the
+  t-sum. -/)
+  (title := /-- Inner incoming sum as a Dirichlet series -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_incoming_integral_bridge_inner_tsum
+    (n : ℕ) (hn : 1 ≤ n) (u : ℝ) (hu : 0 < u) :
+    (∑' q : ℕ,
+      if 1 < q then
+        (1 / (n : ℝ)) *
+          (Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+            (ArithmeticFunction.vonMangoldt q /
+              Real.rpow (q : ℝ) (1 + u)))
+      else 0) =
+      (1 / (n : ℝ)) *
+        (Real.rpow (n : ℝ) (-u) *
+          (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+          mangoldt_dirichlet_series u) := by
+  let c : ℝ := (1 / (n : ℝ)) *
+    (Real.rpow (n : ℝ) (-u) *
+      (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)))
+  calc
+    (∑' q : ℕ,
+      if 1 < q then
+        (1 / (n : ℝ)) *
+          (Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+            (ArithmeticFunction.vonMangoldt q /
+              Real.rpow (q : ℝ) (1 + u)))
+      else 0) =
+        ∑' q : ℕ,
+          if 1 < q then
+            c * (ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + u))
+          else 0 := by
+      apply tsum_congr
+      intro q
+      by_cases hq : 1 < q <;> simp [hq, c, mul_assoc]
+    _ = c * mangoldt_dirichlet_series u := by
+      rw [mangoldt_dirichlet_series]
+      rw [← tsum_mul_left]
+      apply tsum_congr
+      intro q
+      by_cases hq : 1 < q
+      · simp [hq, c, mul_assoc]
+      · have hq_cases : q = 0 ∨ q = 1 := by omega
+        rcases hq_cases with rfl | rfl <;> simp [hq, c]
+    _ = (1 / (n : ℝ)) *
+        (Real.rpow (n : ℝ) (-u) *
+          (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+          mangoldt_dirichlet_series u) := by
+      simp [c, mul_assoc]
+
+@[blueprint "lem:mangoldt-weight-incoming-integral-bridge-lhs-laplace"
+  (statement := /-- For every positive integer $n$, the incoming
+  von Mangoldt-weight mass is the Laplace integral obtained by expanding
+  \cref{def:mangoldt-weight} at each state $nq$ and summing the resulting
+  von Mangoldt Dirichlet series inside the integral. -/)
+  (proof := /-- First apply
+  \cref{lem:mangoldt-weight-incoming-integral-bridge-term-laplace} to rewrite
+  every selected incoming summand as its Laplace integral.  The individual
+  integrability follows from
+  \cref{lem:mangoldt-weight-integral-change-of-variables-zeta-kernel-integrable},
+  and the summability of the integral norms is supplied by
+  \cref{lem:mangoldt-weight-incoming-integral-bridge-weighted-summable}.  Thus
+  Mathlib's dominated integration theorem for series interchanges the t-sum
+  and the integral.  Finally
+  \cref{lem:mangoldt-weight-incoming-integral-bridge-inner-tsum} identifies the
+  inner t-sum with the real von Mangoldt Dirichlet series, and the constant
+  factor $1/n$ is pulled outside the integral. -/)
+  (title := /-- Laplace form of the incoming Mangoldt mass -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_incoming_integral_bridge_lhs_laplace
+    (n : ℕ) (hn : 1 ≤ n) :
+    (∑' q : ℕ,
+      if 1 < q then
+        mangoldt_weight (n * q) *
+          (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+      else 0) =
+      (1 / (n : ℝ)) *
+        (∫ u : ℝ in Set.Ioi (0 : ℝ),
+          Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+            mangoldt_dirichlet_series u) := by
+  let F : ℕ → ℝ → ℝ := fun q u =>
+    if 1 < q then
+      (1 / (n : ℝ)) *
+        (Real.rpow (n : ℝ) (-u) *
+          (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+          (ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + u)))
+    else 0
+  have hterm : ∀ q : ℕ,
+      (if 1 < q then
+        mangoldt_weight (n * q) *
+          (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+      else 0) = ∫ u : ℝ in Set.Ioi (0 : ℝ), F q u := by
+    intro q
+    by_cases hq : 1 < q
+    · simpa [F, hq, Nat.cast_mul] using
+        mangoldt_weight_incoming_integral_bridge_term_laplace n q hn hq
+    · simp [F, hq]
+  have hF_int : ∀ q : ℕ, MeasureTheory.Integrable (F q)
+      (MeasureTheory.volume.restrict (Set.Ioi (0 : ℝ))) := by
+    intro q
+    by_cases hq : 1 < q
+    · have hq_two : 2 ≤ q := by omega
+      have hnq_two : 2 ≤ n * q := Nat.mul_le_mul hn hq_two
+      have hn_pos : 0 < (n : ℝ) := by
+        exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_one hn)
+      have hq_pos : 0 < (q : ℝ) := by
+        exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hq_two)
+      have hnq_pos : 0 < (((n * q : ℕ) : ℝ)) := by
+        exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hnq_two)
+      have hlog_pos : 0 < Real.log (((n * q : ℕ) : ℝ)) := by
+        apply Real.log_pos
+        exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hnq_two)
+      have hlog_mul_ne : Real.log ((n : ℝ) * (q : ℝ)) ≠ 0 := by
+        simpa [Nat.cast_mul] using hlog_pos.ne'
+      have hbase := mangoldt_weight_integral_change_of_variables_zeta_kernel_integrable
+        (n * q) hnq_two
+      have hscaled := hbase.const_mul
+        ((ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ)) *
+          (1 / ((n * q : ℕ) : ℝ)))
+      convert hscaled using 1
+      ext u
+      have hn_rpow_pos : 0 < Real.rpow (n : ℝ) u := Real.rpow_pos_of_pos hn_pos u
+      have hq_rpow_pos : 0 < Real.rpow (q : ℝ) u := Real.rpow_pos_of_pos hq_pos u
+      simp [F, hq, Nat.cast_mul]
+      simp [Real.mul_rpow hn_pos.le hq_pos.le, Real.rpow_neg hn_pos.le u,
+        Real.rpow_neg hq_pos.le u, Real.rpow_add hq_pos u 1, Real.rpow_one]
+      field_simp [hn_pos.ne', hq_pos.ne', hn_rpow_pos.ne', hq_rpow_pos.ne', hlog_mul_ne]
+      rw [Real.rpow_add hq_pos 1 u, Real.rpow_one]
+      field_simp [hlog_mul_ne]
+    · simpa [F, hq] using
+        (MeasureTheory.integrable_zero (μ := MeasureTheory.volume.restrict (Set.Ioi (0 : ℝ))) :
+          MeasureTheory.Integrable (fun _ : ℝ => (0 : ℝ))
+            (MeasureTheory.volume.restrict (Set.Ioi (0 : ℝ))))
+  have hF_sum : Summable (fun q : ℕ =>
+      ∫ u : ℝ in Set.Ioi (0 : ℝ), ‖F q u‖) := by
+    have hweighted := mangoldt_weight_incoming_integral_bridge_weighted_summable n hn
+    refine hweighted.congr ?_
+    intro q
+    have hF_nonneg : 0 ≤ᵐ[MeasureTheory.volume.restrict (Set.Ioi (0 : ℝ))] fun u : ℝ => F q u := by
+      by_cases hq : 1 < q
+      · have hq_two : 2 ≤ q := by omega
+        have hn_pos : 0 < (n : ℝ) := by
+          exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_one hn)
+        have hq_pos : 0 < (q : ℝ) := by
+          exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hq_two)
+        filter_upwards [MeasureTheory.ae_restrict_mem
+          (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))] with u hu
+        have hu_pos : 0 < u := by simpa [Set.mem_Ioi] using hu
+        have hz_pos : 0 < (riemannZeta ((1 + u : ℝ) : ℂ)).re :=
+          riemannZeta_re_pos_of_one_lt (by linarith : 1 < 1 + u)
+        have hn_rpow_nonneg : 0 ≤ Real.rpow (n : ℝ) (-u) :=
+          Real.rpow_nonneg hn_pos.le (-u)
+        have hq_rpow_pos : 0 < Real.rpow (q : ℝ) (1 + u) :=
+          Real.rpow_pos_of_pos hq_pos (1 + u)
+        simp [F, hq]
+        have hinv_n_nonneg : 0 ≤ (n : ℝ)⁻¹ := inv_nonneg.mpr hn_pos.le
+        have hrec_nonneg : 0 ≤ ((riemannZeta ((1 + u : ℝ) : ℂ)).re)⁻¹ :=
+          inv_nonneg.mpr hz_pos.le
+        have hrec_nonneg' : 0 ≤ ((riemannZeta (1 + (u : ℂ))).re)⁻¹ := by
+          simpa using hrec_nonneg
+        have hLambda_div_nonneg :
+            0 ≤ ArithmeticFunction.vonMangoldt q / Real.rpow (q : ℝ) (1 + u) :=
+          div_nonneg ArithmeticFunction.vonMangoldt_nonneg hq_rpow_pos.le
+        exact mul_nonneg hinv_n_nonneg
+          (mul_nonneg (mul_nonneg hn_rpow_nonneg hrec_nonneg') hLambda_div_nonneg)
+      · filter_upwards with u
+        simp [F, hq]
+    have hnorm_integral :
+        (∫ u : ℝ in Set.Ioi (0 : ℝ), ‖F q u‖) =
+          ∫ u : ℝ in Set.Ioi (0 : ℝ), F q u := by
+      apply MeasureTheory.integral_congr_ae
+      filter_upwards [hF_nonneg] with u hu
+      rw [Real.norm_of_nonneg hu]
+    have hterm_nonneg : 0 ≤
+        (if 1 < q then
+          mangoldt_weight (n * q) *
+            (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+        else 0) := by
+      rw [hterm q]
+      exact MeasureTheory.integral_nonneg_of_ae hF_nonneg
+    calc
+      ‖if 1 < q then
+          mangoldt_weight (n * q) *
+            (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+        else 0‖ =
+          (if 1 < q then
+            mangoldt_weight (n * q) *
+              (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+          else 0) := by
+        rw [Real.norm_of_nonneg hterm_nonneg]
+      _ = ∫ u : ℝ in Set.Ioi (0 : ℝ), F q u := hterm q
+      _ = ∫ u : ℝ in Set.Ioi (0 : ℝ), ‖F q u‖ := hnorm_integral.symm
+  calc
+    (∑' q : ℕ,
+      if 1 < q then
+        mangoldt_weight (n * q) *
+          (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+      else 0) = ∑' q : ℕ, ∫ u : ℝ in Set.Ioi (0 : ℝ), F q u := by
+      apply tsum_congr
+      intro q
+      exact hterm q
+    _ = ∫ u : ℝ in Set.Ioi (0 : ℝ), ∑' q : ℕ, F q u := by
+      exact MeasureTheory.integral_tsum_of_summable_integral_norm hF_int hF_sum
+    _ = ∫ u : ℝ in Set.Ioi (0 : ℝ),
+        (1 / (n : ℝ)) *
+          (Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+            mangoldt_dirichlet_series u) := by
+      apply MeasureTheory.integral_congr_ae
+      filter_upwards [MeasureTheory.ae_restrict_mem
+        (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))] with u hu
+      have hu_pos : 0 < u := by simpa [Set.mem_Ioi] using hu
+      simpa [F] using mangoldt_weight_incoming_integral_bridge_inner_tsum n hn u hu_pos
+    _ = (1 / (n : ℝ)) *
+        (∫ u : ℝ in Set.Ioi (0 : ℝ),
+          Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re)) *
+            mangoldt_dirichlet_series u) := by
+      rw [MeasureTheory.integral_const_mul]
+
 @[blueprint "lem:mangoldt-weight-incoming-integral-bridge"
   (statement := /-- For every positive integer $n$, the incoming
   von Mangoldt-weight mass for the ordinary downward transition is the
@@ -8064,15 +8591,13 @@ noncomputable def mangoldt_von_mangoldt_downward_kernel_invariant
     =\int_1^\infty \left({1\over\zeta(s)}\right)' n^{-s}\,ds.$$
   The zeta factor is interpreted on the real axis, as in
   \cref{def:mangoldt-weight}. -/)
-  (proof := /-- Fix $n\geq1$.  For $q>1$ the integer $nq$ is not $1$, so
-  expanding \cref{def:mangoldt-weight} in the incoming sum cancels the factor
-  $\log(nq)$ against the transition denominator.  Absolute convergence on each
-  half-line $s\geq1+\varepsilon$, followed by monotone truncation at $s=1$,
-  permits the interchange of the sum over $q$ with the improper integral.  The
-  inner Dirichlet series is identified by
-  \cref{lem:mangoldt-dirichlet-series-eq-zeta-log-derivative}; multiplying by
-  the remaining reciprocal-zeta factor gives
-  $(1/\zeta(s))'n^{-s}$ on the real axis. -/)
+  (proof := /-- Fix $n\geq1$.  The local Laplace identity
+  \cref{lem:mangoldt-weight-incoming-integral-bridge-lhs-laplace} rewrites the
+  incoming mass as the integral of the reciprocal-zeta kernel times the real
+  von Mangoldt Dirichlet series.  The local change-of-variables identity
+  \cref{lem:mangoldt-weight-incoming-integral-bridge-rhs-laplace} rewrites the
+  reciprocal-zeta derivative integral into the same Laplace integral.  Therefore
+  the incoming mass equals the stated reciprocal-zeta derivative integral. -/)
   (title := /-- Incoming mass as a reciprocal-zeta derivative integral -/)
   (latexEnv := "lemma")]
 lemma mangoldt_weight_incoming_integral_bridge :
@@ -8085,7 +8610,9 @@ lemma mangoldt_weight_incoming_integral_bridge :
         ∫ s : ℝ in Set.Ioi (1 : ℝ),
           deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s /
             Real.rpow (n : ℝ) s := by
-  sorry_using [mangoldt_dirichlet_series_eq_zeta_log_derivative]
+  intro n hn
+  rw [mangoldt_weight_incoming_integral_bridge_lhs_laplace n hn,
+    ← mangoldt_weight_incoming_integral_bridge_rhs_laplace n hn]
 
 @[blueprint "lem:mangoldt-weight-reciprocal-zeta-endpoint-evaluation"
   (statement := /-- For every positive integer $n$, the reciprocal-zeta
