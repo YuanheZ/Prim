@@ -4687,6 +4687,10 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
     have hweight_nonneg : 0 ≤ erdos_weight p := by
       rw [erdos_weight]
       positivity
+    have hp_real_ne : (p : ℝ) ≠ 0 := by positivity
+    have hweight_mul : (p : ℝ) * Real.log (p : ℝ) * erdos_weight p = 1 := by
+      rw [erdos_weight]
+      field_simp [hlogp_pos.ne', hp_real_ne]
     let ordinaryTerm : ℕ → ℝ := fun q =>
       if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0
     let redirectedTerm : ℕ → ℝ := fun q =>
@@ -4718,7 +4722,7 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
           have hk_le_q : k ≤ q := by
             have htwo_pow_le : 2 ^ (k - 1) ≤ p ^ (k - 1) := by
               exact Nat.pow_le_pow_left hp_two (k - 1)
-            have hkpred_lt : k - 1 < 2 ^ (k - 1) := Nat.lt_two_pow_self (k - 1)
+            have hkpred_lt : k - 1 < 2 ^ (k - 1) := Nat.lt_two_pow_self
             have hkpred_lt_q : k - 1 < q := by
               exact lt_of_lt_of_le hkpred_lt (by simpa [hqpow] using htwo_pow_le)
             omega
@@ -4749,8 +4753,13 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
             have hq_two_real : (2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq_two
             have hk_succ : k = (k - 1) + 1 := by omega
             have hstate : p * q = p ^ k := by
-              rw [hqpow, hk_succ, pow_succ]
-              ring
+              have hpow : p ^ k = p ^ (k - 1) * p := by
+                have hidx : k - 1 + 1 - 1 = k - 1 := by omega
+                rw [hk_succ, pow_succ, hidx]
+              calc
+                p * q = p * p ^ (k - 1) := by rw [hqpow]
+                _ = p ^ (k - 1) * p := by rw [mul_comm]
+                _ = p ^ k := hpow.symm
             have hPp :
                 P (p * q) p =
                   ArithmeticFunction.vonMangoldt q /
@@ -4765,16 +4774,29 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
             dsimp [ordinaryTerm]
             rw [if_pos hq_two_real]
             rw [erdos_weight, mangoldt_tail_term, hlog_pq, hqpow]
-            ring_nf
+            have hp_real_ne : (p : ℝ) ≠ 0 := by positivity
+            have hk_real_ne : (k : ℝ) ≠ 0 := by positivity
+            rw [Nat.cast_mul, Nat.cast_pow]
+            field_simp [erdos_weight, hlogp_pos.ne', hp_real_ne, hk_real_ne]
+            calc
+              ArithmeticFunction.vonMangoldt (p ^ (k - 1)) + Real.log (p : ℝ) =
+                  (ArithmeticFunction.vonMangoldt (p ^ (k - 1)) + Real.log (p : ℝ)) *
+                    ((p : ℝ) * Real.log (p : ℝ) * erdos_weight p) := by
+                rw [hweight_mul]
+                ring
+              _ = (p : ℝ) * Real.log (p : ℝ) *
+                    (ArithmeticFunction.vonMangoldt (p ^ (k - 1)) + Real.log (p : ℝ)) *
+                    erdos_weight p := by
+                ring
           calc
             erdos_weight (p * q) * P (p * q) p =
                 erdos_weight p *
                   (Real.log (p : ℝ) * ordinaryTerm q +
                     1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1)))) := hterm_eq
             _ ≤ erdos_weight p * (Real.log (p : ℝ) * ordinaryTerm q + redirectedTerm q) := by
-              exact mul_le_mul_of_nonneg_left
-                (add_le_add_left hredirected_ge (Real.log (p : ℝ) * ordinaryTerm q))
-                hweight_nonneg
+              apply mul_le_mul_of_nonneg_left
+              · nlinarith [hredirected_ge]
+              · exact hweight_nonneg
         · have hterm_eq :
               erdos_weight (p * q) * P (p * q) p =
                 erdos_weight p * (Real.log (p : ℝ) * ordinaryTerm q) := by
@@ -4783,7 +4805,7 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
             have hpq_two : 2 ≤ p * q := Nat.mul_le_mul hp_one hq_two
             have hpq_not_prime : p * q ∉ prime_layer := by
               intro hpq
-              exact Nat.not_prime_mul hp_prime.ne_one (by omega)
+              exact Nat.not_prime_mul hp_prime.ne_one (ne_of_gt hqone)
                 (by simpa [prime_layer] using hpq)
             have hpq_not_pow :
                 ∀ r k : ℕ, r ∈ prime_layer -> 2 ≤ k -> p * q ≠ r ^ k := by
@@ -4796,8 +4818,10 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
               subst r
               have hk_succ : k = (k - 1) + 1 := by omega
               have hpow_eq : p ^ k = p * p ^ (k - 1) := by
-                rw [hk_succ, pow_succ]
-                ring
+                have hpow : p ^ k = p ^ (k - 1) * p := by
+                  have hidx : k - 1 + 1 - 1 = k - 1 := by omega
+                  rw [hk_succ, pow_succ, hidx]
+                rw [hpow, mul_comm]
               have hq_eq : q = p ^ (k - 1) := by
                 have hmul : p * q = p * p ^ (k - 1) := by
                   simpa [hpow_eq] using hEq
@@ -4806,7 +4830,8 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
             have hq_dvd : q ∣ p * q := by
               exact ⟨p, by rw [mul_comm]⟩
             have hdiv_eq : (p * q) / q = p := by
-              exact Nat.mul_div_right p (Nat.pos_of_gt hqone)
+              rw [mul_comm]
+              exact Nat.mul_div_right p (by omega)
             have hP := hordinary (p * q) q hpq_two hpq_not_prime hpq_not_pow hqone hq_dvd
             have hPp :
                 P (p * q) p =
@@ -4816,7 +4841,24 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
             dsimp [ordinaryTerm]
             rw [if_pos hq_two_real]
             rw [erdos_weight, mangoldt_tail_term]
-            ring_nf
+            have hp_real_ne : (p : ℝ) ≠ 0 := by positivity
+            have hlogpq_ne : Real.log ((p * q : ℕ) : ℝ) ≠ 0 := by
+              have hlogpq_pos : 0 < Real.log ((p * q : ℕ) : ℝ) := by
+                apply Real.log_pos
+                have hpq_gt_one : 1 < p * q := lt_of_lt_of_le Nat.one_lt_two hpq_two
+                exact_mod_cast hpq_gt_one
+              exact hlogpq_pos.ne'
+            rw [Nat.cast_mul]
+            field_simp [erdos_weight, hlogp_pos.ne', hp_real_ne, hlogpq_ne]
+            calc
+              ArithmeticFunction.vonMangoldt q / Real.log ((p : ℝ) * (q : ℝ)) ^ 2 =
+                  (ArithmeticFunction.vonMangoldt q / Real.log ((p : ℝ) * (q : ℝ)) ^ 2) *
+                    ((p : ℝ) * Real.log (p : ℝ) * erdos_weight p) := by
+                rw [hweight_mul]
+                ring
+              _ = (p : ℝ) * ArithmeticFunction.vonMangoldt q * erdos_weight p *
+                    Real.log (p : ℝ) / Real.log ((p : ℝ) * (q : ℝ)) ^ 2 := by
+                ring
           calc
             erdos_weight (p * q) * P (p * q) p =
                 erdos_weight p * (Real.log (p : ℝ) * ordinaryTerm q) := hterm_eq
@@ -4851,7 +4893,7 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
           _ ≤ 1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) := by
             by_cases hmem : p ^ (k - 1) ∈ s
             · simp [Finset.sum_ite_eq', hmem]
-            · simp [Finset.sum_ite_eq', hmem, hterm_nonneg]
+            · simpa [Finset.sum_ite_eq', hmem] using hterm_nonneg
           _ = (if 2 ≤ k then
               1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) else 0) := by
             simp [hk2]
@@ -4874,12 +4916,9 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
               (∑ q ∈ s,
                 if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
             modified_prime_power_redirected_finite p t) := by
-        exact mul_le_mul_of_nonneg_left
-          (add_le_add_left hredirected_sum
-            (Real.log (p : ℝ) *
-              (∑ q ∈ s,
-                if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0)))
-          hweight_nonneg
+        apply mul_le_mul_of_nonneg_left
+        · nlinarith [hredirected_sum]
+        · exact hweight_nonneg
   constructor
   · have hp_prime : Nat.Prime p := by
       simpa [prime_layer] using hp
