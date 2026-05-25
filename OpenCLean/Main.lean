@@ -8079,21 +8079,29 @@ lemma mangoldt_adjoint_constructed_path_data_exists :
   sorry
 
 @[blueprint "lem:mangoldt-adjoint-random-model-from-constructed-path-data"
-  (statement := /-- The explicit construction data
-  \cref{def:mangoldt-adjoint-constructed-path-data} imply the random path model
-  predicate \cref{def:mangoldt-adjoint-random-model}. -/)
-  (proof := /-- Unfold \cref{def:mangoldt-adjoint-constructed-path-data} and
-  \cref{def:mangoldt-adjoint-random-model}.  Both predicates require precisely
-  the same five clauses: total mass one, pathwise strict divisibility,
-  coordinate measurability, the expected-visit identity, and the second-moment
-  estimate. -/)
+  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
+  $(\mu,p)$ satisfies the construction-data predicate
+  \cref{def:mangoldt-adjoint-constructed-path-data}, then it satisfies the
+  random-model predicate \cref{def:mangoldt-adjoint-random-model}. -/)
+  (proof := /-- Let $\Omega$ be a measurable space, let $\mu$ be a measure on
+  $\Omega$, and let $p:\Omega\to(\mathbb N\to\mathbb N)$ be a path process.
+  Assume $h$ is the construction-data predicate
+  \cref{def:mangoldt-adjoint-constructed-path-data} for $(\mu,p)$.  By the
+  definitions \cref{def:mangoldt-adjoint-constructed-path-data} and
+  \cref{def:mangoldt-adjoint-random-model}, the construction-data predicate and
+  the random-model predicate are the same conjunction of five clauses: total
+  mass one, pathwise strict divisibility, coordinate measurability, the
+  expected-visit identity, and the second-moment estimate.  Therefore $h$ itself
+  proves \cref{def:mangoldt-adjoint-random-model} for $(\mu,p)$. -/)
   (title := /-- From construction data to the adjoint random model -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_random_model_from_constructed_path_data {Ω : Type}
     [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
     mangoldt_adjoint_constructed_path_data μ path ->
       mangoldt_adjoint_random_model μ path := by
-  sorry
+  intro h
+  exact h
 
 @[blueprint "def:mangoldt-adjoint-reverse-fatou-extraction-principle"
   (statement := /-- This predicate is the pathwise conclusion supplied by the
