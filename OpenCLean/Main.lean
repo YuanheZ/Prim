@@ -8704,18 +8704,107 @@ lemma reciprocal_zeta_tendsto_one_right :
   (statement := /-- The reciprocal of the real part of the Riemann zeta
   function tends to $1$ as the real variable tends to $+\infty$. -/)
   (proof := /-- On the real half-line $s>1$, the Dirichlet series for
-  $\zeta(s)$ is $1+\sum_{m\geq2}m^{-s}$.  The tail is bounded by a geometric
-  comparison after $s$ is large, and therefore tends to $0$ as
-  $s\to+\infty$.  Hence $\operatorname{Re}\zeta(s)\to1$.  Since inversion is
-  continuous at the non-zero limit $1$, the reciprocal real zeta factor tends
-  to $1$. -/)
+  $\zeta(s)$ is $\sum_{n\geq0}(n+1)^{-s}$.  On the real axis the real part of
+  the $n$th summand is $((n+1)^{-1})^s$.  As $s\to+\infty$, these summands tend
+  pointwise to $1$ for $n=0$ and to $0$ for $n\geq1$; for all $s\geq2$ they are
+  dominated by the summable series $((n+1)^{-1})^2$.  Tannery's theorem gives
+  $\operatorname{Re}\zeta(s)\to1$.  Since inversion is continuous at the
+  non-zero limit $1$, the reciprocal real zeta factor tends to $1$. -/)
   (title := /-- At-infinity limit of the real reciprocal zeta factor -/)
   (latexEnv := "lemma")]
 lemma reciprocal_zeta_tendsto_at_top :
     Filter.Tendsto
       (fun s : ℝ => 1 / ((riemannZeta (s : ℂ)).re))
       Filter.atTop (nhds (1 : ℝ)) := by
-  sorry
+  have hsum : Summable (fun n : ℕ => (((n + 1 : ℕ) : ℝ)⁻¹) ^ (2 : ℝ)) := by
+    simpa [one_div, Nat.cast_add, Nat.cast_one] using
+      (Real.summable_one_div_nat_add_rpow 1 2).2 (by norm_num : (1 : ℝ) < 2)
+  have hterm : ∀ n : ℕ,
+      Filter.Tendsto (fun s : ℝ => (((n + 1 : ℕ) : ℝ)⁻¹) ^ s)
+        Filter.atTop (nhds (if n = 0 then (1 : ℝ) else 0)) := by
+    intro n
+    by_cases hn : n = 0
+    · subst n
+      simp
+    · have hbase_pos : 0 < (((n + 1 : ℕ) : ℝ)⁻¹) := by
+        positivity
+      have hbase_gt : -1 < (((n + 1 : ℕ) : ℝ)⁻¹) := by
+        linarith
+      have hbase_lt : (((n + 1 : ℕ) : ℝ)⁻¹) < 1 := by
+        have hn1 : (1 : ℕ) < n + 1 := Nat.succ_lt_succ (Nat.pos_of_ne_zero hn)
+        have hnreal : (1 : ℝ) < ((n + 1 : ℕ) : ℝ) := by
+          exact_mod_cast hn1
+        exact inv_lt_one_of_one_lt₀ hnreal
+      simpa [hn] using
+        tendsto_rpow_atTop_of_base_lt_one (((n + 1 : ℕ) : ℝ)⁻¹) hbase_gt hbase_lt
+  have hbound :
+      ∀ᶠ s : ℝ in Filter.atTop,
+        ∀ n : ℕ, ‖(((n + 1 : ℕ) : ℝ)⁻¹) ^ s‖ ≤
+          (((n + 1 : ℕ) : ℝ)⁻¹) ^ (2 : ℝ) := by
+    filter_upwards [Filter.eventually_ge_atTop (2 : ℝ)] with s hs n
+    have hbase_pos : 0 < (((n + 1 : ℕ) : ℝ)⁻¹) := by
+      positivity
+    have hbase_le : (((n + 1 : ℕ) : ℝ)⁻¹) ≤ 1 := by
+      have hn_ge : (1 : ℝ) ≤ ((n + 1 : ℕ) : ℝ) := by
+        exact_mod_cast Nat.succ_le_succ (Nat.zero_le n)
+      exact inv_le_one_of_one_le₀ hn_ge
+    have hpow : (((n + 1 : ℕ) : ℝ)⁻¹) ^ s ≤
+        (((n + 1 : ℕ) : ℝ)⁻¹) ^ (2 : ℝ) :=
+      Real.rpow_le_rpow_of_exponent_ge hbase_pos hbase_le hs
+    have hnonneg : 0 ≤ (((n + 1 : ℕ) : ℝ)⁻¹) ^ s := by
+      positivity
+    rw [Real.norm_eq_abs, abs_of_nonneg hnonneg]
+    exact hpow
+  have htsum :
+      Filter.Tendsto
+        (fun s : ℝ => ∑' n : ℕ, (((n + 1 : ℕ) : ℝ)⁻¹) ^ s)
+        Filter.atTop (nhds (∑' n : ℕ, if n = 0 then (1 : ℝ) else 0)) :=
+    tendsto_tsum_of_dominated_convergence hsum hterm hbound
+  have htsum_one :
+      Filter.Tendsto
+        (fun s : ℝ => ∑' n : ℕ, (((n + 1 : ℕ) : ℝ)⁻¹) ^ s)
+        Filter.atTop (nhds (1 : ℝ)) := by
+    simpa using htsum
+  have hzeta_eventually :
+      (fun s : ℝ => ∑' n : ℕ, (((n + 1 : ℕ) : ℝ)⁻¹) ^ s)
+        =ᶠ[Filter.atTop] fun s : ℝ => (riemannZeta (s : ℂ)).re := by
+    filter_upwards [Filter.eventually_gt_atTop (1 : ℝ)] with s hs
+    have hsC : 1 < ((s : ℂ).re) := by
+      simpa using hs
+    have hfC : Summable (fun n : ℕ => 1 / (((n + 1 : ℕ) : ℂ) ^ (s : ℂ))) := by
+      simpa using
+        (summable_nat_add_iff (f := fun n : ℕ => 1 / ((n : ℂ) ^ (s : ℂ))) 1).2
+          (Complex.summable_one_div_nat_cpow.mpr hsC)
+    have hterm_eq :
+        (fun n : ℕ => (1 / (((n + 1 : ℕ) : ℂ) ^ (s : ℂ))).re) =
+          fun n : ℕ => (((n + 1 : ℕ) : ℝ)⁻¹) ^ s := by
+      funext n
+      have hbase_nonneg : 0 ≤ ((n + 1 : ℕ) : ℝ) := by
+        positivity
+      calc
+        (1 / (((n + 1 : ℕ) : ℂ) ^ (s : ℂ))).re =
+            (1 / (((((n + 1 : ℕ) : ℝ) : ℂ) ^ (s : ℂ)))).re := by
+          simp
+        _ = (1 / ((((n + 1 : ℕ) : ℝ) ^ s : ℝ) : ℂ)).re := by
+          rw [← Complex.ofReal_cpow hbase_nonneg s]
+        _ = 1 / (((n + 1 : ℕ) : ℝ) ^ s) := by
+          simp
+        _ = (1 / ((n + 1 : ℕ) : ℝ)) ^ s := by
+          rw [Real.div_rpow zero_le_one hbase_nonneg s]
+          simp
+        _ = (((n + 1 : ℕ) : ℝ)⁻¹) ^ s := by
+          simp [one_div]
+    have hzeta_real :
+        (riemannZeta (s : ℂ)).re =
+          ∑' n : ℕ, (1 / (((n + 1 : ℕ) : ℂ) ^ (s : ℂ))).re := by
+      rw [zeta_eq_tsum_one_div_nat_add_one_cpow (s := (s : ℂ)) hsC]
+      simpa using Complex.re_tsum hfC
+    rw [hzeta_real, hterm_eq]
+  have hzeta_re :
+      Filter.Tendsto (fun s : ℝ => (riemannZeta (s : ℂ)).re)
+        Filter.atTop (nhds (1 : ℝ)) :=
+    Filter.Tendsto.congr' hzeta_eventually htsum_one
+  simpa [one_div] using hzeta_re.inv₀ (by norm_num : (1 : ℝ) ≠ 0)
 
 @[blueprint "lem:reciprocal-zeta-ibp-regularity"
   (statement := /-- The real reciprocal zeta factor and the kernels
