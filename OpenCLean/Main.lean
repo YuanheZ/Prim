@@ -8380,12 +8380,17 @@ lemma mangoldt_adjoint_random_model_exists :
     mangoldt_adjoint_random_model_from_constructed_path_data]
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-path-extraction"
-  (statement := /-- Any adjoint von Mangoldt random path model satisfying
-  \cref{def:mangoldt-adjoint-random-model} yields, for each set
-  $A\subseteq\mathbb N$ of positive
-  \cref{def:mangoldt-weight-upper-density}, a deterministic strictly increasing
-  divisibility chain whose visits to $A$ have upper doubly logarithmic density
-  at least that Mangoldt-weight density. -/)
+  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
+  $(\mu,p)$ satisfies the adjoint von Mangoldt random-model predicate
+  \cref{def:mangoldt-adjoint-random-model}, then for every set
+  $A\subseteq\mathbb N$ with positive
+  \cref{def:mangoldt-weight-upper-density}, there exists a sequence
+  $n:\mathbb N\to\mathbb N$ which is a strictly increasing divisibility chain in
+  the sense of \cref{def:strictly-increasing-divisibility-chain} and whose
+  visits to $A$ have upper doubly logarithmic hit density at least that
+  Mangoldt-weight density in the sense of
+  \cref{def:chain-hits-density-at-least}. -/)
   (proof := /-- Assume \cref{def:mangoldt-adjoint-random-model}.  By
   \cref{lem:mangoldt-adjoint-reverse-fatou-extraction-principle-from-model},
   the model satisfies the reverse-Fatou extraction principle
@@ -8407,7 +8412,11 @@ lemma mangoldt_adjoint_reverse_fatou_path_extraction {Ω : Type} [MeasurableSpac
         ∃ n : ℕ → ℕ,
           strictly_increasing_divisibility_chain n ∧
           chain_hits_density_at_least n A (mangoldt_weight_upper_density A) := by
-  sorry_using [mangoldt_adjoint_reverse_fatou_extraction_principle_from_model]
+  intro hmodel A hA
+  exact Exists.elim
+    (mangoldt_adjoint_reverse_fatou_extraction_principle_from_model hmodel A hA)
+    (fun omega hhit =>
+      Exists.intro (path omega) (And.intro (hmodel.2.1 omega) hhit))
 
 @[blueprint "lem:mangoldt-adjoint-chain-density-selection"
   (statement := /-- If a set $A\subseteq\mathbb N$ has positive upper doubly
