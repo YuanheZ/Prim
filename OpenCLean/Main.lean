@@ -4593,31 +4593,49 @@ lemma modified_prime_power_incoming_bound :
     linarith
 
 @[blueprint "lem:eps-modified-chain-prime-power-incoming-reindex"
-  (statement := /-- For any kernel satisfying the ordinary modified-chain
-  transition rule, the prime-power transition to its base prime, and the
-  prime-power support clause, the incoming multiplier mass at a prime $p$ is
-  bounded by the ordinary Mangoldt tail plus the redirected prime-power
-  exponent mass.  The conclusion is stated both for the full multiplier t-sum
-  and for finite multiplier sets, where the redirected contribution is taken
-  over a finite set of exponents depending on the multiplier set. -/)
-  (proof := /-- Fix a prime $p$ using \cref{def:prime-layer}.  For a multiplier
-  $q>1$, first consider the state $pq$.  If $pq$ is not a prime power, the
-  ordinary transition rule gives
-  $P(pq,p)=\Lambda(q)/\log(pq)$, and after multiplication by
-  \cref{def:erdos-weight} this is exactly the $q$-th ordinary tail summand in
-  \cref{def:mangoldt-tail-term}, multiplied by $\nu_0(p)\log p$.  If $pq$ is a
-  prime power, the prime-power support hypothesis forces it to be $p^k$ and
-  forces $q=p^{k-1}$.  The transition rule to the base prime then splits
-  $P(p^k,p)$ into the same ordinary Mangoldt contribution and the redirected
-  mass $1/k$; multiplying by $\nu_0(p^k)$ converts the redirected part into
-  $\nu_0(p)/(k^2p^{k-1})$, the corresponding summand of
-  \cref{def:modified-prime-power-redirected-finite} and
-  \cref{def:modified-prime-power-redirected-sum}.  For a finite multiplier set
-  $s$, take $t$ to be the finite set of exponents $k$ for which $p^{k-1}\in s$;
-  summing the pointwise decomposition over $s$ gives the finite inequality.  The
-  full t-sum inequality is the same decomposition summed over all multipliers,
-  with the ordinary and redirected parts recorded by \cref{def:mangoldt-tail-sum}
-  and \cref{def:modified-prime-power-redirected-sum}. -/)
+  (statement := /-- Let $P : \mathbb N \times \mathbb N \to \mathbb R$ be a
+  function with the following three properties.  If $n\geq2$ is neither prime
+  nor a prime power, then $P(n,n/q)=\Lambda(q)/\log n$ for every divisor
+  $q>1$ of $n$.  If $r$ is prime and $k\geq2$, then
+  $P(r^k,r)=\Lambda(r^{k-1})/\log(r^k)+1/k$.  Finally, every non-zero
+  transition from $r^k$ goes either to $r$ or to $r^{k-j}$ for some
+  $1\leq j\leq k-2$.  Then, for every prime $p$,
+  $$
+  \sum_{q>1}\nu_0(pq)P(pq,p) \leq
+  \nu_0(p)\left(\log p\sum_{q\geq2}
+    \frac{\Lambda(q)}{q\log^2(pq)}+
+    \sum_{k\geq2}\frac{1}{k^2p^{k-1}}\right).
+  $$
+  Moreover, for every finite set $s$ of multipliers there is a finite set $t$
+  of exponents such that
+  $$
+  \sum_{q\in s,\ q>1}\nu_0(pq)P(pq,p) \leq
+  \nu_0(p)\left(\log p\sum_{q\in s,\ q\geq2}
+    \frac{\Lambda(q)}{q\log^2(pq)}+
+    \sum_{k\in t,\ k\geq2}\frac{1}{k^2p^{k-1}}\right).
+  $$ -/)
+  (proof := /-- Fix a prime $p$ using \cref{def:prime-layer}.  First prove the
+  finite multiplier statement.  For a finite set $s$, take
+  $t=\{0,\ldots,\sum_{q\in s}q\}$; if $q\in s$ and $q=p^{k-1}$ with $k\ge2$,
+  then $k\le q\le\sum_{q\in s}q$, so the $k$-th redirected summand is present in
+  \cref{def:modified-prime-power-redirected-finite}.  For a multiplier $q>1$,
+  either $q=p^{k-1}$ for some $k\ge2$, in which case the prime-power transition
+  hypothesis gives
+  $P(pq,p)=\Lambda(q)/\log(pq)+1/k$, or no such exponent exists, in which case
+  $pq$ is neither prime nor a prime power and the ordinary transition hypothesis
+  gives $P(pq,p)=\Lambda(q)/\log(pq)$.  Expanding
+  \cref{def:erdos-weight} and \cref{def:mangoldt-tail-term} identifies the
+  ordinary part with
+  $\nu_0(p)\log p\,\Lambda(q)/(q\log^2(pq))$, while the extra prime-power term
+  is $\nu_0(p)/(k^2p^{k-1})$.  Summing the pointwise inequalities over $s$ gives
+  the finite statement.  For the full t-sum, bound each finite partial sum by
+  the finite statement, compare its ordinary part with the full tail by
+  \cref{lem:mangoldt-tail-finite-sum-le}, and compare the finite redirected
+  part with the full redirected t-sum using the non-negative finite bounds from
+  \cref{lem:modified-prime-power-redirected-bound}.  The standard finite-sum
+  criterion for non-negative real t-sums then gives the infinite inequality
+  recorded by \cref{def:mangoldt-tail-sum} and
+  \cref{def:modified-prime-power-redirected-sum}. -/)
   (title := /-- Reindexing redirected prime-power incoming mass -/)
   (latexEnv := "lemma")]
 lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) :
@@ -4645,7 +4663,341 @@ lemma eps_modified_chain_prime_power_incoming_reindex (P : ℕ → ℕ → ℝ) 
                       (∑ q ∈ s,
                         if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
                     modified_prime_power_redirected_finite p t) := by
-  sorry
+  intro hordinary hbase hsupport p hp
+  classical
+  have hfinite : ∀ s : Finset ℕ,
+      ∃ t : Finset ℕ,
+        (∑ q ∈ s,
+          if 1 < q then erdos_weight (p * q) * P (p * q) p else 0) ≤
+            erdos_weight p *
+              (Real.log (p : ℝ) *
+                  (∑ q ∈ s,
+                    if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
+                modified_prime_power_redirected_finite p t) := by
+    intro s
+    let t : Finset ℕ := Finset.range ((∑ q ∈ s, q) + 1)
+    refine ⟨t, ?_⟩
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    have hp_two : 2 ≤ p := hp_prime.two_le
+    have hp_one : 1 ≤ p := by omega
+    have hlogp_pos : 0 < Real.log (p : ℝ) := by
+      apply Real.log_pos
+      exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hp_two)
+    have hweight_nonneg : 0 ≤ erdos_weight p := by
+      rw [erdos_weight]
+      positivity
+    have hp_real_ne : (p : ℝ) ≠ 0 := by positivity
+    have hweight_mul : (p : ℝ) * Real.log (p : ℝ) * erdos_weight p = 1 := by
+      rw [erdos_weight]
+      field_simp [hlogp_pos.ne', hp_real_ne]
+    let ordinaryTerm : ℕ → ℝ := fun q =>
+      if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0
+    let redirectedTerm : ℕ → ℝ := fun q =>
+      ∑ k ∈ t,
+        if q = p ^ (k - 1) ∧ 2 ≤ k then
+          1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1)))
+        else 0
+    have hpoint : ∀ q ∈ s,
+        (if 1 < q then erdos_weight (p * q) * P (p * q) p else 0) ≤
+          erdos_weight p * (Real.log (p : ℝ) * ordinaryTerm q + redirectedTerm q) := by
+      intro q hqmem
+      have hordinary_nonneg : 0 ≤ ordinaryTerm q := by
+        dsimp [ordinaryTerm]
+        split_ifs
+        · rw [mangoldt_tail_term]
+          exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+        · norm_num
+      have hredirected_nonneg : 0 ≤ redirectedTerm q := by
+        dsimp [redirectedTerm]
+        apply Finset.sum_nonneg
+        intro k hk
+        split_ifs
+        · positivity
+        · norm_num
+      by_cases hqone : 1 < q
+      · rw [if_pos hqone]
+        by_cases hqpow : ∃ k : ℕ, 2 ≤ k ∧ q = p ^ (k - 1)
+        · rcases hqpow with ⟨k, hk, hqpow⟩
+          have hk_le_q : k ≤ q := by
+            have htwo_pow_le : 2 ^ (k - 1) ≤ p ^ (k - 1) := by
+              exact Nat.pow_le_pow_left hp_two (k - 1)
+            have hkpred_lt : k - 1 < 2 ^ (k - 1) := Nat.lt_two_pow_self
+            have hkpred_lt_q : k - 1 < q := by
+              exact lt_of_lt_of_le hkpred_lt (by simpa [hqpow] using htwo_pow_le)
+            omega
+          have hq_le_sum : q ≤ ∑ x ∈ s, x := by
+            exact Finset.single_le_sum (fun x _ => Nat.zero_le x) hqmem
+          have hk_mem_t : k ∈ t := by
+            dsimp [t]
+            simp [Nat.lt_succ_iff, le_trans hk_le_q hq_le_sum]
+          have hredirected_ge :
+              1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) ≤ redirectedTerm q := by
+            dsimp [redirectedTerm]
+            have hnonneg : ∀ k' ∈ t,
+                0 ≤ if q = p ^ (k' - 1) ∧ 2 ≤ k' then
+                  1 / (((k' : ℝ) ^ 2) * ((p : ℝ) ^ (k' - 1)))
+                else 0 := by
+              intro k' hk'
+              split_ifs
+              · positivity
+              · norm_num
+            have hsingle := Finset.single_le_sum hnonneg hk_mem_t
+            simpa [hqpow, hk] using hsingle
+          have hterm_eq :
+              erdos_weight (p * q) * P (p * q) p =
+                erdos_weight p *
+                  (Real.log (p : ℝ) * ordinaryTerm q +
+                    1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1)))) := by
+            have hq_two : 2 ≤ q := by omega
+            have hq_two_real : (2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq_two
+            have hk_succ : k = (k - 1) + 1 := by omega
+            have hstate : p * q = p ^ k := by
+              have hpow : p ^ k = p ^ (k - 1) * p := by
+                have hidx : k - 1 + 1 - 1 = k - 1 := by omega
+                rw [hk_succ, pow_succ, hidx]
+              calc
+                p * q = p * p ^ (k - 1) := by rw [hqpow]
+                _ = p ^ (k - 1) * p := by rw [mul_comm]
+                _ = p ^ k := hpow.symm
+            have hPp :
+                P (p * q) p =
+                  ArithmeticFunction.vonMangoldt q /
+                      Real.log ((p * q : ℕ) : ℝ) + 1 / (k : ℝ) := by
+              rw [hstate, hqpow]
+              exact hbase p k hp hk
+            have hlog_pq :
+                Real.log ((p * q : ℕ) : ℝ) = (k : ℝ) * Real.log (p : ℝ) := by
+              rw [hstate, Nat.cast_pow]
+              exact Real.log_pow (p : ℝ) k
+            rw [hPp]
+            dsimp [ordinaryTerm]
+            rw [if_pos hq_two_real]
+            rw [erdos_weight, mangoldt_tail_term, hlog_pq, hqpow]
+            have hp_real_ne : (p : ℝ) ≠ 0 := by positivity
+            have hk_real_ne : (k : ℝ) ≠ 0 := by positivity
+            rw [Nat.cast_mul, Nat.cast_pow]
+            field_simp [erdos_weight, hlogp_pos.ne', hp_real_ne, hk_real_ne]
+            calc
+              ArithmeticFunction.vonMangoldt (p ^ (k - 1)) + Real.log (p : ℝ) =
+                  (ArithmeticFunction.vonMangoldt (p ^ (k - 1)) + Real.log (p : ℝ)) *
+                    ((p : ℝ) * Real.log (p : ℝ) * erdos_weight p) := by
+                rw [hweight_mul]
+                ring
+              _ = (p : ℝ) * Real.log (p : ℝ) *
+                    (ArithmeticFunction.vonMangoldt (p ^ (k - 1)) + Real.log (p : ℝ)) *
+                    erdos_weight p := by
+                ring
+          calc
+            erdos_weight (p * q) * P (p * q) p =
+                erdos_weight p *
+                  (Real.log (p : ℝ) * ordinaryTerm q +
+                    1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1)))) := hterm_eq
+            _ ≤ erdos_weight p * (Real.log (p : ℝ) * ordinaryTerm q + redirectedTerm q) := by
+              apply mul_le_mul_of_nonneg_left
+              · nlinarith [hredirected_ge]
+              · exact hweight_nonneg
+        · have hterm_eq :
+              erdos_weight (p * q) * P (p * q) p =
+                erdos_weight p * (Real.log (p : ℝ) * ordinaryTerm q) := by
+            have hq_two : 2 ≤ q := by omega
+            have hq_two_real : (2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq_two
+            have hpq_two : 2 ≤ p * q := Nat.mul_le_mul hp_one hq_two
+            have hpq_not_prime : p * q ∉ prime_layer := by
+              intro hpq
+              exact Nat.not_prime_mul hp_prime.ne_one (ne_of_gt hqone)
+                (by simpa [prime_layer] using hpq)
+            have hpq_not_pow :
+                ∀ r k : ℕ, r ∈ prime_layer -> 2 ≤ k -> p * q ≠ r ^ k := by
+              intro r k hr hk hEq
+              have hr_prime : Nat.Prime r := by simpa [prime_layer] using hr
+              have hp_dvd : p ∣ r ^ k := by
+                rw [← hEq]
+                exact dvd_mul_right p q
+              have hpr : p = r := Nat.prime_eq_prime_of_dvd_pow hp_prime hr_prime hp_dvd
+              subst r
+              have hk_succ : k = (k - 1) + 1 := by omega
+              have hpow_eq : p ^ k = p * p ^ (k - 1) := by
+                have hpow : p ^ k = p ^ (k - 1) * p := by
+                  have hidx : k - 1 + 1 - 1 = k - 1 := by omega
+                  rw [hk_succ, pow_succ, hidx]
+                rw [hpow, mul_comm]
+              have hq_eq : q = p ^ (k - 1) := by
+                have hmul : p * q = p * p ^ (k - 1) := by
+                  simpa [hpow_eq] using hEq
+                exact Nat.mul_left_cancel hp_prime.pos hmul
+              exact hqpow ⟨k, hk, hq_eq⟩
+            have hq_dvd : q ∣ p * q := by
+              exact ⟨p, by rw [mul_comm]⟩
+            have hdiv_eq : (p * q) / q = p := by
+              rw [mul_comm]
+              exact Nat.mul_div_right p (by omega)
+            have hP := hordinary (p * q) q hpq_two hpq_not_prime hpq_not_pow hqone hq_dvd
+            have hPp :
+                P (p * q) p =
+                  ArithmeticFunction.vonMangoldt q / Real.log ((p * q : ℕ) : ℝ) := by
+              simpa [hdiv_eq] using hP
+            rw [hPp]
+            dsimp [ordinaryTerm]
+            rw [if_pos hq_two_real]
+            rw [erdos_weight, mangoldt_tail_term]
+            have hp_real_ne : (p : ℝ) ≠ 0 := by positivity
+            have hlogpq_ne : Real.log ((p * q : ℕ) : ℝ) ≠ 0 := by
+              have hlogpq_pos : 0 < Real.log ((p * q : ℕ) : ℝ) := by
+                apply Real.log_pos
+                have hpq_gt_one : 1 < p * q := lt_of_lt_of_le Nat.one_lt_two hpq_two
+                exact_mod_cast hpq_gt_one
+              exact hlogpq_pos.ne'
+            rw [Nat.cast_mul]
+            field_simp [erdos_weight, hlogp_pos.ne', hp_real_ne, hlogpq_ne]
+            calc
+              ArithmeticFunction.vonMangoldt q / Real.log ((p : ℝ) * (q : ℝ)) ^ 2 =
+                  (ArithmeticFunction.vonMangoldt q / Real.log ((p : ℝ) * (q : ℝ)) ^ 2) *
+                    ((p : ℝ) * Real.log (p : ℝ) * erdos_weight p) := by
+                rw [hweight_mul]
+                ring
+              _ = (p : ℝ) * ArithmeticFunction.vonMangoldt q * erdos_weight p *
+                    Real.log (p : ℝ) / Real.log ((p : ℝ) * (q : ℝ)) ^ 2 := by
+                ring
+          calc
+            erdos_weight (p * q) * P (p * q) p =
+                erdos_weight p * (Real.log (p : ℝ) * ordinaryTerm q) := hterm_eq
+            _ ≤ erdos_weight p * (Real.log (p : ℝ) * ordinaryTerm q + redirectedTerm q) := by
+              exact mul_le_mul_of_nonneg_left (le_add_of_nonneg_right hredirected_nonneg)
+                hweight_nonneg
+      · rw [if_neg hqone]
+        exact mul_nonneg hweight_nonneg
+          (add_nonneg (mul_nonneg hlogp_pos.le hordinary_nonneg) hredirected_nonneg)
+    have hredirected_sum :
+        (∑ q ∈ s, redirectedTerm q) ≤ modified_prime_power_redirected_finite p t := by
+      dsimp [redirectedTerm, modified_prime_power_redirected_finite]
+      rw [Finset.sum_comm]
+      apply Finset.sum_le_sum
+      intro k hk
+      by_cases hk2 : 2 ≤ k
+      · have hterm_nonneg :
+            0 ≤ 1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) := by
+          positivity
+        calc
+          (∑ q ∈ s,
+            if q = p ^ (k - 1) ∧ 2 ≤ k then
+              1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1)))
+            else 0) =
+              ∑ q ∈ s,
+                if q = p ^ (k - 1) then
+                  1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1)))
+                else 0 := by
+            apply Finset.sum_congr rfl
+            intro q hq
+            simp [hk2]
+          _ ≤ 1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) := by
+            by_cases hmem : p ^ (k - 1) ∈ s
+            · simp [Finset.sum_ite_eq', hmem]
+            · simpa [Finset.sum_ite_eq', hmem] using hterm_nonneg
+          _ = (if 2 ≤ k then
+              1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) else 0) := by
+            simp [hk2]
+      · simp [hk2]
+    calc
+      (∑ q ∈ s,
+        if 1 < q then erdos_weight (p * q) * P (p * q) p else 0) ≤
+          ∑ q ∈ s,
+            erdos_weight p * (Real.log (p : ℝ) * ordinaryTerm q + redirectedTerm q) := by
+        exact Finset.sum_le_sum hpoint
+      _ = erdos_weight p *
+          (Real.log (p : ℝ) *
+              (∑ q ∈ s,
+                if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
+            ∑ q ∈ s, redirectedTerm q) := by
+        dsimp [ordinaryTerm]
+        rw [← Finset.mul_sum, Finset.sum_add_distrib, ← Finset.mul_sum]
+      _ ≤ erdos_weight p *
+          (Real.log (p : ℝ) *
+              (∑ q ∈ s,
+                if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
+            modified_prime_power_redirected_finite p t) := by
+        apply mul_le_mul_of_nonneg_left
+        · nlinarith [hredirected_sum]
+        · exact hweight_nonneg
+  constructor
+  · have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    have hp_two : 2 ≤ p := hp_prime.two_le
+    have hp_one : 1 ≤ p := by omega
+    have hlogp_pos : 0 < Real.log (p : ℝ) := by
+      apply Real.log_pos
+      exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hp_two)
+    have hweight_nonneg : 0 ≤ erdos_weight p := by
+      rw [erdos_weight]
+      positivity
+    have htail_nonneg : 0 ≤ mangoldt_tail_sum p 2 := by
+      rw [mangoldt_tail_sum]
+      apply tsum_nonneg
+      intro q
+      split_ifs
+      · rw [mangoldt_tail_term]
+        exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity)
+      · norm_num
+    have hredirected_nonneg : 0 ≤ modified_prime_power_redirected_sum p := by
+      rw [modified_prime_power_redirected_sum]
+      apply tsum_nonneg
+      intro k
+      split_ifs
+      · positivity
+      · norm_num
+    have hredirected_finite_le_sum : ∀ t : Finset ℕ,
+        modified_prime_power_redirected_finite p t ≤ modified_prime_power_redirected_sum p := by
+      intro t
+      let red : ℕ → ℝ := fun k =>
+        if 2 ≤ k then 1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) else 0
+      have hred_nonneg : ∀ k : ℕ, 0 ≤ red k := by
+        intro k
+        dsimp [red]
+        split_ifs
+        · positivity
+        · norm_num
+      rcases modified_prime_power_redirected_bound p hp with ⟨_, hfinite_bound⟩
+      let slack : ℝ :=
+        1 - (Real.log (p : ℝ) / Real.log 2) /
+          (Real.log (p : ℝ) / Real.log 2 + (1 / 2 : ℝ))
+      have hbound : ∀ N : ℕ, (∑ k ∈ Finset.range N, red k) ≤ slack := by
+        intro N
+        dsimp [red, slack]
+        simpa [modified_prime_power_redirected_finite] using
+          hfinite_bound (Finset.range N)
+      have hsumm : Summable red := summable_of_sum_range_le hred_nonneg hbound
+      simpa [red, modified_prime_power_redirected_finite, modified_prime_power_redirected_sum]
+        using hsumm.sum_le_tsum t (fun k _ => hred_nonneg k)
+    apply tsum_le_of_sum_le'
+    · exact mul_nonneg hweight_nonneg
+        (add_nonneg (mul_nonneg hlogp_pos.le htail_nonneg) hredirected_nonneg)
+    · intro s
+      rcases hfinite s with ⟨t, hst⟩
+      have htail_le :
+          (∑ q ∈ s, if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) ≤
+            mangoldt_tail_sum p 2 := by
+        exact mangoldt_tail_finite_sum_le p hp_one 2 (by norm_num) s
+      have hinside_le :
+          Real.log (p : ℝ) *
+                (∑ q ∈ s, if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
+              modified_prime_power_redirected_finite p t ≤
+            Real.log (p : ℝ) * mangoldt_tail_sum p 2 +
+              modified_prime_power_redirected_sum p := by
+        exact add_le_add (mul_le_mul_of_nonneg_left htail_le hlogp_pos.le)
+          (hredirected_finite_le_sum t)
+      calc
+        (∑ q ∈ s,
+          if 1 < q then erdos_weight (p * q) * P (p * q) p else 0) ≤
+            erdos_weight p *
+              (Real.log (p : ℝ) *
+                  (∑ q ∈ s,
+                    if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
+                modified_prime_power_redirected_finite p t) := hst
+        _ ≤ erdos_weight p *
+            (Real.log (p : ℝ) * mangoldt_tail_sum p 2 +
+              modified_prime_power_redirected_sum p) := by
+          exact mul_le_mul_of_nonneg_left hinside_le hweight_nonneg
+  · exact hfinite
 
 @[blueprint "def:eps-modified-chain-kernel-subinvariant"
   (statement := /-- For a fixed transition kernel $P$ on $\mathbb{N}$, this is
