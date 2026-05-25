@@ -4283,20 +4283,162 @@ lemma mangoldt_weight_erdos_summable_error :
     Summable (fun n : ℕ => |mangoldt_weight n - erdos_weight n|) := by
   sorry
 
+@[blueprint "lem:summable-error-limsup-transfer-vanishing-perturbation"
+  (statement := /-- Let $f,g:\mathbb R\to\mathbb R$.  If
+  $|f(x)-g(x)|\to0$ as $x\to\infty$, then $f$ and $g$ have the same limit
+  superior along the filter at infinity. -/)
+  (proof := /-- The proof compares the bounded-above and cobounded-below cases
+  in the order definition of the real limit superior.  The hypothesis gives,
+  eventually, $|f-g|<1$, so boundedness above and coboundedness below transfer
+  between $f$ and $g$.  If either required boundedness condition fails, both
+  real limit superiors are Lean's default value $0$.  In the remaining case,
+  the order characterization of limit superior shows that every strict upper
+  bound for the limit superior of one function is eventually an upper bound for
+  the other, because the distance between the functions is eventually smaller
+  than the gap to that upper bound. -/)
+  (title := /-- Limsup is unchanged by a vanishing perturbation -/)
+  (latexEnv := "lemma")]
+lemma summable_error_limsup_transfer_vanishing_perturbation {f g : ℝ → ℝ}
+    (hfg : Filter.Tendsto (fun x : ℝ => |f x - g x|) Filter.atTop (nhds (0 : ℝ))) :
+    Filter.limsup f Filter.atTop = Filter.limsup g Filter.atTop := by
+  have hbounded_left {p q : ℝ → ℝ}
+      (hpq : Filter.Tendsto (fun x : ℝ => |p x - q x|) Filter.atTop (nhds (0 : ℝ)))
+      (hq : Filter.atTop.IsBoundedUnder (fun a b : ℝ => a ≤ b) q) :
+      Filter.atTop.IsBoundedUnder (fun a b : ℝ => a ≤ b) p := by
+    have hpq_one : ∀ᶠ x in Filter.atTop, |p x - q x| < (1 : ℝ) := by
+      exact hpq.eventually (eventually_lt_nhds zero_lt_one)
+    obtain ⟨B, hB⟩ := hq.eventually_le
+    refine Filter.isBoundedUnder_of_eventually_le (f := Filter.atTop) (u := p) (a := B + 1) ?_
+    filter_upwards [hB, hpq_one] with x hqx hx
+    have hpx : p x - q x < 1 := (abs_lt.mp hx).2
+    linarith
+  have hcobounded_left {p q : ℝ → ℝ}
+      (hpq : Filter.Tendsto (fun x : ℝ => |p x - q x|) Filter.atTop (nhds (0 : ℝ)))
+      (hq : Filter.atTop.IsCoboundedUnder (fun a b : ℝ => a ≤ b) q) :
+      Filter.atTop.IsCoboundedUnder (fun a b : ℝ => a ≤ b) p := by
+    have hpq_one : ∀ᶠ x in Filter.atTop, |p x - q x| < (1 : ℝ) := by
+      exact hpq.eventually (eventually_lt_nhds zero_lt_one)
+    obtain ⟨B, hB⟩ := hq.frequently_ge
+    refine Filter.IsCoboundedUnder.of_frequently_ge (f := Filter.atTop) (u := p) (a := B - 1) ?_
+    refine (hB.and_eventually hpq_one).mono ?_
+    intro x hx
+    rcases hx with ⟨hqx, hxabs⟩
+    have hpx : -(1 : ℝ) < p x - q x := (abs_lt.mp hxabs).1
+    linarith
+  have hle_of {p q : ℝ → ℝ}
+      (hpq : Filter.Tendsto (fun x : ℝ => |p x - q x|) Filter.atTop (nhds (0 : ℝ)))
+      (hpb : Filter.atTop.IsBoundedUnder (fun a b : ℝ => a ≤ b) p)
+      (hpc : Filter.atTop.IsCoboundedUnder (fun a b : ℝ => a ≤ b) p)
+      (hqb : Filter.atTop.IsBoundedUnder (fun a b : ℝ => a ≤ b) q) :
+      Filter.limsup p Filter.atTop ≤ Filter.limsup q Filter.atTop := by
+    rw [Filter.limsup_le_iff' hpc hpb]
+    intro y hy
+    obtain ⟨z, hzq, hzy⟩ := exists_between hy
+    have hε : 0 < y - z := sub_pos.mpr hzy
+    have hpq_eps : ∀ᶠ x in Filter.atTop, |p x - q x| < y - z := by
+      exact hpq.eventually (eventually_lt_nhds hε)
+    have hqz : ∀ᶠ x in Filter.atTop, q x < z := by
+      exact Filter.eventually_lt_of_limsup_lt hzq hqb
+    filter_upwards [hpq_eps, hqz] with x hx hqx
+    have hpq_lt : p x - q x < y - z := (abs_lt.mp hx).2
+    linarith
+  by_cases hfb : Filter.atTop.IsBoundedUnder (fun a b : ℝ => a ≤ b) f
+  · by_cases hfc : Filter.atTop.IsCoboundedUnder (fun a b : ℝ => a ≤ b) f
+    · have hgf : Filter.Tendsto (fun x : ℝ => |g x - f x|) Filter.atTop (nhds (0 : ℝ)) := by
+        simpa [abs_sub_comm] using hfg
+      have hgb : Filter.atTop.IsBoundedUnder (fun a b : ℝ => a ≤ b) g :=
+        hbounded_left (p := g) (q := f) hgf hfb
+      have hgc : Filter.atTop.IsCoboundedUnder (fun a b : ℝ => a ≤ b) g :=
+        hcobounded_left (p := g) (q := f) hgf hfc
+      exact le_antisymm (hle_of (p := f) (q := g) hfg hfb hfc hgb)
+        (hle_of (p := g) (q := f) hgf hgb hgc hfb)
+    · have hgnotc : ¬ Filter.atTop.IsCoboundedUnder (fun a b : ℝ => a ≤ b) g := by
+        intro hgc
+        exact hfc (hcobounded_left (p := f) (q := g) hfg hgc)
+      rw [Real.limsup_of_not_isCoboundedUnder hfc, Real.limsup_of_not_isCoboundedUnder hgnotc]
+  · have hgnotb : ¬ Filter.atTop.IsBoundedUnder (fun a b : ℝ => a ≤ b) g := by
+      intro hgb
+      exact hfb (hbounded_left (p := f) (q := g) hfg hgb)
+    rw [Real.limsup_of_not_isBoundedUnder hfb, Real.limsup_of_not_isBoundedUnder hgnotb]
+
+@[blueprint "lem:summable-error-limsup-transfer-truncated-error-bound"
+  (statement := /-- Let $w,v:\mathbb N\to\mathbb R$ have absolutely summable
+  difference.  For every set $A\subseteq\mathbb N$ and every real $x$, the
+  absolute difference between the two truncated weighted sums over
+  $A\cap\{n\in\mathbb N:1\leq n\leq x\}$ is bounded by
+  $\sum_{n\in\mathbb N}|w(n)-v(n)|$. -/)
+  (proof := /-- By \cref{def:real-initial-segment}, the truncated set is
+  contained in $\{n\in\mathbb N:n\leq\lfloor x\rfloor\}$ and is finite.  Hence
+  all indicators supported on the truncated set are summable.  The difference of
+  the two truncated sums is the truncated sum of $w-v$, and the triangle
+  inequality for infinite sums bounds its absolute value by the corresponding
+  truncated sum of $|w-v|$.  Monotonicity of sums for the nonnegative indicator
+  then bounds this by the full absolutely summable error series. -/)
+  (title := /-- Truncated summable-error bound -/)
+  (latexEnv := "lemma")]
+lemma summable_error_limsup_transfer_truncated_error_bound {w v : ℕ → ℝ}
+    (h : Summable (fun n : ℕ => |w n - v n|)) (A : Set ℕ) (x : ℝ) :
+    |(∑' n : ℕ, (A ∩ real_initial_segment x).indicator w n) -
+      (∑' n : ℕ, (A ∩ real_initial_segment x).indicator v n)| ≤
+      ∑' n : ℕ, |w n - v n| := by
+  let S : Set ℕ := A ∩ real_initial_segment x
+  change |(∑' n : ℕ, S.indicator w n) - (∑' n : ℕ, S.indicator v n)| ≤
+    ∑' n : ℕ, |w n - v n|
+  have hfin : S.Finite := by
+    exact (((Set.finite_le_nat ⌊x⌋₊).subset (by
+      intro n hn
+      exact Nat.le_floor hn.2)).inter_of_right A)
+  have hsumm (F : ℕ → ℝ) : Summable (fun n : ℕ => S.indicator F n) :=
+    summable_of_ne_finset_zero (s := hfin.toFinset) (by
+      intro n hn
+      exact Set.indicator_of_notMem (fun hmem => hn (hfin.mem_toFinset.mpr hmem)) F)
+  have hdiff : (∑' n : ℕ, S.indicator w n) - (∑' n : ℕ, S.indicator v n) =
+      ∑' n : ℕ, S.indicator (fun n => w n - v n) n := by
+    rw [← (hsumm w).tsum_sub (hsumm v)]
+    congr 1
+    ext n
+    by_cases hn : n ∈ S <;> simp [hn]
+  have hnorm_summ : Summable (fun n : ℕ => ‖S.indicator (fun n => w n - v n) n‖) :=
+    summable_of_ne_finset_zero (s := hfin.toFinset) (by
+      intro n hn
+      have hnot : n ∉ S := fun hmem => hn (hfin.mem_toFinset.mpr hmem)
+      simp [Set.indicator_of_notMem hnot])
+  have hnorm_eq : (∑' n : ℕ, ‖S.indicator (fun n => w n - v n) n‖) =
+      ∑' n : ℕ, S.indicator (fun n => |w n - v n|) n := by
+    apply tsum_congr
+    intro n
+    by_cases hn : n ∈ S <;> simp [hn, Real.norm_eq_abs]
+  have hind_le : (∑' n : ℕ, S.indicator (fun n => |w n - v n|) n) ≤
+      ∑' n : ℕ, |w n - v n| := by
+    exact Summable.tsum_le_tsum
+      (by
+        intro n
+        by_cases hn : n ∈ S <;> simp [hn, abs_nonneg])
+      (hsumm (fun n => |w n - v n|)) h
+  rw [hdiff]
+  calc
+    |∑' n : ℕ, S.indicator (fun n => w n - v n) n| ≤
+        ∑' n : ℕ, ‖S.indicator (fun n => w n - v n) n‖ := by
+      simpa [Real.norm_eq_abs] using norm_tsum_le_tsum_norm hnorm_summ
+    _ = ∑' n : ℕ, S.indicator (fun n => |w n - v n|) n := hnorm_eq
+    _ ≤ ∑' n : ℕ, |w n - v n| := hind_le
+
 @[blueprint "lem:summable-error-limsup-transfer"
-  (statement := /-- Let $w$ and $v$ be two real weights on $\mathbb N$ whose
-  pointwise difference is absolutely summable.  For every set
-  $A\subseteq\mathbb N$, replacing $w$ by $v$ in the truncated sums over
-  $A\cap[1,x]$ does not change the normalized limit superior after division by
-  $\log\log x$. -/)
-  (proof := /-- Fix $A\subseteq\mathbb N$.  For every real $x$, the absolute
-  value of the difference between the two truncated sums over
-  $A\cap[1,x]$ is bounded by the total absolute error
-  $\sum_n |w(n)-v(n)|$, because \cref{def:real-initial-segment} only restricts
-  the index set.  This bound is independent of $x$, and division by
-  $\log\log x$ tends to $0$ as $x\to\infty$.  The two normalized functions
-  therefore differ by a term tending to $0$ along the filter at infinity, so
-  their limit superiors are equal. -/)
+  (statement := /-- Let $w,v:\mathbb N\to\mathbb R$ satisfy
+  $\sum_{n\in\mathbb N}|w(n)-v(n)|<\infty$.  For every set
+  $A\subseteq\mathbb N$, the limit superior as $x\to\infty$ through real values
+  of the truncated weighted sums over
+  $A\cap\{n\in\mathbb N:1\leq n\leq x\}$, normalized by $\log\log x$, is the
+  same for $w$ and for $v$. -/)
+  (proof := /-- Fix $A\subseteq\mathbb N$, and write $F$ and $G$ for the two
+  normalized truncated-sum functions.  By
+  \cref{lem:summable-error-limsup-transfer-truncated-error-bound}, the
+  unnormalized error is bounded for every real $x$ by
+  $C=\sum_n |w(n)-v(n)|$.  Since $\log\log x\to\infty$ along the real filter at
+  infinity, $C/\log\log x\to0$, and the denominator is eventually positive.
+  Thus $|F(x)-G(x)|\leq C/\log\log x$ eventually, so $|F-G|\to0$ by squeezing.
+  Applying \cref{lem:summable-error-limsup-transfer-vanishing-perturbation}
+  gives equality of the two limit superiors. -/)
   (title := /-- Limsup transfer across a summable error -/)
   (latexEnv := "lemma")]
 lemma summable_error_limsup_transfer {w v : ℕ → ℝ}
@@ -4312,7 +4454,42 @@ lemma summable_error_limsup_transfer {w v : ℕ → ℝ}
           (∑' n : ℕ, (A ∩ real_initial_segment x).indicator v n) /
             Real.log (Real.log x))
         Filter.atTop := by
-  sorry
+  intro A
+  let F : ℝ → ℝ := fun x : ℝ =>
+    (∑' n : ℕ, (A ∩ real_initial_segment x).indicator w n) / Real.log (Real.log x)
+  let G : ℝ → ℝ := fun x : ℝ =>
+    (∑' n : ℕ, (A ∩ real_initial_segment x).indicator v n) / Real.log (Real.log x)
+  let C : ℝ := ∑' n : ℕ, |w n - v n|
+  change Filter.limsup F Filter.atTop = Filter.limsup G Filter.atTop
+  apply summable_error_limsup_transfer_vanishing_perturbation
+  have hloglog : Filter.Tendsto (fun x : ℝ => Real.log (Real.log x)) Filter.atTop Filter.atTop :=
+    Real.tendsto_log_atTop.comp Real.tendsto_log_atTop
+  have hCdiv : Filter.Tendsto (fun x : ℝ => C / Real.log (Real.log x)) Filter.atTop (nhds (0 : ℝ)) :=
+    hloglog.const_div_atTop C
+  have hden_pos : ∀ᶠ x in Filter.atTop, 0 < Real.log (Real.log x) :=
+    hloglog.eventually_gt_atTop (0 : ℝ)
+  have hscaled_bound : ∀ᶠ x in Filter.atTop, |F x - G x| ≤ C / Real.log (Real.log x) := by
+    filter_upwards [hden_pos] with x hx
+    have hden_nonneg : 0 ≤ Real.log (Real.log x) := le_of_lt hx
+    have htrunc := summable_error_limsup_transfer_truncated_error_bound h A x
+    dsimp [F, G, C]
+    calc
+      |(∑' n : ℕ, (A ∩ real_initial_segment x).indicator w n) / Real.log (Real.log x) -
+          (∑' n : ℕ, (A ∩ real_initial_segment x).indicator v n) / Real.log (Real.log x)| =
+          |(∑' n : ℕ, (A ∩ real_initial_segment x).indicator w n) -
+            (∑' n : ℕ, (A ∩ real_initial_segment x).indicator v n)| / Real.log (Real.log x) := by
+        rw [show (∑' n : ℕ, (A ∩ real_initial_segment x).indicator w n) / Real.log (Real.log x) -
+            (∑' n : ℕ, (A ∩ real_initial_segment x).indicator v n) / Real.log (Real.log x) =
+            ((∑' n : ℕ, (A ∩ real_initial_segment x).indicator w n) -
+              (∑' n : ℕ, (A ∩ real_initial_segment x).indicator v n)) /
+              Real.log (Real.log x) by ring]
+        rw [abs_div, abs_of_pos hx]
+      _ ≤ (∑' n : ℕ, |w n - v n|) / Real.log (Real.log x) :=
+        div_le_div_of_nonneg_right htrunc hden_nonneg
+  have hnonneg : ∀ᶠ x in Filter.atTop, 0 ≤ |F x - G x| := by
+    filter_upwards with x
+    exact abs_nonneg (F x - G x)
+  exact squeeze_zero' hnonneg hscaled_bound hCdiv
 
 @[blueprint "lem:mangoldt-weight-aggregate-comparison"
   (statement := /-- For every set $A\subseteq\mathbb N$, replacing the
