@@ -8055,24 +8055,77 @@ noncomputable def mangoldt_von_mangoldt_downward_kernel_invariant
       (∑' q : ℕ, if 1 < q then mangoldt_weight (n * q) * P (n * q) n else 0) =
         mangoldt_weight n)
 
+@[blueprint "lem:mangoldt-weight-incoming-integral-bridge"
+  (statement := /-- For every positive integer $n$, the incoming
+  von Mangoldt-weight mass for the ordinary downward transition is the
+  improper integral of the real reciprocal-zeta derivative, weighted by
+  $n^{-s}$:
+  $$\sum_{q>1}\nu_\Lambda(nq){\Lambda(q)\over\log(nq)}
+    =\int_1^\infty \left({1\over\zeta(s)}\right)' n^{-s}\,ds.$$
+  The zeta factor is interpreted on the real axis, as in
+  \cref{def:mangoldt-weight}. -/)
+  (proof := /-- Fix $n\geq1$.  For $q>1$ the integer $nq$ is not $1$, so
+  expanding \cref{def:mangoldt-weight} in the incoming sum cancels the factor
+  $\log(nq)$ against the transition denominator.  Absolute convergence on each
+  half-line $s\geq1+\varepsilon$, followed by monotone truncation at $s=1$,
+  permits the interchange of the sum over $q$ with the improper integral.  The
+  inner Dirichlet series is identified by
+  \cref{lem:mangoldt-dirichlet-series-eq-zeta-log-derivative}; multiplying by
+  the remaining reciprocal-zeta factor gives
+  $(1/\zeta(s))'n^{-s}$ on the real axis. -/)
+  (title := /-- Incoming mass as a reciprocal-zeta derivative integral -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_incoming_integral_bridge :
+    ∀ n : ℕ, 1 ≤ n ->
+      (∑' q : ℕ,
+        if 1 < q then
+          mangoldt_weight (n * q) *
+            (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+        else 0) =
+        ∫ s : ℝ in Set.Ioi (1 : ℝ),
+          deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s /
+            Real.rpow (n : ℝ) s := by
+  sorry_using [mangoldt_dirichlet_series_eq_zeta_log_derivative]
+
+@[blueprint "lem:mangoldt-weight-reciprocal-zeta-endpoint-evaluation"
+  (statement := /-- For every positive integer $n$, the reciprocal-zeta
+  derivative integral appearing in the incoming-mass computation evaluates to
+  the invariant von Mangoldt weight:
+  $$\int_1^\infty \left({1\over\zeta(s)}\right)' n^{-s}\,ds
+    =\nu_\Lambda(n).$$
+  For $n=1$ this is the endpoint change of $1/\zeta(s)$ from $0$ at $1+$ to
+  $1$ at infinity; for $n>1$ it is the corresponding integration-by-parts
+  identity. -/)
+  (proof := /-- The second-order reciprocal-zeta estimate
+  \cref{lem:reciprocal-zeta-second-order-bound} gives
+  $1/\zeta(s)\to0$ as $s\to1+$ on the real axis.  At infinity the reciprocal
+  zeta factor tends to $1$, while $n^{-s}$ tends to $0$ for $n>1$ and is
+  identically $1$ for $n=1$.  Hence the boundary contribution is $1$ in the
+  case $n=1$ and vanishes in the case $n>1$.  Applying integration by parts on
+  $(1,\infty)$ to $(1/\zeta(s))'n^{-s}$ therefore gives exactly the integral
+  formula defining \cref{def:mangoldt-weight}. -/)
+  (title := /-- Reciprocal-zeta endpoint evaluation for the Mangoldt weight -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_reciprocal_zeta_endpoint_evaluation :
+    ∀ n : ℕ, 1 ≤ n ->
+      (∫ s : ℝ in Set.Ioi (1 : ℝ),
+        deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s /
+          Real.rpow (n : ℝ) s) = mangoldt_weight n := by
+  sorry_using [reciprocal_zeta_second_order_bound]
+
 @[blueprint "lem:mangoldt-weight-von-mangoldt-invariant-recurrence"
   (statement := /-- For every positive integer $n$, the von Mangoldt weight
   \cref{def:mangoldt-weight} satisfies the exact incoming-mass recurrence for
   the ordinary von Mangoldt downward transition: the total incoming mass from
   states $nq$ with $q>1$, weighted by
   $\Lambda(q)/\log(nq)$, is precisely $\nu_\Lambda(n)$. -/)
-  (proof := /-- Fix $n\geq1$.  If $n>1$, insert the integral formula defining
-  \cref{def:mangoldt-weight} into the incoming sum.  Absolute convergence of
-  the von Mangoldt Dirichlet series on every half-line $s\geq1+\varepsilon$
-  and the standard monotone truncation at $s=1$ justify interchanging the sum
-  over $q$ with the improper integral.  The Dirichlet-series identity
-  $\sum_{q\geq1}\Lambda(q)q^{-s}=-\zeta'(s)/\zeta(s)$ then identifies the
-  integrand with the derivative of $1/(\zeta(s)n^s)$ up to the factor
-  $\log n$.  Integration by parts gives the integral defining
-  $\nu_\Lambda(n)$, because the boundary contribution vanishes at $s=1+$ and
-  at infinity.  For $n=1$ the same computation reduces the incoming mass to
-  $-\int_1^\infty (1/\zeta(s))'\,ds$, whose endpoint values are $0$ and $1$;
-  this equals $\nu_\Lambda(1)$. -/)
+  (proof := /-- Fix $n\geq1$.  By
+  \cref{lem:mangoldt-weight-incoming-integral-bridge}, the incoming mass is the
+  improper integral of the derivative of the reciprocal-zeta kernel multiplied
+  by $n^{-s}$.  The endpoint and integration-by-parts evaluation in
+  \cref{lem:mangoldt-weight-reciprocal-zeta-endpoint-evaluation} identifies
+  this integral with the defining value of \cref{def:mangoldt-weight} at $n$.
+  Therefore the incoming mass is exactly $\nu_\Lambda(n)$. -/)
   (title := /-- Von Mangoldt weight invariant recurrence -/)
   (latexEnv := "lemma")]
 lemma mangoldt_weight_von_mangoldt_invariant_recurrence :
@@ -8082,7 +8135,8 @@ lemma mangoldt_weight_von_mangoldt_invariant_recurrence :
           mangoldt_weight (n * q) *
             (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
         else 0) = mangoldt_weight n := by
-  sorry
+  sorry_using [mangoldt_weight_incoming_integral_bridge,
+    mangoldt_weight_reciprocal_zeta_endpoint_evaluation]
 
 @[blueprint "def:mangoldt-adjoint-kernel-package"
   (statement := /-- For kernels $P,U:\mathbb N\times\mathbb N\to\mathbb R$, this
@@ -8150,9 +8204,11 @@ noncomputable def mangoldt_adjoint_kernel_markov_law {Ω : Type} [MeasurableSpac
   law is a probability measure started at $1$; its sample paths are strictly
   increasing divisibility chains, its coordinate maps are measurable, each
   one-step transition lies in the support of $U$, and the measure satisfies the
-  one-step Markov law \cref{def:mangoldt-adjoint-kernel-markov-law}.  The
-  expected-visit identity, the second-moment estimate, and the reverse-Fatou
-  extraction principle are analytic consequences of this constructed law. -/)
+  one-step Markov law \cref{def:mangoldt-adjoint-kernel-markov-law}.  It also
+  records the occupation-mass consequence that the expected visits satisfy
+  \cref{def:mangoldt-adjoint-visit-identity}; the second-moment estimate and
+  the reverse-Fatou extraction principle are analytic consequences of this
+  constructed law. -/)
   (title := /-- Adjoint von Mangoldt kernel path data -/)
   (latexEnv := "definition")]
 noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace Ω]
@@ -8162,7 +8218,8 @@ noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace
       (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
       (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
       (∀ ω : Ω, ∀ k : ℕ, U (path ω k) (path ω (k + 1)) ≠ 0) ∧
-        mangoldt_adjoint_kernel_markov_law U μ path
+        mangoldt_adjoint_kernel_markov_law U μ path ∧
+          mangoldt_adjoint_visit_identity μ path
 
 @[blueprint "lem:mangoldt-adjoint-kernel-path-data-exists"
   (statement := /-- There exist a von Mangoldt downward kernel, its adjoint
@@ -8180,7 +8237,11 @@ noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace
   clauses of the package give total mass one, while its support clause and
   diagonal vanishing force every sampled transition to move strictly upward in
   the divisibility order.  Coordinate measurability is part of the canonical
-  path-space construction.  Thus $(U,\mu,p)$ satisfies all clauses of
+  path-space construction.  The occupation-mass recursion obtained by summing
+  the one-step law over all previous states and all times, together with the
+  adjoint recurrence in \cref{def:mangoldt-adjoint-kernel-package} and the
+  deterministic start at $1$, gives the exact expected-visit identity
+  \cref{def:mangoldt-adjoint-visit-identity}.  Thus $(U,\mu,p)$ satisfies all clauses of
   \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
   (title := /-- Existence of adjoint von Mangoldt kernel path data -/)
   (latexEnv := "lemma")]
@@ -8244,17 +8305,10 @@ noncomputable def mangoldt_adjoint_constructed_path_data {Ω : Type} [Measurable
   \cref{def:mangoldt-adjoint-visit-identity}. -/)
   (proof := /-- Assume the kernel package
   \cref{def:mangoldt-adjoint-kernel-package} and the path-data predicate
-  \cref{def:mangoldt-adjoint-kernel-path-data}.  The final clause of the
-  path-data predicate is the Markov law
-  \cref{def:mangoldt-adjoint-kernel-markov-law}; hence, if
-  $h_k(n)=\mu\{\omega:p(\omega,k)=n\}$, then the one-step distributions obey the
-  adjoint recurrence determined by $U$.  The starting clause gives
-  $h_0=\delta_1$, and the support clause makes the path strictly increasing in
-  the divisibility order.  Summing the distributional recurrence over all times
-  and using the invariant incoming-mass clause in
-  \cref{def:mangoldt-adjoint-kernel-package} gives, for each $n$, total visit
-  mass $\sum_k h_k(n)=\nu_\Lambda(n)$.  This is precisely
-  \cref{def:mangoldt-adjoint-visit-identity}. -/)
+  \cref{def:mangoldt-adjoint-kernel-path-data}.  The strengthened path-data
+  predicate includes, as its final occupation-mass clause, exactly the assertion
+  \cref{def:mangoldt-adjoint-visit-identity}.  Projecting this clause from the
+  path-data hypothesis gives the desired expected-visit identity. -/)
   (title := /-- Expected visits from adjoint kernel path data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_visit_identity_from_kernel_path_data {Ω : Type}
