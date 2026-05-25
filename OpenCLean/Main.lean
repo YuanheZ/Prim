@@ -4709,12 +4709,10 @@ def eps_adjoint_kernel_package (P : ℕ → ℕ → ℝ)
 
 @[blueprint "def:eps-adjoint-hitting-mass-facts"
   (statement := /-- For an adjoint upward kernel $U$, this predicate records the
-  hitting-mass conclusions used in the Erd\H{o}s primitive set argument.  The
-  function $h$ is non-negative, obeys the upward hitting-mass recursion with
-  prime-layer initial mass, is equal to $\nu_0$ on every Lean-natural state, has
-  summable mass on the prime layer, and satisfies both the finite
-  chain-antichain partial-sum inequality and the resulting t-sum inequality for
-  every primitive set. -/)
+  core hitting-mass conclusions used in the Erd\H{o}s primitive set argument.
+  The function $h$ is non-negative, obeys the upward hitting-mass recursion with
+  prime-layer initial mass, is equal to $\nu_0$ on every Lean-natural state, and
+  has summable mass on the prime layer. -/)
   (title := /-- Adjoint hitting-mass facts -/)
   (latexEnv := "definition")]
 def eps_adjoint_hitting_mass_facts (U : Option ℕ → Option ℕ → ℝ)
@@ -4728,22 +4726,35 @@ def eps_adjoint_hitting_mass_facts (U : Option ℕ → Option ℕ → ℝ)
               h (n / q) * U (some (n / q)) (some n)
             else 0)) ∧
     (∀ n : ℕ, h n = erdos_weight n) ∧
-    Summable (fun n : ℕ => prime_layer.indicator h n) ∧
-    (∀ A : Set ℕ, primitive_set A ->
-      (∀ s : Finset ℕ,
-        (∑ n ∈ s, A.indicator h n) ≤
-          ∑' n : ℕ, prime_layer.indicator h n) ∧
-      Summable (fun n : ℕ => A.indicator h n) ∧
-        (∑' n : ℕ, A.indicator h n) ≤
-          ∑' n : ℕ, prime_layer.indicator h n)
+    Summable (fun n : ℕ => prime_layer.indicator h n)
+
+@[blueprint "def:eps-adjoint-primitive-chain-antichain-facts"
+  (statement := /-- For a hitting-mass function $h$, this predicate records the
+  primitive-set chain-antichain conclusions supplied by the upward pathwise
+  hitting theorem.  For every primitive set $A$, every finite partial sum of the
+  $h$-weighted indicator of $A$ is at most the $h$-mass of the prime layer; in
+  particular the $A$-series is summable and its t-sum is bounded by the same
+  prime-layer mass. -/)
+  (title := /-- Primitive chain-antichain facts for adjoint hitting mass -/)
+  (latexEnv := "definition")]
+def eps_adjoint_primitive_chain_antichain_facts (h : ℕ → ℝ) : Prop :=
+  ∀ A : Set ℕ, primitive_set A ->
+    (∀ s : Finset ℕ,
+      (∑ n ∈ s, A.indicator h n) ≤
+        ∑' n : ℕ, prime_layer.indicator h n) ∧
+    Summable (fun n : ℕ => A.indicator h n) ∧
+      (∑' n : ℕ, A.indicator h n) ≤
+        ∑' n : ℕ, prime_layer.indicator h n
 
 @[blueprint "def:eps-adjoint-hitting-mass-package"
   (statement := /-- This is the Lean-usable output of the adjoint upward chain
   constructed from the modified sub-invariant downward chain.  It consists of a
   fixed downward kernel satisfying
   \cref{def:eps-modified-chain-kernel-subinvariant}, an adjoint upward kernel
-  satisfying \cref{def:eps-adjoint-kernel-package}, and a hitting-mass function
-  satisfying \cref{def:eps-adjoint-hitting-mass-facts}. -/)
+  satisfying \cref{def:eps-adjoint-kernel-package}, a hitting-mass function
+  satisfying the core facts in \cref{def:eps-adjoint-hitting-mass-facts}, and
+  the primitive-set chain-antichain conclusions of
+  \cref{def:eps-adjoint-primitive-chain-antichain-facts}. -/)
   (title := /-- Adjoint hitting-mass package for the EPS chain -/)
   (latexEnv := "definition")]
 def eps_adjoint_hitting_mass_package : Prop :=
@@ -4752,7 +4763,8 @@ def eps_adjoint_hitting_mass_package : Prop :=
       ∃ h : ℕ → ℝ,
         eps_modified_chain_kernel_subinvariant P ∧
           eps_adjoint_kernel_package P U ∧
-            eps_adjoint_hitting_mass_facts U h
+            eps_adjoint_hitting_mass_facts U h ∧
+              eps_adjoint_primitive_chain_antichain_facts h
 
 @[blueprint "lem:eps-adjoint-kernel-package-from-subinvariant"
   (statement := /-- For every kernel $P : \mathbb{N} \times \mathbb{N} \to
@@ -4929,7 +4941,7 @@ lemma eps_adjoint_kernel_package_from_subinvariant {P : ℕ → ℕ → ℝ} :
 @[blueprint "lem:eps-adjoint-hitting-mass-facts-from-adjoint-kernel"
   (statement := /-- For the adjoint upward kernel attached to a modified
   sub-invariant downward kernel, the prime-layer initial mass has hitting mass
-  $\nu_0$ and satisfies the primitive-set chain-antichain inequalities. -/)
+  $\nu_0$ and the prime-layer initial mass is summable. -/)
   (proof := /-- Assume \cref{def:eps-modified-chain-kernel-subinvariant} for the
   downward kernel $P$ and \cref{def:eps-adjoint-kernel-package} for its adjoint
   upward kernel $U$.  Start the upward chain with initial mass $\nu_0(p)$ on
@@ -4939,19 +4951,43 @@ lemma eps_adjoint_kernel_package_from_subinvariant {P : ℕ → ℕ → ℝ} :
   \cref{def:eps-modified-chain-kernel-subinvariant}; induction over the natural
   divisibility order therefore identifies the hitting mass with $\nu_0$ at every
   natural state $n\geq2$, while the Lean-totalized states $0$ and $1$ have zero
-  Erd\H{o}s weight.  Every realized upward path is a strictly increasing
-  divisibility chain until it reaches the absorbing state, so a primitive set
-  can meet each path at most once.  Integrating this pathwise inequality over
-  the prime-layer initial mass gives the finite chain-antichain partial-sum
-  bound; monotone passage to the t-sum gives summability and the final
-  primitive-set inequality.  These are precisely the clauses of
-  \cref{def:eps-adjoint-hitting-mass-facts} for $h=\nu_0$. -/)
+  Erd\H{o}s weight.  The total initial mass on the prime layer is the prime-layer
+  Erd\H{o}s series, so the same construction gives its summability.  These are
+  precisely the core clauses of \cref{def:eps-adjoint-hitting-mass-facts} for
+  $h=\nu_0$. -/)
   (title := /-- Hitting-mass facts for the EPS adjoint kernel -/)
   (latexEnv := "lemma")]
 lemma eps_adjoint_hitting_mass_facts_from_adjoint_kernel {P : ℕ → ℕ → ℝ}
     {U : Option ℕ → Option ℕ → ℝ} :
     eps_modified_chain_kernel_subinvariant P -> eps_adjoint_kernel_package P U ->
       eps_adjoint_hitting_mass_facts U erdos_weight := by
+  sorry
+
+@[blueprint "lem:eps-adjoint-pathwise-primitive-chain-antichain-bound"
+  (statement := /-- For an adjoint upward kernel with core hitting-mass facts,
+  the pathwise chain-antichain argument gives the finite primitive-set partial
+  sum inequality and the corresponding summability and t-sum inequality. -/)
+  (proof := /-- Assume \cref{def:eps-adjoint-kernel-package} for $U$ and
+  \cref{def:eps-adjoint-hitting-mass-facts} for the hitting-mass function $h$.
+  Form the finite path measure obtained by starting with mass $h(p)$ on each
+  prime state $p$ and following the upward kernel until either a prescribed
+  finite set has been passed or the absorbing state is reached.  The support
+  clause in \cref{def:eps-adjoint-kernel-package} makes every non-absorbed path
+  a strictly increasing divisibility chain, and \cref{def:primitive-set} implies
+  that such a path visits a primitive set $A$ at most once.  Summing this
+  pathwise indicator inequality over the initial prime-layer mass gives, for
+  every finite set $s$, the bound
+  $\sum_{n\in s}1_A(n)h(n)\leq \sum_{p\in\mathbb N_1}h(p)$.  Taking the supremum
+  over finite sets, using non-negativity from
+  \cref{def:eps-adjoint-hitting-mass-facts}, gives summability of the
+  $A$-series and the same t-sum bound.  These are exactly the clauses of
+  \cref{def:eps-adjoint-primitive-chain-antichain-facts}. -/)
+  (title := /-- Pathwise primitive bound for the EPS adjoint chain -/)
+  (latexEnv := "lemma")]
+lemma eps_adjoint_pathwise_primitive_chain_antichain_bound {P : ℕ → ℕ → ℝ}
+    {U : Option ℕ → Option ℕ → ℝ} {h : ℕ → ℝ} :
+    eps_adjoint_kernel_package P U -> eps_adjoint_hitting_mass_facts U h ->
+      eps_adjoint_primitive_chain_antichain_facts h := by
   sorry
 
 @[blueprint "lem:eps-adjoint-hitting-mass-package-from-subinvariant"
@@ -4963,15 +4999,17 @@ lemma eps_adjoint_hitting_mass_facts_from_adjoint_kernel {P : ℕ → ℕ → �
   \cref{lem:eps-adjoint-kernel-package-from-subinvariant}, $P$ has an adjoint
   upward kernel $U$ with the absorbing slack state.  Applying
   \cref{lem:eps-adjoint-hitting-mass-facts-from-adjoint-kernel} to this kernel
-  gives the hitting-mass recursion, the identity $h=\nu_0$, and the finite and
-  infinite primitive-set chain-antichain inequalities.  These data are exactly
-  the existential witnesses required by
+  gives the core hitting-mass facts for $h=\nu_0$.  Then
+  \cref{lem:eps-adjoint-pathwise-primitive-chain-antichain-bound} applies the
+  upward pathwise chain-antichain theorem to the same kernel and hitting mass,
+  yielding the finite and infinite primitive-set inequalities.  These data are
+  exactly the existential witnesses required by
   \cref{def:eps-adjoint-hitting-mass-package}. -/)
   (title := /-- Constructing the EPS adjoint hitting-mass package -/)
   (latexEnv := "lemma")]
 lemma eps_adjoint_hitting_mass_package_from_subinvariant :
     eps_modified_chain_subinvariant_package -> eps_adjoint_hitting_mass_package := by
-  sorry_using [eps_adjoint_kernel_package_from_subinvariant, eps_adjoint_hitting_mass_facts_from_adjoint_kernel]
+  sorry_using [eps_adjoint_kernel_package_from_subinvariant, eps_adjoint_hitting_mass_facts_from_adjoint_kernel, eps_adjoint_pathwise_primitive_chain_antichain_bound]
 
 @[blueprint "lem:eps-modified-chain-hitting-mass-identity"
   (statement := /-- If the modified-chain sub-invariance package holds, then
