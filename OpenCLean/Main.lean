@@ -8004,17 +8004,19 @@ noncomputable def mangoldt_adjoint_hit_second_moment {Ω : Type} [MeasurableSpac
 
 @[blueprint "def:mangoldt-adjoint-second-moment-bound"
   (statement := /-- For a random upward path, this predicate records the
-  uniform second-moment estimate used in the adjoint von Mangoldt-chain proof:
-  for every set $A\subseteq\mathbb N$, the second moment of the number of visits
-  to $A\cap[1,x]$ is $O((\log\log x)^2)$, with a constant depending only on
-  $A$, at every height $x$ for which $\log\log x$ is positive. -/)
+  asymptotic second-moment estimate used in the adjoint von Mangoldt-chain
+  proof: for every set $A\subseteq\mathbb N$, there is a constant depending only
+  on $A$ such that, for all sufficiently large real heights $x$, one has
+  $\log\log x>0$ and the second moment of the number of visits to
+  $A\cap[1,x]$ is at most that constant times $(\log\log x)^2$. -/)
   (title := /-- Uniform second-moment bound for adjoint-chain hits -/)
   (latexEnv := "definition")]
 noncomputable def mangoldt_adjoint_second_moment_bound {Ω : Type} [MeasurableSpace Ω]
     (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
-  ∀ A : Set ℕ, ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, 0 < Real.log (Real.log x) ->
-    mangoldt_adjoint_hit_second_moment μ path A x ≤
-      ENNReal.ofReal (C * (Real.log (Real.log x)) ^ 2)
+  ∀ A : Set ℕ, ∃ C : ℝ, 0 ≤ C ∧ ∀ᶠ x in Filter.atTop,
+    0 < Real.log (Real.log x) ∧
+      mangoldt_adjoint_hit_second_moment μ path A x ≤
+        ENNReal.ofReal (C * (Real.log (Real.log x)) ^ 2)
 
 @[blueprint "def:mangoldt-adjoint-random-model"
   (statement := /-- This predicate packages the stochastic adjoint von Mangoldt
@@ -8022,6 +8024,7 @@ noncomputable def mangoldt_adjoint_second_moment_bound {Ω : Type} [MeasurableSp
   paths; every sampled path is a strictly increasing divisibility chain, the
   coordinate maps of the path are measurable, the expected visits satisfy
   \cref{def:mangoldt-adjoint-visit-identity}, and the hit counts satisfy
+  the asymptotic second-moment estimate
   \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
   (title := /-- Random path model for the adjoint von Mangoldt chain -/)
   (latexEnv := "definition")]
@@ -8046,8 +8049,8 @@ noncomputable def mangoldt_adjoint_random_model {Ω : Type} [MeasurableSpace Ω]
   coordinate map of the path is measurable.  The invariance recurrence gives
   \cref{def:mangoldt-adjoint-visit-identity}, and the square-expansion argument
   using the divisor-count bound and the dilation estimate for the Erd\H{o}s
-  weight gives \cref{def:mangoldt-adjoint-second-moment-bound} at all heights
-  with positive $\log\log x$.  These data are precisely
+  weight gives \cref{def:mangoldt-adjoint-second-moment-bound} for all
+  sufficiently large heights.  These data are precisely
   \cref{def:mangoldt-adjoint-random-model}. -/)
   (title := /-- Existence of the adjoint von Mangoldt random path model -/)
   (latexEnv := "lemma")]
@@ -8068,10 +8071,10 @@ lemma mangoldt_adjoint_random_model_exists :
   \cref{def:mangoldt-adjoint-random-model} identifies the expected number of
   visits to $A\cap[1,x]$ with the truncated sum defining
   \cref{def:mangoldt-weight-upper-density}.  Along a sequence of heights
-  realizing this limit superior, the second-moment clause in
-  \cref{def:mangoldt-adjoint-random-model} is applied after discarding the
-  finite initial segment on which $\log\log x$ is not positive, and gives
-  uniform integrability of the normalized hit counts.  The measurable-coordinate
+  realizing this limit superior, the eventual second-moment clause in
+  \cref{def:mangoldt-adjoint-random-model} holds after discarding a finite
+  initial segment of the sequence, and on that same tail $\log\log x$ is
+  positive.  It gives uniform integrability of the normalized hit counts.  The measurable-coordinate
   clause in \cref{def:mangoldt-adjoint-random-model} supplies measurability of
   these normalized hit-count random variables.  The reverse Fatou inequality
   then bounds the
@@ -8110,8 +8113,10 @@ lemma mangoldt_adjoint_reverse_fatou_path_extraction {Ω : Type} [MeasurableSpac
   visits to $A\cap[1,x]$ is precisely the truncated sum appearing in
   \cref{def:mangoldt-weight-upper-density}.  Choose a sequence $x_j\to\infty$
   along which these normalized expectations converge to the positive limsup.
-  The second-moment estimate for the adjoint chain gives a uniform $L^2$ bound for the
-  corresponding normalized hit counts, so the family is uniformly integrable.
+  The eventual second-moment estimate for the adjoint chain holds on a tail of
+  this sequence and gives a uniform $L^2$ bound for the corresponding normalized
+  hit counts; removing finitely many earlier variables does not change the
+  limiting upper density, so the tail family is uniformly integrable.
   The reverse Fatou inequality therefore implies that the expectation of the
   pathwise limsup is at least the limsup of the expectations.  Since this lower
   bound is positive, some realization has normalized hit-count limsup at least
