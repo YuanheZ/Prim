@@ -8171,12 +8171,15 @@ noncomputable def mangoldt_adjoint_constructed_path_data {Ω : Type} [Measurable
           mangoldt_adjoint_reverse_fatou_extraction_principle μ path
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data"
-  (statement := /-- For every von Mangoldt downward kernel $P$, adjoint upward
-  kernel $U$, measurable sample space $\Omega$, measure $\mu$, and path process
-  $p:\Omega\to(\mathbb N\to\mathbb N)$, the kernel package
-  \cref{def:mangoldt-adjoint-kernel-package} together with the path-data
-  predicate \cref{def:mangoldt-adjoint-kernel-path-data} yields the construction
-  data \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
+  (statement := /-- For every type $\Omega$ equipped with a measurable-space
+  structure, kernels $P,U:\mathbb N\to\mathbb N\to\mathbb R$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if $P$ and
+  $U$ satisfy the adjoint von Mangoldt kernel package
+  \cref{def:mangoldt-adjoint-kernel-package} and $(U,\mu,p)$ satisfies the
+  adjoint kernel path-data predicate
+  \cref{def:mangoldt-adjoint-kernel-path-data}, then $(\mu,p)$ satisfies the
+  construction-data predicate
+  \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
   (proof := /-- Assume \cref{def:mangoldt-adjoint-kernel-package} for $P$ and
   $U$, and assume the path-data predicate
   \cref{def:mangoldt-adjoint-kernel-path-data} for $(U,\mu,p)$.  The
@@ -8193,7 +8196,10 @@ lemma mangoldt_adjoint_constructed_path_data_from_kernel_path_data {Ω : Type}
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_constructed_path_data μ path := by
-  sorry
+  intro _hpackage hpath
+  rcases hpath with ⟨hmass, _hstart, hchain, hmeas, _hsupport, hvisit, hsecond,
+    hfatou⟩
+  exact ⟨hmass, hchain, hmeas, hvisit, hsecond, hfatou⟩
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-exists"
   (statement := /-- There are a measurable sample space, a probability measure,
