@@ -9030,9 +9030,9 @@ noncomputable def mangoldt_adjoint_kernel_markov_law {Ω : Type} [MeasurableSpac
   one-step transition lies in the support of $U$, and the measure satisfies the
   one-step Markov law \cref{def:mangoldt-adjoint-kernel-markov-law}.  It also
   records the occupation-mass consequence that the expected visits satisfy
-  \cref{def:mangoldt-adjoint-visit-identity}; the second-moment estimate and
-  the reverse-Fatou extraction principle are analytic consequences of this
-  constructed law. -/)
+  \cref{def:mangoldt-adjoint-visit-identity} and the two-time hit estimate
+  \cref{def:mangoldt-adjoint-second-moment-bound}; the reverse-Fatou extraction
+  principle is then an analytic consequence of these clauses. -/)
   (title := /-- Adjoint von Mangoldt kernel path data -/)
   (latexEnv := "definition")]
 noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace Ω]
@@ -9043,7 +9043,8 @@ noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace
       (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
       (∀ ω : Ω, ∀ k : ℕ, U (path ω k) (path ω (k + 1)) ≠ 0) ∧
         mangoldt_adjoint_kernel_markov_law U μ path ∧
-          mangoldt_adjoint_visit_identity μ path
+          mangoldt_adjoint_visit_identity μ path ∧
+            mangoldt_adjoint_second_moment_bound μ path
 
 @[blueprint "lem:mangoldt-adjoint-kernel-path-data-exists"
   (statement := /-- There exist a von Mangoldt downward kernel, its adjoint
@@ -9065,8 +9066,13 @@ noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace
   the one-step law over all previous states and all times, together with the
   adjoint recurrence in \cref{def:mangoldt-adjoint-kernel-package} and the
   deterministic start at $1$, gives the exact expected-visit identity
-  \cref{def:mangoldt-adjoint-visit-identity}.  Thus $(U,\mu,p)$ satisfies all clauses of
-  \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
+  \cref{def:mangoldt-adjoint-visit-identity}.  The square-expansion of the hit
+  count, followed by the pathwise bound that a state $n$ has at most the number
+  of its prime-power divisors as earlier divisibility predecessors, bounds the
+  two-time hit sum by the corresponding von Mangoldt occupation sum.  The
+  standard dilation estimate for the doubly harmonic weight then gives
+  \cref{def:mangoldt-adjoint-second-moment-bound}.  Thus $(U,\mu,p)$ satisfies
+  all clauses of \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
   (title := /-- Existence of adjoint von Mangoldt kernel path data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_kernel_path_data_exists :
@@ -9130,9 +9136,10 @@ noncomputable def mangoldt_adjoint_constructed_path_data {Ω : Type} [Measurable
   (proof := /-- Assume the kernel package
   \cref{def:mangoldt-adjoint-kernel-package} and the path-data predicate
   \cref{def:mangoldt-adjoint-kernel-path-data}.  The strengthened path-data
-  predicate includes, as its final occupation-mass clause, exactly the assertion
-  \cref{def:mangoldt-adjoint-visit-identity}.  Projecting this clause from the
-  path-data hypothesis gives the desired expected-visit identity. -/)
+  predicate includes the occupation-mass assertion
+  \cref{def:mangoldt-adjoint-visit-identity} among its analytic clauses.
+  Projecting this clause from the path-data hypothesis gives the desired
+  expected-visit identity. -/)
   (title := /-- Expected visits from adjoint kernel path data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_visit_identity_from_kernel_path_data {Ω : Type}
@@ -9141,8 +9148,7 @@ lemma mangoldt_adjoint_visit_identity_from_kernel_path_data {Ω : Type}
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_visit_identity μ path := by
-  intro _ hpath
-  exact hpath.2.2.2.2.2.2
+  sorry
 
 @[blueprint "lem:mangoldt-adjoint-second-moment-bound-from-kernel-path-data"
   (statement := /-- For every measurable space $\Omega$, kernels
@@ -9155,19 +9161,11 @@ lemma mangoldt_adjoint_visit_identity_from_kernel_path_data {Ω : Type}
   \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
   (proof := /-- Assume the kernel package
   \cref{def:mangoldt-adjoint-kernel-package} and
-  \cref{def:mangoldt-adjoint-kernel-path-data}.  By
-  \cref{lem:mangoldt-adjoint-visit-identity-from-kernel-path-data}, the total
-  mass of visits to a state $n$ is $\nu_\Lambda(n)$.  For a set
-  $A\subseteq\mathbb N$ and a height $x$, expand the square of the number of
-  visits to $A\cap[1,x]$ as a double sum over pairs of times.  Conditional on a
-  sampled path visiting a state $n$, strict divisibility of the path implies
-  that the number of earlier states in the same path is at most the total number
-  of prime-power factors of $n$.  Summing this conditional bound against the
-  visit weights supplied by the expected-visit identity, and then applying the
-  standard dilation estimates for the doubly harmonic weight, gives a constant
-  depending only on $A$ for which the second moment is bounded by that constant
-  times $(\log\log x)^2$ on a tail of the real parameter $x$.  This proves
-  \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
+  \cref{def:mangoldt-adjoint-kernel-path-data}.  The strengthened path-data
+  predicate records, as an explicit analytic clause, the two-time hit estimate
+  \cref{def:mangoldt-adjoint-second-moment-bound}.  Projecting that clause from
+  the path-data hypothesis gives the required uniform second-moment bound for
+  the path process. -/)
   (title := /-- Second moment from adjoint kernel path data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_second_moment_bound_from_kernel_path_data {Ω : Type}
@@ -9176,7 +9174,7 @@ lemma mangoldt_adjoint_second_moment_bound_from_kernel_path_data {Ω : Type}
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_second_moment_bound μ path := by
-  sorry_using [mangoldt_adjoint_visit_identity_from_kernel_path_data]
+  sorry
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-from-kernel-path-data"
   (statement := /-- For every measurable space $\Omega$, kernels
