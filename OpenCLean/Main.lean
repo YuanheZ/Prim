@@ -7977,13 +7977,124 @@ noncomputable def mangoldt_weight_upper_density (A : Set ℕ) : ℝ :=
     (fun x : ℝ => mangoldt_weight_sum_up_to A x / Real.log (Real.log x))
     Filter.atTop
 
+@[blueprint "def:mangoldt-adjoint-visit-identity"
+  (statement := /-- For a random upward path sampled from the adjoint von
+  Mangoldt chain, this predicate records the exact expected-visit identity:
+  for every natural number $n$, the sum over times $k$ of the probability that
+  the path is at $n$ at time $k$ is the invariant von Mangoldt weight of $n$. -/)
+  (title := /-- Expected visits for the adjoint von Mangoldt chain -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_visit_identity {Ω : Type} [MeasurableSpace Ω]
+    (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  ∀ n : ℕ, (∑' k : ℕ, μ {ω : Ω | path ω k = n}) = ENNReal.ofReal (mangoldt_weight n)
+
+@[blueprint "def:mangoldt-adjoint-hit-second-moment"
+  (statement := /-- For a random upward path, a set $A\subseteq\mathbb N$, and a
+  real height $x$, this is the second moment of the number of visits to
+  $A\cap[1,x]$, written as the double sum of joint hit probabilities over pairs
+  of times. -/)
+  (title := /-- Hit-count second moment for the adjoint chain -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_hit_second_moment {Ω : Type} [MeasurableSpace Ω]
+    (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) (A : Set ℕ) (x : ℝ) : ENNReal :=
+  ∑' i : ℕ, ∑' j : ℕ,
+    μ {ω : Ω |
+      path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+        path ω j ∈ A ∧ (path ω j : ℝ) ≤ x}
+
+@[blueprint "def:mangoldt-adjoint-second-moment-bound"
+  (statement := /-- For a random upward path, this predicate records the
+  uniform second-moment estimate used in the adjoint von Mangoldt-chain proof:
+  for every set $A\subseteq\mathbb N$, the second moment of the number of visits
+  to $A\cap[1,x]$ is $O((\log\log x)^2)$ with a constant depending only on $A$.
+  -/)
+  (title := /-- Uniform second-moment bound for adjoint-chain hits -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_second_moment_bound {Ω : Type} [MeasurableSpace Ω]
+    (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  ∀ A : Set ℕ, ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, 2 ≤ x ->
+    mangoldt_adjoint_hit_second_moment μ path A x ≤
+      ENNReal.ofReal (C * (Real.log (Real.log x)) ^ 2)
+
+@[blueprint "def:mangoldt-adjoint-random-model"
+  (statement := /-- This predicate packages the stochastic adjoint von Mangoldt
+  path model.  The measure is a probability measure on a sample space of natural
+  paths; every sampled path is a strictly increasing divisibility chain, the
+  expected visits satisfy \cref{def:mangoldt-adjoint-visit-identity}, and the
+  hit counts satisfy \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
+  (title := /-- Random path model for the adjoint von Mangoldt chain -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_random_model {Ω : Type} [MeasurableSpace Ω]
+    (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  μ Set.univ = 1 ∧
+    (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
+      mangoldt_adjoint_visit_identity μ path ∧
+        mangoldt_adjoint_second_moment_bound μ path
+
+@[blueprint "lem:mangoldt-adjoint-random-model-exists"
+  (statement := /-- There exists a random path model for the adjoint upward von
+  Mangoldt chain, started at $1$, satisfying
+  \cref{def:mangoldt-adjoint-random-model}. -/)
+  (proof := /-- Take the von Mangoldt downward chain with absorbing state
+  $\{1\}$ and the invariant Mangoldt weight.  The adjoint construction gives
+  the upward von Mangoldt chain.  Its sample space is the space of
+  natural-valued upward paths generated from $1$; the Markov property and the
+  support condition make every sampled path a strictly increasing divisibility
+  chain.  The invariance recurrence gives
+  \cref{def:mangoldt-adjoint-visit-identity}, and the square-expansion argument
+  using the divisor-count bound and the dilation estimate for the Erd\H{o}s
+  weight gives \cref{def:mangoldt-adjoint-second-moment-bound}.  These data are
+  precisely \cref{def:mangoldt-adjoint-random-model}. -/)
+  (title := /-- Existence of the adjoint von Mangoldt random path model -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_random_model_exists :
+    ∃ (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
+      (path : Ω → ℕ → ℕ), @mangoldt_adjoint_random_model Ω mΩ μ path := by
+  sorry
+
+@[blueprint "lem:mangoldt-adjoint-reverse-fatou-path-extraction"
+  (statement := /-- Any adjoint von Mangoldt random path model satisfying
+  \cref{def:mangoldt-adjoint-random-model} yields, for each set
+  $A\subseteq\mathbb N$ of positive
+  \cref{def:mangoldt-weight-upper-density}, a deterministic strictly increasing
+  divisibility chain whose visits to $A$ have upper doubly logarithmic density
+  at least that Mangoldt-weight density. -/)
+  (proof := /-- Fix a set $A\subseteq\mathbb N$ with positive
+  \cref{def:mangoldt-weight-upper-density}.  The visit identity in
+  \cref{def:mangoldt-adjoint-random-model} identifies the expected number of
+  visits to $A\cap[1,x]$ with the truncated sum defining
+  \cref{def:mangoldt-weight-upper-density}.  Along a sequence of heights
+  realizing this limit superior, the second-moment clause in
+  \cref{def:mangoldt-adjoint-random-model} gives uniform integrability of the
+  normalized hit counts.  The reverse Fatou inequality then bounds the
+  expectation of the pathwise limit superior from below by
+  \cref{def:mangoldt-weight-upper-density}.  Therefore some sample path has
+  pathwise hit-density at least that value.  Since every sampled path is a
+  strictly increasing divisibility chain by
+  \cref{def:mangoldt-adjoint-random-model}, that path satisfies
+  \cref{def:strictly-increasing-divisibility-chain} and
+  \cref{def:chain-hits-density-at-least}. -/)
+  (title := /-- Reverse-Fatou extraction from the adjoint path model -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_reverse_fatou_path_extraction {Ω : Type} [MeasurableSpace Ω]
+    {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
+    mangoldt_adjoint_random_model μ path ->
+      ∀ A : Set ℕ, 0 < mangoldt_weight_upper_density A ->
+        ∃ n : ℕ → ℕ,
+          strictly_increasing_divisibility_chain n ∧
+          chain_hits_density_at_least n A (mangoldt_weight_upper_density A) := by
+  sorry
+
 @[blueprint "lem:mangoldt-adjoint-chain-density-selection"
   (statement := /-- If a set $A\subseteq\mathbb N$ has positive upper doubly
   logarithmic density with respect to the invariant von Mangoldt weight
   \cref{def:mangoldt-weight-upper-density}, then there is a strictly increasing
   divisibility chain whose visits to $A$ have upper doubly logarithmic density at
   least that Mangoldt-weight density. -/)
-  (proof := /-- Form the adjoint upward Markov chain to the von Mangoldt
+  (proof := /-- The stochastic path-selection mechanism is supplied by
+  \cref{lem:mangoldt-adjoint-random-model-exists} and
+  \cref{lem:mangoldt-adjoint-reverse-fatou-path-extraction}.  Form the adjoint
+  upward Markov chain to the von Mangoldt
   downward chain with respect to the invariant weight $\nu_\Lambda$, and start it
   at $1$.  Invariance gives the exact expected-visit identity: for every natural
   number $n$, the expected number of visits of the upward path to $n$ is
@@ -8007,7 +8118,8 @@ lemma mangoldt_adjoint_chain_density_selection :
       ∃ n : ℕ → ℕ,
         strictly_increasing_divisibility_chain n ∧
         chain_hits_density_at_least n A (mangoldt_weight_upper_density A) := by
-  sorry
+  sorry_using [mangoldt_adjoint_random_model_exists,
+    mangoldt_adjoint_reverse_fatou_path_extraction]
 
 @[blueprint "lem:probabilistic-dense-ambient-chain"
   (statement := /-- If $A\subseteq\mathbb N$ has positive upper doubly
