@@ -6741,9 +6741,10 @@ lemma eps_modified_chain_hitting_mass_identity :
     · simpa [erdos_sum, Set.indicator, h_eq] using hAle
 
 @[blueprint "lem:eps-chain-antichain-bound"
-  (statement := /-- The prime-layer Erd\H{o}s series is summable, and every
-  primitive set has a summable Erd\H{o}s series whose sum is at most the
-  Erd\H{o}s sum of the prime layer. -/)
+  (statement := /-- The prime-layer Erd\H{o}s series is summable.  Moreover,
+  for every set $A\subseteq\mathbb N$, if $A$ is primitive, then the
+  Erd\H{o}s series of $A$ is summable and its sum is at most the Erd\H{o}s sum
+  of the prime layer. -/)
   (proof := /-- The sub-invariance package is supplied by
   \cref{lem:eps-modified-chain-subinvariant}.  Applying the hitting-mass
   identity \cref{lem:eps-modified-chain-hitting-mass-identity} to this package
@@ -6756,7 +6757,7 @@ lemma eps_chain_antichain_bound :
       ∀ A : Set ℕ, primitive_set A ->
         Summable (fun n : ℕ => A.indicator erdos_weight n) ∧
           erdos_sum A ≤ erdos_sum prime_layer := by
-  sorry_using [eps_modified_chain_subinvariant, eps_modified_chain_hitting_mass_identity]
+  exact eps_modified_chain_hitting_mass_identity eps_modified_chain_subinvariant
 
 @[blueprint "thm:erdos-primitive-set-conjecture-164"
   (statement := /-- The Erd\H{o}s series of the prime layer $\mathbb N_1$ is
