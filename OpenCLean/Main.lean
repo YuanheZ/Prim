@@ -4534,17 +4534,24 @@ lemma modified_prime_power_redirected_bound :
     exact hfinite_slack s
 
 @[blueprint "lem:modified-prime-power-incoming-bound"
-  (statement := /-- For every prime $p$, the modified prime-power incoming mass
-  satisfies the exact normalized sub-invariance inequality required by the
-  modified chain.  The ordinary von Mangoldt tail plus the redirected
-  prime-power contribution is at most $1$, and the same bound holds for every
-  pair of finite ordinary and redirected incoming sub-sums. -/)
-  (proof := /-- The infinite estimate is obtained by adding the sharp ordinary
-  prime-state tail bound from \cref{lem:mangoldt-tail-sharp-prime-slack} to the
-  redirected geometric bound from
-  \cref{lem:modified-prime-power-redirected-bound}.  For finite ordinary
+  (statement := /-- For every natural number $p$ in the prime layer,
+  $$
+  \log p\sum_{q\geq2}\frac{\Lambda(q)}{q\log^2(pq)}+
+  \sum_{k\geq2}\frac{1}{k^2p^{k-1}}\leq1.
+  $$
+  Moreover, for every pair of finite sets $S,T\subseteq\mathbb N$,
+  $$
+  \log p\sum_{q\in S,\ q\geq2}\frac{\Lambda(q)}{q\log^2(pq)}+
+  \sum_{k\in T,\ k\geq2}\frac{1}{k^2p^{k-1}}\leq1.
+  $$ -/)
+  (proof := /-- By \cref{def:prime-layer}, the hypothesis $p\in\mathbb N_1$
+  says that $p$ is prime, so $p\geq2$ and $\log p\geq0$.  The infinite
+  estimate is obtained by adding the sharp ordinary prime-state tail bound from
+  \cref{lem:mangoldt-tail-sharp-prime-slack} to the redirected geometric bound
+  from \cref{lem:modified-prime-power-redirected-bound}.  For finite ordinary
   sub-sums, \cref{lem:mangoldt-tail-finite-sum-le} bounds the selected
-  Mangoldt terms by the full ordinary tail; for finite redirected sub-sums,
+  Mangoldt terms by the full ordinary tail; multiplying by the non-negative
+  factor $\log p$ preserves this inequality.  For finite redirected sub-sums,
   \cref{lem:modified-prime-power-redirected-bound} gives the same geometric
   slack bound.  Adding the two estimates gives the normalized bound $1$. -/)
   (title := /-- Modified prime-power incoming bound -/)
@@ -4557,8 +4564,33 @@ lemma modified_prime_power_incoming_bound :
         Real.log (p : ℝ) *
             (∑ q ∈ s, if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
           modified_prime_power_redirected_finite p t ≤ 1 := by
-  sorry_using [mangoldt_tail_finite_sum_le, mangoldt_tail_sharp_prime_slack,
-    modified_prime_power_redirected_bound]
+  intro p hp
+  have hp_prime : Nat.Prime p := by
+    simpa [prime_layer] using hp
+  have hp_two : 2 ≤ p := hp_prime.two_le
+  have hp_one : 1 ≤ p := by
+    exact le_trans (by norm_num : (1 : ℕ) ≤ 2) hp_two
+  have hlogp_pos : 0 < Real.log (p : ℝ) := by
+    apply Real.log_pos
+    exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hp_two)
+  have hlogp_nonneg : 0 ≤ Real.log (p : ℝ) := le_of_lt hlogp_pos
+  have htail := mangoldt_tail_sharp_prime_slack p hp
+  rcases modified_prime_power_redirected_bound p hp with
+    ⟨hredirected, hredirected_finite⟩
+  constructor
+  · linarith
+  · intro s t
+    have hfinite_tail :
+        (∑ q ∈ s, if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) ≤
+          mangoldt_tail_sum p 2 := by
+      exact mangoldt_tail_finite_sum_le p hp_one 2 (by norm_num) s
+    have hfinite_tail_scaled :
+        Real.log (p : ℝ) *
+            (∑ q ∈ s, if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) ≤
+          Real.log (p : ℝ) * mangoldt_tail_sum p 2 := by
+      exact mul_le_mul_of_nonneg_left hfinite_tail hlogp_nonneg
+    have hredirected_t := hredirected_finite t
+    linarith
 
 @[blueprint "def:eps-modified-chain-kernel-subinvariant"
   (statement := /-- For a fixed transition kernel $P$ on $\mathbb{N}$, this is
