@@ -8055,6 +8055,35 @@ noncomputable def mangoldt_von_mangoldt_downward_kernel_invariant
       (∑' q : ℕ, if 1 < q then mangoldt_weight (n * q) * P (n * q) n else 0) =
         mangoldt_weight n)
 
+@[blueprint "lem:mangoldt-weight-von-mangoldt-invariant-recurrence"
+  (statement := /-- For every positive integer $n$, the von Mangoldt weight
+  \cref{def:mangoldt-weight} satisfies the exact incoming-mass recurrence for
+  the ordinary von Mangoldt downward transition: the total incoming mass from
+  states $nq$ with $q>1$, weighted by
+  $\Lambda(q)/\log(nq)$, is precisely $\nu_\Lambda(n)$. -/)
+  (proof := /-- Fix $n\geq1$.  If $n>1$, insert the integral formula defining
+  \cref{def:mangoldt-weight} into the incoming sum.  Absolute convergence of
+  the von Mangoldt Dirichlet series on every half-line $s\geq1+\varepsilon$
+  and the standard monotone truncation at $s=1$ justify interchanging the sum
+  over $q$ with the improper integral.  The Dirichlet-series identity
+  $\sum_{q\geq1}\Lambda(q)q^{-s}=-\zeta'(s)/\zeta(s)$ then identifies the
+  integrand with the derivative of $1/(\zeta(s)n^s)$ up to the factor
+  $\log n$.  Integration by parts gives the integral defining
+  $\nu_\Lambda(n)$, because the boundary contribution vanishes at $s=1+$ and
+  at infinity.  For $n=1$ the same computation reduces the incoming mass to
+  $-\int_1^\infty (1/\zeta(s))'\,ds$, whose endpoint values are $0$ and $1$;
+  this equals $\nu_\Lambda(1)$. -/)
+  (title := /-- Von Mangoldt weight invariant recurrence -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_von_mangoldt_invariant_recurrence :
+    ∀ n : ℕ, 1 ≤ n ->
+      (∑' q : ℕ,
+        if 1 < q then
+          mangoldt_weight (n * q) *
+            (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+        else 0) = mangoldt_weight n := by
+  sorry
+
 @[blueprint "def:mangoldt-adjoint-kernel-package"
   (statement := /-- For kernels $P,U:\mathbb N\times\mathbb N\to\mathbb R$, this
   predicate says that $U$ is the adjoint upward kernel obtained from the
@@ -8076,14 +8105,54 @@ noncomputable def mangoldt_adjoint_kernel_package (P U : ℕ → ℕ → ℝ) : 
       U n m = mangoldt_weight m / mangoldt_weight n * P m n) ∧
     (∀ n m : ℕ, U n m ≠ 0 -> n < m ∧ n ∣ m)
 
+@[blueprint "lem:mangoldt-adjoint-kernel-package-exists"
+  (statement := /-- There exist a von Mangoldt downward kernel $P$ and its
+  adjoint upward kernel $U$ satisfying the adjoint kernel package
+  \cref{def:mangoldt-adjoint-kernel-package}. -/)
+  (proof := /-- Define $P$ to be the ordinary von Mangoldt downward transition:
+  $P(1,1)=1$, and for $n\geq2$ set
+  $P(n,n/q)=\Lambda(q)/\log n$ when $q>1$ divides $n$, with all remaining
+  transitions zero.  The identity $\sum_{q\mid n}\Lambda(q)=\log n$ gives
+  non-negativity, unit row mass, the absorbing state $1$, and downward
+  divisibility support.  The incoming invariant-weight conjunct is exactly
+  \cref{lem:mangoldt-weight-von-mangoldt-invariant-recurrence}.  Now define
+  $U(n,m)$ off the diagonal by the adjoint formula
+  $\nu_\Lambda(m)\nu_\Lambda(n)^{-1}P(m,n)$ and put $U(n,n)=0$.  The
+  invariant recurrence gives unit mass of each positive upward row; positivity
+  of $\nu_\Lambda$ and the support of $P$ give non-negativity, diagonal
+  vanishing, the adjoint formula, and upward divisibility support.  These are
+  precisely the clauses of
+  \cref{def:mangoldt-adjoint-kernel-package}. -/)
+  (title := /-- Existence of the adjoint von Mangoldt kernel package -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_kernel_package_exists :
+    ∃ (P : ℕ → ℕ → ℝ) (U : ℕ → ℕ → ℝ),
+      mangoldt_adjoint_kernel_package P U := by
+  sorry_using [mangoldt_weight_von_mangoldt_invariant_recurrence]
+
+@[blueprint "def:mangoldt-adjoint-kernel-markov-law"
+  (statement := /-- For an upward kernel $U$, a measure $\mu$, and a path
+  process $p$, this predicate says that $\mu$ is governed by the one-step
+  Markov transition law with kernel $U$: for every time $k$ and states $n,m$,
+  the mass of paths with $p_k=n$ and $p_{k+1}=m$ is the mass of paths with
+  $p_k=n$ multiplied by $U(n,m)$. -/)
+  (title := /-- One-step Markov law for an adjoint kernel path -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_kernel_markov_law {Ω : Type} [MeasurableSpace Ω]
+    (U : ℕ → ℕ → ℝ) (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  ∀ k n m : ℕ,
+    μ {ω : Ω | path ω k = n ∧ path ω (k + 1) = m} =
+      ENNReal.ofReal (U n m) * μ {ω : Ω | path ω k = n}
+
 @[blueprint "def:mangoldt-adjoint-kernel-path-data"
-  (statement := /-- This predicate records the local path data produced by the
+  (statement := /-- This predicate records the path data produced by the
   adjoint von Mangoldt kernel construction.  For an upward kernel $U$, the path
   law is a probability measure started at $1$; its sample paths are strictly
-  increasing divisibility chains, its coordinate maps are measurable, and each
-  one-step transition lies in the support of $U$.  The expected-visit identity,
-  the second-moment estimate, and the reverse-Fatou extraction principle are
-  separate analytic consequences of this local construction. -/)
+  increasing divisibility chains, its coordinate maps are measurable, each
+  one-step transition lies in the support of $U$, and the measure satisfies the
+  one-step Markov law \cref{def:mangoldt-adjoint-kernel-markov-law}.  The
+  expected-visit identity, the second-moment estimate, and the reverse-Fatou
+  extraction principle are analytic consequences of this constructed law. -/)
   (title := /-- Adjoint von Mangoldt kernel path data -/)
   (latexEnv := "definition")]
 noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace Ω]
@@ -8092,23 +8161,27 @@ noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace
     (∀ ω : Ω, path ω 0 = 1) ∧
       (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
       (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
-      (∀ ω : Ω, ∀ k : ℕ, U (path ω k) (path ω (k + 1)) ≠ 0)
+      (∀ ω : Ω, ∀ k : ℕ, U (path ω k) (path ω (k + 1)) ≠ 0) ∧
+        mangoldt_adjoint_kernel_markov_law U μ path
 
 @[blueprint "lem:mangoldt-adjoint-kernel-path-data-exists"
   (statement := /-- There exist a von Mangoldt downward kernel, its adjoint
   upward kernel, a measurable sample space, a probability measure, and a
-  natural-valued path process satisfying the local kernel package
+  natural-valued path process satisfying the adjoint kernel package
   \cref{def:mangoldt-adjoint-kernel-package} and the path-data predicate
   \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
-  (proof := /-- Construct $P$ as the von Mangoldt downward chain from the source
-  proof and verify the invariant recurrence for \cref{def:mangoldt-weight}.  The
-  adjoint formula then defines the upward kernel $U$ and gives
-  \cref{def:mangoldt-adjoint-kernel-package}.  Starting the associated path law
-  at $1$ gives total mass one, pathwise strict increase in the divisibility
-  order, coordinate measurability, and transition support in $U$.  These local
-  clauses are precisely \cref{def:mangoldt-adjoint-kernel-path-data}; the
-  expected-visit identity, the second-moment estimate, and the reverse-Fatou
-  extraction principle are proved separately from this construction. -/)
+  (proof := /-- By \cref{lem:mangoldt-adjoint-kernel-package-exists}, choose a
+  von Mangoldt downward kernel $P$ and its adjoint upward kernel $U$ satisfying
+  \cref{def:mangoldt-adjoint-kernel-package}.  On the space of infinite
+  $U$-supported paths started at $1$, the countable-state Markov-chain
+  construction gives a probability measure $\mu$ and coordinate process $p$
+  whose one-step cylinder probabilities satisfy
+  \cref{def:mangoldt-adjoint-kernel-markov-law}.  The row-mass and positivity
+  clauses of the package give total mass one, while its support clause and
+  diagonal vanishing force every sampled transition to move strictly upward in
+  the divisibility order.  Coordinate measurability is part of the canonical
+  path-space construction.  Thus $(U,\mu,p)$ satisfies all clauses of
+  \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
   (title := /-- Existence of adjoint von Mangoldt kernel path data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_kernel_path_data_exists :
@@ -8117,7 +8190,7 @@ lemma mangoldt_adjoint_kernel_path_data_exists :
       (path : Ω → ℕ → ℕ),
         mangoldt_adjoint_kernel_package P U ∧
           @mangoldt_adjoint_kernel_path_data Ω mΩ U μ path := by
-  sorry
+  sorry_using [mangoldt_adjoint_kernel_package_exists]
 
 @[blueprint "def:mangoldt-adjoint-random-model"
   (statement := /-- This predicate packages the stochastic adjoint von Mangoldt
@@ -8165,19 +8238,22 @@ noncomputable def mangoldt_adjoint_constructed_path_data {Ω : Type} [Measurable
   $P,U:\mathbb N\to\mathbb N\to\mathbb R$, measure $\mu$ on $\Omega$, and path
   process $p:\Omega\to(\mathbb N\to\mathbb N)$, if $P$ and $U$ satisfy the
   adjoint von Mangoldt kernel package
-  \cref{def:mangoldt-adjoint-kernel-package} and $(U,\mu,p)$ satisfies the local
-  path-data predicate \cref{def:mangoldt-adjoint-kernel-path-data}, then the
-  expected visits of $p$ satisfy
+  \cref{def:mangoldt-adjoint-kernel-package} and $(U,\mu,p)$ satisfies the
+  Markov path-data predicate \cref{def:mangoldt-adjoint-kernel-path-data}, then
+  the expected visits of $p$ satisfy
   \cref{def:mangoldt-adjoint-visit-identity}. -/)
   (proof := /-- Assume the kernel package
-  \cref{def:mangoldt-adjoint-kernel-package} and the local path-data predicate
-  \cref{def:mangoldt-adjoint-kernel-path-data}.  The adjoint formula identifies
-  the upward transition weights with the von Mangoldt-weighted reverse of the
-  downward chain, and the invariant recurrence in the downward package says that
-  the von Mangoldt weight is exactly the incoming mass at every positive state.
-  Starting the upward chain at $1$ and iterating this recurrence gives, for each
-  natural number $n$, that the sum over all times of the probability of the
-  event $p_k=n$ is \cref{def:mangoldt-weight} evaluated at $n$.  This is exactly
+  \cref{def:mangoldt-adjoint-kernel-package} and the path-data predicate
+  \cref{def:mangoldt-adjoint-kernel-path-data}.  The final clause of the
+  path-data predicate is the Markov law
+  \cref{def:mangoldt-adjoint-kernel-markov-law}; hence, if
+  $h_k(n)=\mu\{\omega:p(\omega,k)=n\}$, then the one-step distributions obey the
+  adjoint recurrence determined by $U$.  The starting clause gives
+  $h_0=\delta_1$, and the support clause makes the path strictly increasing in
+  the divisibility order.  Summing the distributional recurrence over all times
+  and using the invariant incoming-mass clause in
+  \cref{def:mangoldt-adjoint-kernel-package} gives, for each $n$, total visit
+  mass $\sum_k h_k(n)=\nu_\Lambda(n)$.  This is precisely
   \cref{def:mangoldt-adjoint-visit-identity}. -/)
   (title := /-- Expected visits from adjoint kernel path data -/)
   (latexEnv := "lemma")]
@@ -8194,22 +8270,24 @@ lemma mangoldt_adjoint_visit_identity_from_kernel_path_data {Ω : Type}
   $P,U:\mathbb N\to\mathbb N\to\mathbb R$, measure $\mu$ on $\Omega$, and path
   process $p:\Omega\to(\mathbb N\to\mathbb N)$, if $P$ and $U$ satisfy the
   adjoint von Mangoldt kernel package
-  \cref{def:mangoldt-adjoint-kernel-package} and $(U,\mu,p)$ satisfies the local
-  path-data predicate \cref{def:mangoldt-adjoint-kernel-path-data}, then the hit
-  counts of $p$ satisfy the uniform second-moment estimate
+  \cref{def:mangoldt-adjoint-kernel-package} and $(U,\mu,p)$ satisfies the
+  Markov path-data predicate \cref{def:mangoldt-adjoint-kernel-path-data}, then
+  the hit counts of $p$ satisfy the uniform second-moment estimate
   \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
   (proof := /-- Assume the kernel package
-  \cref{def:mangoldt-adjoint-kernel-package} and the local path-data predicate
-  \cref{def:mangoldt-adjoint-kernel-path-data}.  For a set
+  \cref{def:mangoldt-adjoint-kernel-package} and
+  \cref{def:mangoldt-adjoint-kernel-path-data}.  By
+  \cref{lem:mangoldt-adjoint-visit-identity-from-kernel-path-data}, the total
+  mass of visits to a state $n$ is $\nu_\Lambda(n)$.  For a set
   $A\subseteq\mathbb N$ and a height $x$, expand the square of the number of
   visits to $A\cap[1,x]$ as a double sum over pairs of times.  Conditional on a
-  sampled path visiting a state $n$, the number of earlier states in the same
-  divisibility chain is bounded by the total number of prime-power factors of
-  $n$.  Summing this conditional bound against the von Mangoldt visit weights,
-  and then applying the standard dilation estimates for the doubly harmonic
-  weight, gives a constant depending only on $A$ for which the second moment is
-  bounded by that constant times $(\log\log x)^2$ on a tail of the real
-  parameter $x$.  This proves
+  sampled path visiting a state $n$, strict divisibility of the path implies
+  that the number of earlier states in the same path is at most the total number
+  of prime-power factors of $n$.  Summing this conditional bound against the
+  visit weights supplied by the expected-visit identity, and then applying the
+  standard dilation estimates for the doubly harmonic weight, gives a constant
+  depending only on $A$ for which the second moment is bounded by that constant
+  times $(\log\log x)^2$ on a tail of the real parameter $x$.  This proves
   \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
   (title := /-- Second moment from adjoint kernel path data -/)
   (latexEnv := "lemma")]
@@ -8219,19 +8297,19 @@ lemma mangoldt_adjoint_second_moment_bound_from_kernel_path_data {Ω : Type}
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_second_moment_bound μ path := by
-  sorry
+  sorry_using [mangoldt_adjoint_visit_identity_from_kernel_path_data]
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-from-kernel-path-data"
   (statement := /-- For every measurable space $\Omega$, kernels
   $P,U:\mathbb N\to\mathbb N\to\mathbb R$, measure $\mu$ on $\Omega$, and path
   process $p:\Omega\to(\mathbb N\to\mathbb N)$, if $P$ and $U$ satisfy the
   adjoint von Mangoldt kernel package
-  \cref{def:mangoldt-adjoint-kernel-package} and $(U,\mu,p)$ satisfies the local
-  path-data predicate \cref{def:mangoldt-adjoint-kernel-path-data}, then $p$
+  \cref{def:mangoldt-adjoint-kernel-package} and $(U,\mu,p)$ satisfies the
+  Markov path-data predicate \cref{def:mangoldt-adjoint-kernel-path-data}, then $p$
   satisfies the reverse-Fatou pathwise extraction principle
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (proof := /-- Assume the kernel package
-  \cref{def:mangoldt-adjoint-kernel-package} and the local path-data predicate
+  \cref{def:mangoldt-adjoint-kernel-package} and the Markov path-data predicate
   \cref{def:mangoldt-adjoint-kernel-path-data}.  By
   \cref{lem:mangoldt-adjoint-visit-identity-from-kernel-path-data}, the expected
   number of visits to each state is the von Mangoldt weight of that state.  By
@@ -8259,7 +8337,7 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_from_kernel_path_data {Ω : Type
   $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if $P$ and
   $U$ satisfy the adjoint von Mangoldt kernel package
   \cref{def:mangoldt-adjoint-kernel-package} and $(U,\mu,p)$ satisfies the
-  local adjoint kernel path-data predicate
+  adjoint Markov kernel path-data predicate
   \cref{def:mangoldt-adjoint-kernel-path-data}, then $(\mu,p)$ satisfies the
   construction-data predicate
   \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
@@ -8270,7 +8348,7 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_from_kernel_path_data {Ω : Type
   asks for probability mass one, pathwise strict divisibility, coordinate
   measurability, the expected-visit identity, the second-moment estimate, and
   the reverse-Fatou extraction principle.  The first three clauses are part of
-  the local path-data predicate.  The expected-visit identity is supplied by
+  the Markov path-data predicate.  The expected-visit identity is supplied by
   \cref{lem:mangoldt-adjoint-visit-identity-from-kernel-path-data}, the
   second-moment estimate by
   \cref{lem:mangoldt-adjoint-second-moment-bound-from-kernel-path-data}, and
