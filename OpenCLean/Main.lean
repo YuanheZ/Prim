@@ -8036,28 +8036,123 @@ noncomputable def mangoldt_adjoint_random_model {Ω : Type} [MeasurableSpace Ω]
       mangoldt_adjoint_visit_identity μ path ∧
         mangoldt_adjoint_second_moment_bound μ path
 
+@[blueprint "def:mangoldt-adjoint-constructed-path-data"
+  (statement := /-- This predicate records the explicit formal data produced by
+  the adjoint von Mangoldt path construction: a probability measure on a sample
+  space of natural-valued paths, pathwise strict increase along divisibility,
+  measurability of every coordinate, the exact expected-visit identity
+  \cref{def:mangoldt-adjoint-visit-identity}, and the uniform second-moment
+  estimate \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
+  (title := /-- Construction data for the adjoint von Mangoldt path -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_constructed_path_data {Ω : Type} [MeasurableSpace Ω]
+    (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  μ Set.univ = 1 ∧
+    (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
+      (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
+      mangoldt_adjoint_visit_identity μ path ∧
+        mangoldt_adjoint_second_moment_bound μ path
+
+@[blueprint "lem:mangoldt-adjoint-constructed-path-data-exists"
+  (statement := /-- There are a measurable sample space, a probability measure,
+  and a natural-valued path process satisfying the explicit construction data
+  \cref{def:mangoldt-adjoint-constructed-path-data} for the adjoint upward von
+  Mangoldt chain started at $1$. -/)
+  (proof := /-- Use the invariant von Mangoldt weight
+  \cref{def:mangoldt-weight} for the von Mangoldt downward chain and form its
+  adjoint upward chain.  The path measure started at $1$ has total mass one;
+  the support of the adjoint transition kernel keeps every finite realization
+  strictly increasing along divisibility, and countability of the state space
+  gives measurability of all coordinate maps.  The invariance recurrence for
+  \cref{def:mangoldt-weight} gives the expected-visit identity
+  \cref{def:mangoldt-adjoint-visit-identity}.  Expanding the square of the
+  truncated hit count, bounding the number of predecessors of a visited integer
+  by its total number of prime-power factors, and summing the resulting
+  dilation estimates for \cref{def:mangoldt-weight} gives the uniform
+  second-moment estimate \cref{def:mangoldt-adjoint-second-moment-bound}.  These
+  clauses are exactly \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
+  (title := /-- Existence of adjoint von Mangoldt construction data -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_constructed_path_data_exists :
+    ∃ (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
+      (path : Ω → ℕ → ℕ), @mangoldt_adjoint_constructed_path_data Ω mΩ μ path := by
+  sorry
+
+@[blueprint "lem:mangoldt-adjoint-random-model-from-constructed-path-data"
+  (statement := /-- The explicit construction data
+  \cref{def:mangoldt-adjoint-constructed-path-data} imply the random path model
+  predicate \cref{def:mangoldt-adjoint-random-model}. -/)
+  (proof := /-- Unfold \cref{def:mangoldt-adjoint-constructed-path-data} and
+  \cref{def:mangoldt-adjoint-random-model}.  Both predicates require precisely
+  the same five clauses: total mass one, pathwise strict divisibility,
+  coordinate measurability, the expected-visit identity, and the second-moment
+  estimate. -/)
+  (title := /-- From construction data to the adjoint random model -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_random_model_from_constructed_path_data {Ω : Type}
+    [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
+    mangoldt_adjoint_constructed_path_data μ path ->
+      mangoldt_adjoint_random_model μ path := by
+  sorry
+
+@[blueprint "def:mangoldt-adjoint-reverse-fatou-extraction-principle"
+  (statement := /-- This predicate is the pathwise conclusion supplied by the
+  reverse-Fatou and uniform-integrability argument for an adjoint von Mangoldt
+  path model: every set of positive
+  \cref{def:mangoldt-weight-upper-density} is hit with upper doubly logarithmic
+  density at least that value along some sampled path. -/)
+  (title := /-- Reverse-Fatou pathwise extraction principle -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_reverse_fatou_extraction_principle {Ω : Type}
+    [MeasurableSpace Ω] (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  ∀ A : Set ℕ, 0 < mangoldt_weight_upper_density A ->
+    ∃ ω : Ω, chain_hits_density_at_least (path ω) A (mangoldt_weight_upper_density A)
+
+@[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-principle-from-model"
+  (statement := /-- Every adjoint von Mangoldt random path model satisfying
+  \cref{def:mangoldt-adjoint-random-model} satisfies the reverse-Fatou pathwise
+  extraction principle
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
+  (proof := /-- Fix $A\subseteq\mathbb N$ with positive
+  \cref{def:mangoldt-weight-upper-density}.  Choose heights tending to infinity
+  along which the truncated Mangoldt-weight sums realize this limit superior.
+  The expected-visit identity in \cref{def:mangoldt-adjoint-random-model}
+  identifies the expectations of the normalized hit-count variables with these
+  normalized sums.  The coordinate-measurability clause in
+  \cref{def:mangoldt-adjoint-random-model} makes the hit counts measurable, and
+  the second-moment clause in \cref{def:mangoldt-adjoint-random-model} gives a
+  uniform $L^2$ bound on the selected tail, hence uniform integrability.  The
+  reverse-Fatou inequality for uniformly integrable non-negative random
+  variables then gives that the expectation of the pathwise limsup is at least
+  \cref{def:mangoldt-weight-upper-density} of $A$.  Therefore some sample path
+  realizes this lower bound, which is precisely
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
+  (title := /-- Reverse-Fatou extraction from a Mangoldt model -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_reverse_fatou_extraction_principle_from_model {Ω : Type}
+    [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
+    mangoldt_adjoint_random_model μ path ->
+      mangoldt_adjoint_reverse_fatou_extraction_principle μ path := by
+  sorry
+
 @[blueprint "lem:mangoldt-adjoint-random-model-exists"
   (statement := /-- There exists a random path model for the adjoint upward von
   Mangoldt chain, started at $1$, satisfying
   \cref{def:mangoldt-adjoint-random-model}. -/)
-  (proof := /-- Take the von Mangoldt downward chain with absorbing state
-  $\{1\}$ and the invariant Mangoldt weight.  The adjoint construction gives
-  the upward von Mangoldt chain.  Its sample space is the space of
-  natural-valued upward paths generated from $1$; the Markov property and the
-  support condition make every sampled path a strictly increasing divisibility
-  chain.  Since the chain is a countable-state stochastic process, each
-  coordinate map of the path is measurable.  The invariance recurrence gives
-  \cref{def:mangoldt-adjoint-visit-identity}, and the square-expansion argument
-  using the divisor-count bound and the dilation estimate for the Erd\H{o}s
-  weight gives \cref{def:mangoldt-adjoint-second-moment-bound} for all
-  sufficiently large heights.  These data are precisely
+  (proof := /-- By
+  \cref{lem:mangoldt-adjoint-constructed-path-data-exists}, there are a
+  measurable sample space, a probability measure, and a natural-valued path
+  satisfying the explicit adjoint von Mangoldt construction data.  Applying
+  \cref{lem:mangoldt-adjoint-random-model-from-constructed-path-data} to these
+  witnesses folds those clauses into the random path model predicate
   \cref{def:mangoldt-adjoint-random-model}. -/)
   (title := /-- Existence of the adjoint von Mangoldt random path model -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_random_model_exists :
     ∃ (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
       (path : Ω → ℕ → ℕ), @mangoldt_adjoint_random_model Ω mΩ μ path := by
-  sorry
+  sorry_using [mangoldt_adjoint_constructed_path_data_exists,
+    mangoldt_adjoint_random_model_from_constructed_path_data]
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-path-extraction"
   (statement := /-- Any adjoint von Mangoldt random path model satisfying
@@ -8066,25 +8161,18 @@ lemma mangoldt_adjoint_random_model_exists :
   \cref{def:mangoldt-weight-upper-density}, a deterministic strictly increasing
   divisibility chain whose visits to $A$ have upper doubly logarithmic density
   at least that Mangoldt-weight density. -/)
-  (proof := /-- Fix a set $A\subseteq\mathbb N$ with positive
-  \cref{def:mangoldt-weight-upper-density}.  The visit identity in
-  \cref{def:mangoldt-adjoint-random-model} identifies the expected number of
-  visits to $A\cap[1,x]$ with the truncated sum defining
-  \cref{def:mangoldt-weight-upper-density}.  Along a sequence of heights
-  realizing this limit superior, the eventual second-moment clause in
-  \cref{def:mangoldt-adjoint-random-model} holds after discarding a finite
-  initial segment of the sequence, and on that same tail $\log\log x$ is
-  positive.  It gives uniform integrability of the normalized hit counts.  The measurable-coordinate
-  clause in \cref{def:mangoldt-adjoint-random-model} supplies measurability of
-  these normalized hit-count random variables.  The reverse Fatou inequality
-  then bounds the
-  expectation of the pathwise limit superior from below by
-  \cref{def:mangoldt-weight-upper-density}.  Therefore some sample path has
-  pathwise hit-density at least that value.  Since every sampled path is a
-  strictly increasing divisibility chain by
-  \cref{def:mangoldt-adjoint-random-model}, that path satisfies
-  \cref{def:strictly-increasing-divisibility-chain} and
-  \cref{def:chain-hits-density-at-least}. -/)
+  (proof := /-- Assume \cref{def:mangoldt-adjoint-random-model}.  By
+  \cref{lem:mangoldt-adjoint-reverse-fatou-extraction-principle-from-model},
+  the model satisfies the reverse-Fatou extraction principle
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}.  Thus, for
+  each set $A\subseteq\mathbb N$ with positive
+  \cref{def:mangoldt-weight-upper-density}, there is a sample point whose path
+  has hit density at least \cref{def:mangoldt-weight-upper-density} of $A$ in
+  the sense of \cref{def:chain-hits-density-at-least}.  The pathwise chain
+  clause in \cref{def:mangoldt-adjoint-random-model} says that this same path
+  is a strictly increasing divisibility chain, i.e.
+  \cref{def:strictly-increasing-divisibility-chain}.  Combining these two
+  properties gives the required deterministic chain. -/)
   (title := /-- Reverse-Fatou extraction from the adjoint path model -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_reverse_fatou_path_extraction {Ω : Type} [MeasurableSpace Ω]
@@ -8094,7 +8182,7 @@ lemma mangoldt_adjoint_reverse_fatou_path_extraction {Ω : Type} [MeasurableSpac
         ∃ n : ℕ → ℕ,
           strictly_increasing_divisibility_chain n ∧
           chain_hits_density_at_least n A (mangoldt_weight_upper_density A) := by
-  sorry
+  sorry_using [mangoldt_adjoint_reverse_fatou_extraction_principle_from_model]
 
 @[blueprint "lem:mangoldt-adjoint-chain-density-selection"
   (statement := /-- If a set $A\subseteq\mathbb N$ has positive upper doubly
