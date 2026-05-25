@@ -4007,6 +4007,97 @@ theorem erdos_sarkozy_szemeredi_1196 :
 def prime_layer : Set ℕ :=
   {n : ℕ | Nat.Prime n}
 
+@[blueprint "def:modified-prime-power-redirected-finite"
+  (statement := /-- For a prime $p$ and a finite set of exponents, this is the
+  normalized redirected incoming mass
+  $\sum_{k\in s,\ k\geq2}1/(k^2p^{k-1})$ created by sending the ordinary
+  $p^k\to1$ prime-power jump to the prime state $p$. -/)
+  (title := /-- Finite redirected prime-power incoming mass -/)
+  (latexEnv := "definition")]
+noncomputable def modified_prime_power_redirected_finite (p : ℕ) (s : Finset ℕ) : ℝ :=
+  ∑ k ∈ s, if 2 ≤ k then 1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) else 0
+
+@[blueprint "def:modified-prime-power-redirected-sum"
+  (statement := /-- For a prime $p$, this is the infinite normalized redirected
+  incoming mass
+  $\sum_{k\geq2}1/(k^2p^{k-1})$ created by the modified prime-power transition
+  rule. -/)
+  (title := /-- Redirected prime-power incoming mass -/)
+  (latexEnv := "definition")]
+noncomputable def modified_prime_power_redirected_sum (p : ℕ) : ℝ :=
+  ∑' k : ℕ, if 2 ≤ k then 1 / (((k : ℝ) ^ 2) * ((p : ℝ) ^ (k - 1))) else 0
+
+@[blueprint "lem:mangoldt-tail-sharp-prime-slack"
+  (statement := /-- For every prime $p$, the ordinary normalized von Mangoldt
+  incoming tail at $p$ is bounded by the sharp slack term from the source proof:
+  if $x=\log p/\log 2$, then
+  $\log p\sum_{q\ge2}\Lambda(q)/(q\log^2(pq))\le x/(x+1/2)$. -/)
+  (proof := /-- Put $x=\log p/\log 2$, so that $p=2^x$ and $x\ge1$.  The
+  source proof applies the Dirichlet-series bound for the von Mangoldt function,
+  expands $(2^u-1)^{-1}$ as a geometric series, and uses Tonelli's theorem to
+  dominate the normalized tail by
+  $\sum_{j\ge1}x/(x+j)^2$.  The midpoint integral comparison for the convex
+  function $t\mapsto x/(x+t)^2$ bounds this sum by
+  $x/(x+1/2)$, which gives the displayed inequality. -/)
+  (title := /-- Sharp prime-state slack for the Mangoldt tail -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_tail_sharp_prime_slack :
+    ∀ p : ℕ, p ∈ prime_layer ->
+      Real.log (p : ℝ) * mangoldt_tail_sum p 2 ≤
+        (Real.log (p : ℝ) / Real.log 2) /
+          (Real.log (p : ℝ) / Real.log 2 + (1 / 2 : ℝ)) := by
+  sorry
+
+@[blueprint "lem:modified-prime-power-redirected-bound"
+  (statement := /-- For every prime $p$, both the infinite redirected
+  prime-power contribution and every finite redirected sub-sum are bounded by
+  the slack left by the sharp ordinary tail estimate: with
+  $x=\log p/\log 2$, they are at most $1-x/(x+1/2)$. -/)
+  (proof := /-- For $k\ge2$ each redirected term is bounded by
+  $1/(4p^{k-1})$.  Summing the resulting geometric series gives
+  $1/(4(p-1))$.  Since $x=\log p/\log 2\le p-1$, this is at most
+  $1/(2x+1)=1-x/(x+1/2)$.  The same estimate holds for every finite sub-sum
+  because all redirected terms are non-negative. -/)
+  (title := /-- Geometric bound for redirected prime powers -/)
+  (latexEnv := "lemma")]
+lemma modified_prime_power_redirected_bound :
+    ∀ p : ℕ, p ∈ prime_layer ->
+      modified_prime_power_redirected_sum p ≤
+          1 - (Real.log (p : ℝ) / Real.log 2) /
+            (Real.log (p : ℝ) / Real.log 2 + (1 / 2 : ℝ)) ∧
+      ∀ s : Finset ℕ,
+        modified_prime_power_redirected_finite p s ≤
+          1 - (Real.log (p : ℝ) / Real.log 2) /
+            (Real.log (p : ℝ) / Real.log 2 + (1 / 2 : ℝ)) := by
+  sorry
+
+@[blueprint "lem:modified-prime-power-incoming-bound"
+  (statement := /-- For every prime $p$, the modified prime-power incoming mass
+  satisfies the exact normalized sub-invariance inequality required by the
+  modified chain.  The ordinary von Mangoldt tail plus the redirected
+  prime-power contribution is at most $1$, and the same bound holds for every
+  pair of finite ordinary and redirected incoming sub-sums. -/)
+  (proof := /-- The infinite estimate is obtained by adding the sharp ordinary
+  prime-state tail bound from \cref{lem:mangoldt-tail-sharp-prime-slack} to the
+  redirected geometric bound from
+  \cref{lem:modified-prime-power-redirected-bound}.  For finite ordinary
+  sub-sums, \cref{lem:mangoldt-tail-finite-sum-le} bounds the selected
+  Mangoldt terms by the full ordinary tail; for finite redirected sub-sums,
+  \cref{lem:modified-prime-power-redirected-bound} gives the same geometric
+  slack bound.  Adding the two estimates gives the normalized bound $1$. -/)
+  (title := /-- Modified prime-power incoming bound -/)
+  (latexEnv := "lemma")]
+lemma modified_prime_power_incoming_bound :
+    ∀ p : ℕ, p ∈ prime_layer ->
+      Real.log (p : ℝ) * mangoldt_tail_sum p 2 +
+          modified_prime_power_redirected_sum p ≤ 1 ∧
+      ∀ s t : Finset ℕ,
+        Real.log (p : ℝ) *
+            (∑ q ∈ s, if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term p q else 0) +
+          modified_prime_power_redirected_finite p t ≤ 1 := by
+  sorry_using [mangoldt_tail_finite_sum_le, mangoldt_tail_sharp_prime_slack,
+    modified_prime_power_redirected_bound]
+
 @[blueprint "def:eps-modified-chain-subinvariant-package"
   (statement := /-- This package records the formal interface supplied by the
   modified von Mangoldt downward chain used in the proof of the
@@ -4071,19 +4162,63 @@ def eps_modified_chain_subinvariant_package : Prop :=
   The ordinary von Mangoldt part of the corresponding finite incoming sum is
   bounded by the finite tail estimate underlying
   \cref{lem:mangoldt-subinvariant-bound}.  If $m$ is prime, the redirected
-  prime-power contribution is the additional positive finite subsum displayed
-  in the source proof, and the elementary geometric estimate there bounds it by
-  the remaining slack in the same inequality; if $m$ is composite, there is no
-  redirected contribution.  Hence every finite incoming partial sum is at most
-  $\nu_0(m)$.  Since all incoming terms are non-negative, this finite bound also
-  gives summability of the incoming series and the stated infinite
-  sub-invariance inequality.  These verifications give every clause of
-  \cref{def:eps-modified-chain-subinvariant-package}. -/)
+  prime-power contribution is exactly the positive subsum isolated in
+  \cref{lem:modified-prime-power-incoming-bound}, whose finite and infinite
+  forms combine the sharp ordinary-tail slack with the redirected geometric
+  series.  If $m$ is composite, there is no redirected contribution, so
+  \cref{lem:mangoldt-subinvariant-bound} is sufficient.  Hence every finite
+  incoming partial sum is at most $\nu_0(m)$.  Since all incoming terms are
+  non-negative, this finite bound also gives summability of the incoming series
+  and the stated infinite sub-invariance inequality.  These verifications give
+  every clause of \cref{def:eps-modified-chain-subinvariant-package}. -/)
   (title := /-- Sub-invariance of the modified chain -/)
   (latexEnv := "lemma")]
 lemma eps_modified_chain_subinvariant :
     eps_modified_chain_subinvariant_package := by
-  sorry_using [mangoldt_subinvariant_bound]
+  sorry_using [mangoldt_subinvariant_bound, modified_prime_power_incoming_bound]
+
+@[blueprint "def:eps-adjoint-hitting-mass-package"
+  (statement := /-- This is the Lean-usable output of the adjoint upward chain
+  constructed from the modified sub-invariant downward chain.  It consists of a
+  non-negative hitting-mass function $h$ on $\mathbb N$ which agrees with the
+  Erd\H{o}s weight $\nu_0$ at every Lean-natural state, has summable mass on the
+  prime layer, and satisfies the finite chain-antichain inequality and the
+  resulting t-sum inequality for every primitive set. -/)
+  (title := /-- Adjoint hitting-mass package for the EPS chain -/)
+  (latexEnv := "definition")]
+def eps_adjoint_hitting_mass_package : Prop :=
+  ∃ h : ℕ → ℝ,
+    (∀ n : ℕ, 0 ≤ h n) ∧
+    (∀ n : ℕ, h n = erdos_weight n) ∧
+    Summable (fun n : ℕ => prime_layer.indicator h n) ∧
+    (∀ A : Set ℕ, primitive_set A ->
+      (∀ s : Finset ℕ,
+        (∑ n ∈ s, A.indicator h n) ≤
+          ∑' n : ℕ, prime_layer.indicator h n) ∧
+      Summable (fun n : ℕ => A.indicator h n) ∧
+        (∑' n : ℕ, A.indicator h n) ≤
+          ∑' n : ℕ, prime_layer.indicator h n)
+
+@[blueprint "lem:eps-adjoint-hitting-mass-package-from-subinvariant"
+  (statement := /-- The modified-chain sub-invariance package supplies the
+  adjoint hitting-mass package for the EPS argument. -/)
+  (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package}.  Form
+  the adjoint upward transition kernel with respect to $\nu_0$, adding the
+  absorbing state $\infty$ for the unused sub-invariant mass.  The finite
+  incoming inequalities in the sub-invariance package make the adjoint
+  transition probabilities non-negative and of total mass one.  Starting with
+  initial mass $\nu_0(p)$ on each prime $p$, the adjoint recursion gives a
+  hitting-mass function $h$ satisfying $h(n)=\nu_0(n)$ for every natural state.
+  Since every realized upward path is a divisibility chain until absorption,
+  a primitive set meets each path at most once; summing this finite
+  chain-antichain inequality over the initial prime mass gives the finite
+  partial-sum bounds, summability, and t-sum inequality recorded in
+  \cref{def:eps-adjoint-hitting-mass-package}. -/)
+  (title := /-- Constructing the EPS adjoint hitting-mass package -/)
+  (latexEnv := "lemma")]
+lemma eps_adjoint_hitting_mass_package_from_subinvariant :
+    eps_modified_chain_subinvariant_package -> eps_adjoint_hitting_mass_package := by
+  sorry
 
 @[blueprint "lem:eps-modified-chain-hitting-mass-identity"
   (statement := /-- If the modified-chain sub-invariance package holds, then
@@ -4092,28 +4227,16 @@ lemma eps_modified_chain_subinvariant :
   prime-layer Erd\H{o}s series is summable, and every primitive set has a
   summable Erd\H{o}s series whose sum is at most the Erd\H{o}s sum of the prime
   layer. -/)
-  (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package} and
-  use its transition kernel to form the adjoint upward chain with respect to
-  the weight $\nu_0$.  The finite incoming-mass clause in
-  \cref{def:eps-modified-chain-subinvariant-package} supplies, for each finite
-  set of incoming states, a bound by the available mass $\nu_0(m)$; passing to
-  the associated non-negative series defines the missing transition mass to the
-  absorbing state $\infty$, so the adjoint transition probabilities have total
-  mass one.  The divisibility-support clauses ensure
-  that, before absorption at $\infty$, every realized upward trajectory is a
-  strictly increasing divisibility chain.  Start the chain with mass
-  $\nu_0(p)$ at each prime $p$; this total initial mass is the prime-layer
-  series associated with \cref{def:prime-layer}.  Since primes are absorbing for
-  the downward chain, the upward hitting mass on a prime equals its initial
-  mass.  The adjoint recursion and induction on divisibility rank then give
-  hitting mass $\nu_0(n)$ for every positive natural number $n$.  A primitive
-  set meets any upward divisibility chain in at most one state.  Applying the
-  finite incoming-mass inequality at each stage therefore bounds every finite
-  partial sum of the non-negative series defining its Erd\H{o}s sum by the
-  total initial mass on the primes.  The bounded-partial-sums criterion for
-  non-negative real series gives summability for the primitive set and the
-  resulting inequality of
-  \cref{def:erdos-sum}. -/)
+  (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package}.  By
+  \cref{lem:eps-adjoint-hitting-mass-package-from-subinvariant}, this package
+  yields an adjoint hitting-mass function satisfying
+  \cref{def:eps-adjoint-hitting-mass-package}.  The package states that the
+  hitting mass agrees with $\nu_0$ at every Lean-natural state, that the prime
+  layer has summable initial mass, and that every primitive set satisfies the
+  finite chain-antichain bounds and the resulting t-sum inequality.  Rewriting
+  the hitting mass as \cref{def:erdos-weight} and the t-sums as
+  \cref{def:erdos-sum} gives exactly the stated prime-layer summability and the
+  primitive-set extremal inequality. -/)
   (title := /-- Hitting masses for the modified adjoint chain -/)
   (latexEnv := "lemma")]
 lemma eps_modified_chain_hitting_mass_identity :
@@ -4122,7 +4245,7 @@ lemma eps_modified_chain_hitting_mass_identity :
         ∀ A : Set ℕ, primitive_set A ->
           Summable (fun n : ℕ => A.indicator erdos_weight n) ∧
             erdos_sum A ≤ erdos_sum prime_layer := by
-  sorry
+  sorry_using [eps_adjoint_hitting_mass_package_from_subinvariant]
 
 @[blueprint "lem:eps-chain-antichain-bound"
   (statement := /-- The prime-layer Erd\H{o}s series is summable, and every
@@ -4340,28 +4463,94 @@ lemma log_square_tail_summable :
       exact Nat.succ_le_of_lt (Nat.one_lt_two_pow hk_ne)
     simp [hpow_ge, Nat.cast_pow, Real.log_pow, one_div, mul_comm, mul_left_comm, mul_assoc, mul_pow]
 
+@[blueprint "lem:reciprocal-zeta-second-order-bound"
+  (statement := /-- There are constants $\delta>0$ and $C\geq0$ such that,
+  for every $0<u\leq\delta$,
+  $|1/\zeta(1+u)-u|\leq C u^2$ on the real axis, expressed using the real part
+  of Mathlib's complex-valued Riemann zeta function. -/)
+  (proof := /-- Use the Laurent expansion of the Riemann zeta function at its
+  simple pole at $1$: on the real axis from the right,
+  $\zeta(1+u)=u^{-1}+O(1)$.  After restricting to a sufficiently small right
+  neighborhood, the zeta value is non-zero and positive.  Inverting the
+  expansion gives
+  $1/\zeta(1+u)=u+O(u^2)$, and increasing the implicit constant gives the
+  displayed pointwise inequality for all $0<u\leq\delta$. -/)
+  (title := /-- Second-order reciprocal-zeta bound -/)
+  (latexEnv := "lemma")]
+lemma reciprocal_zeta_second_order_bound :
+    ∃ δ C : ℝ, 0 < δ ∧ 0 ≤ C ∧
+      ∀ u : ℝ, 0 < u -> u ≤ δ ->
+        |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| ≤ C * u ^ 2 := by
+  sorry
+
+@[blueprint "lem:mangoldt-weight-integral-change-of-variables"
+  (statement := /-- For every $n\geq2$, subtracting the Erd\H{o}s weight from
+  the invariant von Mangoldt weight is the Laplace integral obtained from the
+  change of variables $s=1+u$ and from the identity
+  $1/(n\log n)=n^{-1}\int_0^\infty u\log n\,n^{-u}\,du$. -/)
+  (proof := /-- Since $n\geq2$, the defining branch of
+  \cref{def:mangoldt-weight} is the integral over $s>1$.  Substitute
+  $s=1+u$ to rewrite it as
+  $n^{-1}\int_0^\infty \log n\,n^{-u}/\zeta(1+u)\,du$.  The elementary
+  Laplace identity for the same kernel gives
+  \cref{def:erdos-weight} as
+  $n^{-1}\int_0^\infty u\log n\,n^{-u}\,du$.  Subtracting the two integrals
+  gives the stated formula. -/)
+  (title := /-- Laplace form of the Mangoldt--Erd\H{o}s discrepancy -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_integral_change_of_variables :
+    ∀ n : ℕ, 2 ≤ n ->
+      mangoldt_weight n - erdos_weight n =
+        (1 / (n : ℝ)) *
+          (∫ u : ℝ in Set.Ioi 0,
+            Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+              (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u)) := by
+  sorry
+
+@[blueprint "lem:mangoldt-weight-laplace-error-bound"
+  (statement := /-- There is a constant $C\geq0$ such that the absolute value
+  of the exact Laplace discrepancy integral for every $n\geq2$ is at most
+  $C/(n(\log n)^2)$. -/)
+  (proof := /-- Split the integral at the fixed right-neighborhood supplied by
+  \cref{lem:reciprocal-zeta-second-order-bound}.  On the near interval, the
+  reciprocal-zeta error is at most a constant times $u^2$, so the Laplace
+  integral is bounded by a constant multiple of
+  $n^{-1}\log n\int_0^\infty u^2 n^{-u}\,du$, which is
+  $O(1/(n(\log n)^2))$.  On the remaining interval the reciprocal-zeta factor
+  is bounded, and the exponential factor $n^{-u}$ gives an error smaller than
+  the same comparison after enlarging the constant. -/)
+  (title := /-- Uniform Laplace error bound for the Mangoldt weight -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_laplace_error_bound :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ n : ℕ, 2 ≤ n ->
+      |(1 / (n : ℝ)) *
+        (∫ u : ℝ in Set.Ioi 0,
+          Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+            (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u))| ≤
+        C * (1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2)) := by
+  sorry_using [reciprocal_zeta_second_order_bound]
+
 @[blueprint "lem:mangoldt-weight-erdos-pointwise-error-bound"
   (statement := /-- There is an absolute constant $C\geq0$ such that, for every
   natural number $n\geq2$, the invariant von Mangoldt weight and the
   Erd\H{o}s weight satisfy
   $|\nu_\Lambda(n)-\nu_0(n)|\leq C/(n(\log n)^2)$. -/)
-  (proof := /-- By \cref{def:mangoldt-weight} and \cref{def:erdos-weight}, the
-  discrepancy is the difference between the Laplace transform with kernel
-  $1/\zeta(1+u)$ and the Laplace transform with kernel $u$, after writing
-  $s=1+u$.  The standard real-axis expansion
-  $1/\zeta(1+u)=u+O(u^2)$ as $u\downarrow0$, together with the boundedness of
-  the remaining tail for $u$ bounded away from $0$, gives an integrand error
-  bounded by a constant multiple of $u^2 n^{-1-u}\log n$.  Evaluating this
-  Laplace-transform majorant gives a bound by a constant multiple of
-  $1/(n(\log n)^2)$.  Enlarging the constant to cover the compact range
-  $2\leq n\leq N$ gives the asserted uniform estimate for all $n\geq2$. -/)
+  (proof := /-- For $n\geq2$, \cref{lem:mangoldt-weight-integral-change-of-variables}
+  rewrites the discrepancy between \cref{def:mangoldt-weight} and
+  \cref{def:erdos-weight} as the exact Laplace integral whose kernel is
+  $1/\zeta(1+u)-u$.  The uniform integral comparison
+  \cref{lem:mangoldt-weight-laplace-error-bound}, which rests on the
+  second-order reciprocal-zeta estimate, bounds the absolute value of this
+  integral by $C/(n(\log n)^2)$ with a constant independent of $n$.  This is the
+  asserted pointwise estimate. -/)
   (title := /-- Pointwise error between $\nu_\Lambda$ and $\nu_0$ -/)
   (latexEnv := "lemma")]
 lemma mangoldt_weight_erdos_pointwise_error_bound :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ n : ℕ, 2 ≤ n ->
       |mangoldt_weight n - erdos_weight n| ≤
         C * (1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2)) := by
-  sorry
+  sorry_using [mangoldt_weight_integral_change_of_variables,
+    mangoldt_weight_laplace_error_bound]
 
 @[blueprint "lem:mangoldt-weight-erdos-summable-error"
   (statement := /-- The pointwise discrepancy between the invariant von
