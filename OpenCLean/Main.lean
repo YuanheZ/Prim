@@ -4755,18 +4755,27 @@ def eps_adjoint_hitting_mass_package : Prop :=
             eps_adjoint_hitting_mass_facts U h
 
 @[blueprint "lem:eps-adjoint-kernel-package-from-subinvariant"
-  (statement := /-- If a fixed modified downward kernel satisfies the
-  sub-invariance interface, then its adjoint upward kernel with the absorbing
-  slack state exists. -/)
+  (statement := /-- For every kernel $P : \mathbb{N} \times \mathbb{N} \to
+  \mathbb{R}$ satisfying
+  \cref{def:eps-modified-chain-kernel-subinvariant}, there exists a kernel
+  $U$ on $\mathbb{N}_{\geq 2} \cup \{\infty\}$, encoded in Lean as
+  `Option \mathbb{N}`, such that $U$ satisfies
+  \cref{def:eps-adjoint-kernel-package} for $P$. -/)
   (proof := /-- Assume \cref{def:eps-modified-chain-kernel-subinvariant} for a
   fixed kernel $P$.  Define $U(n,m)=\nu_0(m)\nu_0(n)^{-1}P(m,n)$ when
   $n,m\geq2$ are distinct natural states, set $U(n,n)=0$, and let the transition
   from $n$ to $\infty$ be the unused mass
-  $1-\sum_m\nu_0(m)\nu_0(n)^{-1}P(m,n)$.  The finite incoming inequalities in
-  \cref{def:eps-modified-chain-kernel-subinvariant} give the non-negativity of
-  this slack term, the infinite incoming inequality gives the total mass one
-  identity, and the support clauses for $P$ show that non-zero natural
-  transitions of $U$ move upward along divisibility.  Finally set
+  $1-\sum_m\nu_0(m)\nu_0(n)^{-1}P(m,n)$.  The positivity of $\nu_0(n)$ for
+  $n\geq2$, from \cref{def:erdos-weight}, and the non-negativity of $P$ give
+  non-negative natural transitions.  The support clause in
+  \cref{def:eps-modified-chain-kernel-subinvariant} shows that every non-zero
+  off-diagonal incoming term $P(m,n)$ with $m,n\geq2$ has $m=nq$ for some
+  $q>1$.  Reindexing the natural outgoing sum by these non-zero terms rewrites
+  it as $\nu_0(n)^{-1}\sum_{q>1}\nu_0(nq)P(nq,n)$, and the incoming
+  sub-invariance inequality in
+  \cref{def:eps-modified-chain-kernel-subinvariant} bounds this by $1$; hence
+  the slack transition to $\infty$ is non-negative.  The total-mass identity is
+  then the defining algebraic identity for the slack term.  Finally set
   $U(\infty,\infty)=1$ and $U(\infty,m)=0$ for every natural $m$.  These clauses
   are exactly \cref{def:eps-adjoint-kernel-package}. -/)
   (title := /-- Constructing the EPS adjoint kernel -/)
@@ -4774,7 +4783,148 @@ def eps_adjoint_hitting_mass_package : Prop :=
 lemma eps_adjoint_kernel_package_from_subinvariant {P : ℕ → ℕ → ℝ} :
     eps_modified_chain_kernel_subinvariant P ->
       ∃ U : Option ℕ → Option ℕ → ℝ, eps_adjoint_kernel_package P U := by
-  sorry
+  intro hP
+  rcases hP with
+    ⟨hP_nonneg, hP_total, hP_one, hP_one_zero, hP_prime_self, hP_prime_zero,
+      hP_support, hP_rule, hP_pp, hP_pp_j, hP_pp_support, hP_sub, hP_sub_fin⟩
+  let U : Option ℕ → Option ℕ → ℝ := fun a b =>
+    match a, b with
+    | none, none => 1
+    | none, some _ => 0
+    | some n, none =>
+        if 2 ≤ n then
+          1 - (∑' m : ℕ,
+            if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0)
+        else 0
+    | some n, some m =>
+        if 2 ≤ n ∧ 2 ≤ m ∧ m ≠ n then
+          erdos_weight m / erdos_weight n * P m n
+        else 0
+  refine ⟨U, ?_⟩
+  unfold eps_adjoint_kernel_package
+  dsimp [U]
+  have hweight_pos : ∀ {n : ℕ}, 2 ≤ n -> 0 < erdos_weight n := by
+    intro n hn
+    unfold erdos_weight
+    apply one_div_pos.mpr
+    apply mul_pos
+    · exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hn)
+    · exact Real.log_pos (by exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hn))
+  have hsum_eq : ∀ n : ℕ, 2 ≤ n ->
+      (∑' m : ℕ, if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0) =
+        ∑' q : ℕ, if 1 < q then erdos_weight (n * q) / erdos_weight n * P (n * q) n else 0 := by
+    intro n hn
+    refine tsum_eq_tsum_of_ne_zero_bij (fun q => n * (q : ℕ)) ?_ ?_ ?_
+    · intro a b hab
+      apply Subtype.ext
+      exact (Nat.mul_right_inj (by omega : n ≠ 0)).mp hab
+    · intro m hm
+      simp only [Function.mem_support] at hm
+      by_cases hcond : 2 ≤ m ∧ m ≠ n
+      · have hPmn : P m n ≠ 0 := by
+          intro hzero
+          simp [hcond, hzero] at hm
+        rcases hP_support m n hcond.1 hPmn with ⟨hndvdm, hcases⟩
+        have hlt : n < m := by
+          rcases hcases with hdiag | hlt
+          · exact False.elim (hcond.2 hdiag.1.symm)
+          · exact hlt
+        rcases hndvdm with ⟨q, rfl⟩
+        have hq_gt_one : 1 < q := by
+          simpa using ((Nat.lt_mul_iff_one_lt_right (by omega : 0 < n)).mp hlt)
+        have hprodne : erdos_weight (n * q) / erdos_weight n * P (n * q) n ≠ 0 := by
+          have hnx_ge : 2 ≤ n * q := by
+            exact le_trans hn (Nat.le_mul_of_pos_right n (by omega))
+          have hnx_ne : n * q ≠ n := ne_of_gt hlt
+          simpa [hnx_ge, hnx_ne] using hm
+        refine ⟨⟨q, ?_⟩, rfl⟩
+        simpa [hq_gt_one] using hprodne
+      · simp [hcond] at hm
+    · intro x
+      have hxne : (if 1 < (x : ℕ) then erdos_weight (n * (x : ℕ)) / erdos_weight n * P (n * (x : ℕ)) n else 0) ≠ 0 := x.property
+      have hxgt : 1 < (x : ℕ) := by
+        by_contra hxle
+        simp [hxle] at hxne
+      have hnx_ge : 2 ≤ n * (x : ℕ) := by
+        exact le_trans hn (Nat.le_mul_of_pos_right n (by omega))
+      have hnx_ne : n * (x : ℕ) ≠ n := by
+        exact ne_of_gt ((Nat.lt_mul_iff_one_lt_right (by omega : 0 < n)).2 hxgt)
+      simp [hxgt, hnx_ge, hnx_ne]
+  have hsum_le_one : ∀ n : ℕ, 2 ≤ n ->
+      (∑' m : ℕ, if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0) ≤ 1 := by
+    intro n hn
+    rw [hsum_eq n hn]
+    have hqsum_eq :
+        (∑' q : ℕ, if 1 < q then erdos_weight (n * q) / erdos_weight n * P (n * q) n else 0) =
+          ∑' q : ℕ, (if 1 < q then erdos_weight (n * q) * P (n * q) n else 0) / erdos_weight n := by
+      apply tsum_congr
+      intro q
+      by_cases hq : 1 < q
+      · simp [hq, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc]
+      · simp [hq]
+    rw [hqsum_eq, tsum_div_const]
+    have hdiv_le :
+        (∑' q : ℕ, if 1 < q then erdos_weight (n * q) * P (n * q) n else 0) / erdos_weight n ≤
+          erdos_weight n / erdos_weight n := by
+      exact div_le_div_of_nonneg_right (hP_sub n hn) (le_of_lt (hweight_pos hn))
+    have hden : erdos_weight n / erdos_weight n = 1 := by
+      field_simp [(ne_of_gt (hweight_pos hn))]
+    simpa [hden] using hdiv_le
+  refine ⟨?_, ?_, by norm_num, by intro m; rfl, ?_, ?_, ?_, ?_⟩
+  · intro a b
+    cases a with
+    | none =>
+        cases b <;> norm_num
+    | some n =>
+        cases b with
+        | none =>
+            by_cases hn : 2 ≤ n
+            · simp [hn]
+              exact hsum_le_one n hn
+            · simp [hn]
+        | some m =>
+            by_cases hcond : 2 ≤ n ∧ 2 ≤ m ∧ m ≠ n
+            · simp [hcond]
+              exact mul_nonneg
+                (div_nonneg (le_of_lt (hweight_pos hcond.2.1))
+                  (le_of_lt (hweight_pos hcond.1)))
+                (hP_nonneg m n)
+            · simp [hcond]
+  · intro n hn
+    simp [hn]
+    have htsum :
+        (∑' m : ℕ,
+          if 2 ≤ m then
+            if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0
+          else 0) =
+          ∑' m : ℕ, if 2 ≤ m ∧ m ≠ n then erdos_weight m / erdos_weight n * P m n else 0 := by
+      apply tsum_congr
+      intro m
+      by_cases hm : 2 ≤ m <;> by_cases hmn : m ≠ n <;> simp [hm, hmn]
+    rw [htsum]
+    ring
+  · intro n hn
+    simp [hn]
+  · intro n m hn hm hmn
+    simp [hn, hm, hmn]
+  · intro n m hU
+    by_cases hcond : 2 ≤ n ∧ 2 ≤ m ∧ m ≠ n
+    · simp [hcond] at hU
+      have hPmn : P m n ≠ 0 := by
+        intro hzero
+        simp [hzero] at hU
+      rcases hP_support m n hcond.2.1 hPmn with ⟨hndvdm, hcases⟩
+      have hlt : n < m := by
+        rcases hcases with hdiag | hlt
+        · exact False.elim (hcond.2.2 hdiag.1.symm)
+        · exact hlt
+      rcases hndvdm with ⟨q, rfl⟩
+      have hq_gt_one : 1 < q := by
+        simpa using ((Nat.lt_mul_iff_one_lt_right (by omega : 0 < n)).mp hlt)
+      exact ⟨hcond.1, hcond.2.1, ⟨q, hq_gt_one, rfl⟩⟩
+    · simp [hcond] at hU
+  · intro n hn
+    simp [hn]
 
 @[blueprint "lem:eps-adjoint-hitting-mass-facts-from-adjoint-kernel"
   (statement := /-- For the adjoint upward kernel attached to a modified
