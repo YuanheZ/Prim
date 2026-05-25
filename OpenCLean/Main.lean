@@ -4926,24 +4926,122 @@ lemma log_square_tail_summable :
     simp [hpow_ge, Nat.cast_pow, Real.log_pow, one_div, mul_comm, mul_left_comm, mul_assoc, mul_pow]
 
 @[blueprint "lem:reciprocal-zeta-second-order-bound"
-  (statement := /-- There are constants $\delta>0$ and $C\geq0$ such that,
-  for every $0<u\leq\delta$,
-  $|1/\zeta(1+u)-u|\leq C u^2$ on the real axis, expressed using the real part
-  of Mathlib's complex-valued Riemann zeta function. -/)
-  (proof := /-- Use the Laurent expansion of the Riemann zeta function at its
-  simple pole at $1$: on the real axis from the right,
-  $\zeta(1+u)=u^{-1}+O(1)$.  After restricting to a sufficiently small right
-  neighborhood, the zeta value is non-zero and positive.  Inverting the
-  expansion gives
-  $1/\zeta(1+u)=u+O(u^2)$, and increasing the implicit constant gives the
-  displayed pointwise inequality for all $0<u\leq\delta$. -/)
+  (statement := /-- There are real constants $\delta>0$ and $C\geq0$ such that,
+  for every real $u$ with $0<u\leq\delta$,
+  $|1/\operatorname{Re}(\zeta(1+u))-u|\leq C u^2$, where $1+u$ is embedded in
+  $\mathbb C$ and $\zeta$ is Mathlib's complex-valued Riemann zeta function. -/)
+  (proof := /-- Apply the right-hand Laurent expansion of the Riemann zeta
+  function at its simple pole at $1$ and take real parts after substituting
+  $s=1+u$.  Thus
+  $\operatorname{Re}(\zeta(1+u))-u^{-1}$ is bounded by a constant $B$ for all
+  sufficiently small $u>0$.  Shrink the neighborhood so that also
+  $Bu\leq 1/2$.  Since
+  $\operatorname{Re}(\zeta(1+u))>0$ for $1+u>1$, the bounded remainder gives
+  $\operatorname{Re}(\zeta(1+u))\geq (2u)^{-1}$.  Hence
+  $1/\operatorname{Re}(\zeta(1+u))\leq 2u$, and the identity
+  $1/z-u=u(u^{-1}-z)/z$ with
+  $z=\operatorname{Re}(\zeta(1+u))$ yields
+  $|1/z-u|\leq 2B u^2$. -/)
   (title := /-- Second-order reciprocal-zeta bound -/)
   (latexEnv := "lemma")]
 lemma reciprocal_zeta_second_order_bound :
     ∃ δ C : ℝ, 0 < δ ∧ 0 ≤ C ∧
       ∀ u : ℝ, 0 < u -> u ≤ δ ->
         |1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re) - u| ≤ C * u ^ 2 := by
-  sorry
+  have hshift :
+      Filter.Tendsto (fun u : ℝ => 1 + u) (nhdsWithin (0 : ℝ) (Set.Ioi 0))
+        (nhdsWithin (1 : ℝ) (Set.Ioi 1)) := by
+    refine tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within _ ?_ ?_
+    · have hcont : ContinuousAt (fun u : ℝ => 1 + u) 0 :=
+        continuousAt_const.add continuousAt_id
+      simpa using hcont.tendsto.mono_left nhdsWithin_le_nhds
+    · filter_upwards [self_mem_nhdsWithin] with u hu
+      rw [Set.mem_Ioi] at hu ⊢
+      linarith
+  have h0 :
+      Filter.Tendsto
+        (fun u : ℝ =>
+          (((fun s : ℝ => riemannZeta (s : ℂ) - 1 / ((s : ℂ) - 1)) (1 + u))).re)
+        (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds Real.eulerMascheroniConstant) := by
+    exact (Complex.continuous_re.tendsto (Real.eulerMascheroniConstant : ℂ)).comp
+      (ZetaAsymptotics.tendsto_riemannZeta_sub_one_div_nhds_right.comp hshift)
+  have hzeta :
+      Filter.Tendsto (fun u : ℝ => (riemannZeta ((1 + u : ℝ) : ℂ)).re - u⁻¹)
+        (nhdsWithin (0 : ℝ) (Set.Ioi 0)) (nhds Real.eulerMascheroniConstant) := by
+    refine Filter.Tendsto.congr' ?_ h0
+    filter_upwards [self_mem_nhdsWithin] with u hu
+    rw [Set.mem_Ioi] at hu
+    simp [hu.ne', sub_eq_add_neg]
+  let B : ℝ := |Real.eulerMascheroniConstant| + 1
+  have hBpos : 0 < B := by
+    dsimp [B]
+    linarith [abs_nonneg Real.eulerMascheroniConstant]
+  have hB_event :
+      ∀ᶠ u in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+        ‖(riemannZeta ((1 + u : ℝ) : ℂ)).re - u⁻¹‖ ≤ B := by
+    have hlt :
+        ∀ᶠ u in nhdsWithin (0 : ℝ) (Set.Ioi 0),
+          ‖(riemannZeta ((1 + u : ℝ) : ℂ)).re - u⁻¹‖ < B := by
+      dsimp [B]
+      simpa [Real.norm_eq_abs] using
+        (hzeta.norm.eventually_lt_const (by
+          rw [Real.norm_eq_abs]
+          linarith [abs_nonneg Real.eulerMascheroniConstant]))
+    exact hlt.mono (fun u hu => le_of_lt hu)
+  have hB_nhds := eventually_nhdsWithin_iff.mp hB_event
+  rcases Metric.eventually_nhds_iff.mp hB_nhds with ⟨ε, hεpos, hε⟩
+  refine ⟨min (ε / 2) (1 / (2 * B)), 2 * B, ?_, ?_, ?_⟩
+  · exact lt_min (by linarith) (one_div_pos.mpr (mul_pos (by norm_num) hBpos))
+  · positivity
+  · intro u hu hule
+    let z : ℝ := (riemannZeta ((1 + u : ℝ) : ℂ)).re
+    have hzpos : 0 < z := by
+      dsimp [z]
+      exact riemannZeta_re_pos_of_one_lt (by linarith)
+    have hdist : dist u (0 : ℝ) < ε := by
+      rw [Real.dist_eq, sub_zero, abs_of_pos hu]
+      have hle_eps : u ≤ ε / 2 := le_trans hule (min_le_left _ _)
+      linarith
+    have hb_norm : ‖z - u⁻¹‖ ≤ B := by
+      dsimp [z]
+      exact hε hdist (by simpa [Set.mem_Ioi] using hu)
+    have hb_abs : |z - u⁻¹| ≤ B := by
+      simpa [Real.norm_eq_abs] using hb_norm
+    have hb_abs' : |u⁻¹ - z| ≤ B := by
+      simpa [abs_sub_comm] using hb_abs
+    have hsmall : B * u ≤ 1 / 2 := by
+      have huleB : u ≤ 1 / (2 * B) := le_trans hule (min_le_right _ _)
+      have hmul := mul_le_mul_of_nonneg_left huleB (le_of_lt hBpos)
+      have hcalc : B * (1 / (2 * B)) = 1 / 2 := by
+        field_simp [hBpos.ne']
+      nlinarith
+    have hB_le_inv : B ≤ 1 / (2 * u) := by
+      rw [le_div_iff₀ (mul_pos (by norm_num) hu)]
+      nlinarith [hsmall]
+    have hlower1 : u⁻¹ - B ≤ z := by
+      have hneg : u⁻¹ - z ≤ |z - u⁻¹| := by
+        simpa [abs_sub_comm] using neg_le_abs (z - u⁻¹)
+      linarith [hneg, hb_abs]
+    have hhalf_le : 1 / (2 * u) ≤ u⁻¹ - B := by
+      have hsplit : u⁻¹ - 1 / (2 * u) = 1 / (2 * u) := by
+        field_simp [hu.ne']
+        ring
+      linarith
+    have hz_ge : 1 / (2 * u) ≤ z := le_trans hhalf_le hlower1
+    have hzinv_le : 1 / z ≤ 2 * u := by
+      have hhalf_pos : 0 < 1 / (2 * u) := one_div_pos.mpr (mul_pos (by norm_num) hu)
+      convert one_div_le_one_div_of_le hhalf_pos hz_ge using 1
+      field_simp [hu.ne']
+    have herr_eq : 1 / z - u = (u * (u⁻¹ - z)) / z := by
+      field_simp [hu.ne', hzpos.ne']
+    calc
+      |1 / z - u| = |(u * (u⁻¹ - z)) / z| := by rw [herr_eq]
+      _ = u * |u⁻¹ - z| / z := by
+        rw [abs_div, abs_mul, abs_of_pos hu, abs_of_pos hzpos]
+      _ ≤ u * B / z := by gcongr
+      _ = (u * B) * (1 / z) := by ring
+      _ ≤ (u * B) * (2 * u) := by gcongr
+      _ = 2 * B * u ^ 2 := by ring
 
 @[blueprint "lem:mangoldt-weight-integral-change-of-variables"
   (statement := /-- For every $n\geq2$, subtracting the Erd\H{o}s weight from
