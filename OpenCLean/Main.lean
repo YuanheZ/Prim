@@ -8006,13 +8006,13 @@ noncomputable def mangoldt_adjoint_hit_second_moment {Ω : Type} [MeasurableSpac
   (statement := /-- For a random upward path, this predicate records the
   uniform second-moment estimate used in the adjoint von Mangoldt-chain proof:
   for every set $A\subseteq\mathbb N$, the second moment of the number of visits
-  to $A\cap[1,x]$ is $O((\log\log x)^2)$ with a constant depending only on $A$.
-  -/)
+  to $A\cap[1,x]$ is $O((\log\log x)^2)$, with a constant depending only on
+  $A$, at every height $x$ for which $\log\log x$ is positive. -/)
   (title := /-- Uniform second-moment bound for adjoint-chain hits -/)
   (latexEnv := "definition")]
 noncomputable def mangoldt_adjoint_second_moment_bound {Ω : Type} [MeasurableSpace Ω]
     (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
-  ∀ A : Set ℕ, ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, 2 ≤ x ->
+  ∀ A : Set ℕ, ∃ C : ℝ, 0 ≤ C ∧ ∀ x : ℝ, 0 < Real.log (Real.log x) ->
     mangoldt_adjoint_hit_second_moment μ path A x ≤
       ENNReal.ofReal (C * (Real.log (Real.log x)) ^ 2)
 
@@ -8020,14 +8020,16 @@ noncomputable def mangoldt_adjoint_second_moment_bound {Ω : Type} [MeasurableSp
   (statement := /-- This predicate packages the stochastic adjoint von Mangoldt
   path model.  The measure is a probability measure on a sample space of natural
   paths; every sampled path is a strictly increasing divisibility chain, the
-  expected visits satisfy \cref{def:mangoldt-adjoint-visit-identity}, and the
-  hit counts satisfy \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
+  coordinate maps of the path are measurable, the expected visits satisfy
+  \cref{def:mangoldt-adjoint-visit-identity}, and the hit counts satisfy
+  \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
   (title := /-- Random path model for the adjoint von Mangoldt chain -/)
   (latexEnv := "definition")]
 noncomputable def mangoldt_adjoint_random_model {Ω : Type} [MeasurableSpace Ω]
     (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
   μ Set.univ = 1 ∧
     (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
+      (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
       mangoldt_adjoint_visit_identity μ path ∧
         mangoldt_adjoint_second_moment_bound μ path
 
@@ -8040,11 +8042,13 @@ noncomputable def mangoldt_adjoint_random_model {Ω : Type} [MeasurableSpace Ω]
   the upward von Mangoldt chain.  Its sample space is the space of
   natural-valued upward paths generated from $1$; the Markov property and the
   support condition make every sampled path a strictly increasing divisibility
-  chain.  The invariance recurrence gives
+  chain.  Since the chain is a countable-state stochastic process, each
+  coordinate map of the path is measurable.  The invariance recurrence gives
   \cref{def:mangoldt-adjoint-visit-identity}, and the square-expansion argument
   using the divisor-count bound and the dilation estimate for the Erd\H{o}s
-  weight gives \cref{def:mangoldt-adjoint-second-moment-bound}.  These data are
-  precisely \cref{def:mangoldt-adjoint-random-model}. -/)
+  weight gives \cref{def:mangoldt-adjoint-second-moment-bound} at all heights
+  with positive $\log\log x$.  These data are precisely
+  \cref{def:mangoldt-adjoint-random-model}. -/)
   (title := /-- Existence of the adjoint von Mangoldt random path model -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_random_model_exists :
@@ -8065,8 +8069,12 @@ lemma mangoldt_adjoint_random_model_exists :
   visits to $A\cap[1,x]$ with the truncated sum defining
   \cref{def:mangoldt-weight-upper-density}.  Along a sequence of heights
   realizing this limit superior, the second-moment clause in
-  \cref{def:mangoldt-adjoint-random-model} gives uniform integrability of the
-  normalized hit counts.  The reverse Fatou inequality then bounds the
+  \cref{def:mangoldt-adjoint-random-model} is applied after discarding the
+  finite initial segment on which $\log\log x$ is not positive, and gives
+  uniform integrability of the normalized hit counts.  The measurable-coordinate
+  clause in \cref{def:mangoldt-adjoint-random-model} supplies measurability of
+  these normalized hit-count random variables.  The reverse Fatou inequality
+  then bounds the
   expectation of the pathwise limit superior from below by
   \cref{def:mangoldt-weight-upper-density}.  Therefore some sample path has
   pathwise hit-density at least that value.  Since every sampled path is a
