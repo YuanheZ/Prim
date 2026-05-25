@@ -5996,8 +5996,11 @@ lemma mangoldt_weight_erdos_pointwise_error_bound :
     ∃ C : ℝ, 0 ≤ C ∧ ∀ n : ℕ, 2 ≤ n ->
       |mangoldt_weight n - erdos_weight n| ≤
         C * (1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2)) := by
-  sorry_using [mangoldt_weight_integral_change_of_variables,
-    mangoldt_weight_laplace_error_bound]
+  rcases mangoldt_weight_laplace_error_bound with ⟨C, hC_nonneg, hC_bound⟩
+  refine ⟨C, hC_nonneg, ?_⟩
+  intro n hn
+  rw [mangoldt_weight_integral_change_of_variables n hn]
+  exact hC_bound n hn
 
 @[blueprint "lem:mangoldt-weight-erdos-summable-error"
   (statement := /-- The pointwise discrepancy between the invariant von
