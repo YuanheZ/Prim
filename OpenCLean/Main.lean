@@ -8245,24 +8245,26 @@ lemma mangoldt_adjoint_random_model_from_constructed_path_data {Ω : Type}
   exact h
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-principle-from-model"
-  (statement := /-- Every adjoint von Mangoldt random path model satisfying
-  \cref{def:mangoldt-adjoint-random-model} satisfies the reverse-Fatou pathwise
-  extraction principle
+  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
+  $(\mu,p)$ satisfies the adjoint von Mangoldt random-model predicate
+  \cref{def:mangoldt-adjoint-random-model}, then $(\mu,p)$ satisfies the
+  reverse-Fatou pathwise extraction principle
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
-  (proof := /-- Assume \cref{def:mangoldt-adjoint-random-model} for $(\mu,p)$.
-  In the strengthened random-model contract, the reverse-Fatou pathwise
-  extraction consequence
-  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle} is one of the
-  packaged clauses, obtained at construction time from the expected-visit
-  identity and the uniform second-moment estimate.  Projecting this clause gives
-  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle} for $(\mu,p)$. -/)
+  (proof := /-- Let $\Omega$ be a measurable space, let $\mu$ be a measure on
+  $\Omega$, and let $p:\Omega\to(\mathbb N\to\mathbb N)$ be a path process.
+  Assume that $(\mu,p)$ satisfies \cref{def:mangoldt-adjoint-random-model}.
+  In that definition, \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}
+  for $(\mu,p)$ is the final conjunct of the random-model predicate.  Projecting
+  this final conjunct gives the required reverse-Fatou extraction principle. -/)
   (title := /-- Reverse-Fatou extraction from a Mangoldt model -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_reverse_fatou_extraction_principle_from_model {Ω : Type}
     [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
     mangoldt_adjoint_random_model μ path ->
       mangoldt_adjoint_reverse_fatou_extraction_principle μ path := by
-  sorry
+  intro h
+  exact h.2.2.2.2.2
 
 @[blueprint "lem:mangoldt-adjoint-random-model-exists"
   (statement := /-- There exists a random path model for the adjoint upward von
