@@ -5989,8 +5989,9 @@ lemma eps_adjoint_pathwise_primitive_chain_antichain_bound {P : ℕ → ℕ → 
     (fun N => hfinite A hA (Finset.range N))⟩
 
 @[blueprint "lem:eps-adjoint-hitting-mass-package-from-subinvariant"
-  (statement := /-- The modified-chain sub-invariance package supplies the
-  adjoint hitting-mass package for the EPS argument. -/)
+  (statement := /-- If the modified-chain sub-invariance package
+  \cref{def:eps-modified-chain-subinvariant-package} holds, then the adjoint
+  hitting-mass package \cref{def:eps-adjoint-hitting-mass-package} holds. -/)
   (proof := /-- Assume \cref{def:eps-modified-chain-subinvariant-package} and
   choose a fixed downward kernel $P$ satisfying
   \cref{def:eps-modified-chain-kernel-subinvariant}.  By
@@ -6007,7 +6008,13 @@ lemma eps_adjoint_pathwise_primitive_chain_antichain_bound {P : ℕ → ℕ → 
   (latexEnv := "lemma")]
 lemma eps_adjoint_hitting_mass_package_from_subinvariant :
     eps_modified_chain_subinvariant_package -> eps_adjoint_hitting_mass_package := by
-  sorry_using [eps_adjoint_kernel_package_from_subinvariant, eps_adjoint_hitting_mass_facts_from_adjoint_kernel, eps_adjoint_pathwise_primitive_chain_antichain_bound]
+  rintro ⟨P, hP⟩
+  rcases eps_adjoint_kernel_package_from_subinvariant hP with ⟨U, hU⟩
+  have hh : eps_adjoint_hitting_mass_facts U erdos_weight :=
+    eps_adjoint_hitting_mass_facts_from_adjoint_kernel hP hU
+  have hprim : eps_adjoint_primitive_chain_antichain_facts erdos_weight :=
+    eps_adjoint_pathwise_primitive_chain_antichain_bound hU hh
+  exact ⟨P, U, erdos_weight, hP, hU, hh, hprim⟩
 
 @[blueprint "lem:eps-modified-chain-hitting-mass-identity"
   (statement := /-- If the modified-chain sub-invariance package holds, then
