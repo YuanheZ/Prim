@@ -5148,7 +5148,219 @@ lemma eps_adjoint_hitting_mass_facts_from_adjoint_kernel {P : ℕ → ℕ → �
     {U : Option ℕ → Option ℕ → ℝ} :
     eps_modified_chain_kernel_subinvariant P -> eps_adjoint_kernel_package P U ->
       eps_adjoint_hitting_mass_facts U erdos_weight := by
-  sorry_using [erdos_sarkozy_szemeredi_1196]
+  classical
+  intro hP hU
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · intro n
+    rw [erdos_weight]
+    positivity
+  · intro n hn
+    rcases hP with
+      ⟨hP_nonneg, hP_row, hP_one_one, hP_one_zero, hP_prime_one, hP_prime_zero,
+        hP_support, hP_ordinary, hP_prime_power_base, hP_prime_power_step,
+        hP_prime_power_support, hP_subinv, hP_subinv_finite⟩
+    rcases hU with
+      ⟨hU_nonneg, hU_row, hU_finite_row, hU_none_none, hU_none_some,
+        hU_diag_zero, hU_formula, hU_support, hU_slack⟩
+    by_cases hnprime : n ∈ prime_layer
+    · have hnprime_nat : Nat.Prime n := by
+        simpa [prime_layer] using hnprime
+      have hsum_zero :
+          (∑' (q : ℕ),
+            if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+              erdos_weight (n / q) * U (some (n / q)) (some n)
+            else 0) = 0 := by
+        have hfun_zero :
+            (fun q : ℕ =>
+              if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+                erdos_weight (n / q) * U (some (n / q)) (some n)
+              else 0) = fun _ : ℕ => 0 := by
+          funext q
+          by_cases hq : 1 < q ∧ q ∣ n ∧ 2 ≤ n / q
+          · have hq_ne_one : q ≠ 1 := by omega
+            have hn_eq_q : n = q := (Nat.Prime.dvd_iff_eq hnprime_nat hq_ne_one).mp hq.2.1
+            have hquot : n / q = 1 := by
+              rw [← hn_eq_q]
+              exact Nat.div_self hnprime_nat.pos
+            omega
+          · simp [hq]
+        rw [hfun_zero]
+        simp
+      simp [Set.indicator_of_mem hnprime, hsum_zero]
+    · have hn_pos : 0 < n := by omega
+      have hn_ne_zero : n ≠ 0 := by omega
+      have hP_n_one : P n 1 = 0 := by
+        by_contra hP_n_one_ne
+        by_cases hnpp : IsPrimePow n
+        · rcases (isPrimePow_nat_iff n).mp hnpp with ⟨p, k, hp, hkpos, hpk⟩
+          have hp_layer : p ∈ prime_layer := by
+            simpa [prime_layer] using hp
+          have hk_two : 2 ≤ k := by
+            by_contra hk_not_two
+            have hk_one : k = 1 := by omega
+            subst k
+            simp at hpk
+            have hn_prime_nat : Nat.Prime n := by
+              simpa [hpk] using hp
+            exact hnprime (by simpa [prime_layer] using hn_prime_nat)
+          have hsupport_one :
+              1 = p ∨ ∃ j : ℕ, 1 ≤ j ∧ j ≤ k - 2 ∧ 1 = p ^ (k - j) := by
+            exact hP_prime_power_support p k 1 hp_layer hk_two (by simpa [hpk] using hP_n_one_ne)
+          rcases hsupport_one with h_eq_p | ⟨j, hj_one, hj_le, h_eq_pow⟩
+          · exact hp.ne_one h_eq_p.symm
+          · have hexp_ne_zero : k - j ≠ 0 := by omega
+            have hpow_gt : 1 < p ^ (k - j) := Nat.one_lt_pow hexp_ne_zero hp.one_lt
+            exact (ne_of_gt hpow_gt) h_eq_pow.symm
+        · have hn_not_prime_power_clause :
+              ∀ p k : ℕ, p ∈ prime_layer -> 2 ≤ k -> n ≠ p ^ k := by
+            intro p k hp hk hnk
+            apply hnpp
+            rw [isPrimePow_nat_iff]
+            exact ⟨p, k, by simpa [prime_layer] using hp, by omega, hnk.symm⟩
+          have hordinary := hP_ordinary n n hn hnprime hn_not_prime_power_clause (by omega) dvd_rfl
+          have hLambda_zero : ArithmeticFunction.vonMangoldt n = 0 :=
+            (ArithmeticFunction.vonMangoldt_eq_zero_iff).mpr hnpp
+          have hP_n_one_zero : P n 1 = 0 := by
+            simpa [Nat.div_self hn_pos, hLambda_zero] using hordinary
+          exact hP_n_one_ne hP_n_one_zero
+      have hP_n_self : P n n = 0 := by
+        by_contra hP_n_self_ne
+        have hsupport_self := hP_support n n hn hP_n_self_ne
+        rcases hsupport_self.2 with hprime_case | hlt
+        · exact hnprime hprime_case.2
+        · exact (Nat.lt_irrefl n) hlt
+      let G : ℕ → ℝ := fun m => if 2 ≤ m ∧ m ≠ n then P n m else 0
+      have hG_eq_P : G = fun m : ℕ => P n m := by
+        funext m
+        dsimp [G]
+        by_cases hm : 2 ≤ m ∧ m ≠ n
+        · simp [hm]
+        · have hP_zero : P n m = 0 := by
+            by_cases hm_one : m = 1
+            · subst m
+              exact hP_n_one
+            · by_cases hm_self : m = n
+              · subst m
+                exact hP_n_self
+              · have hm_not_two : ¬2 ≤ m := by
+                  intro hm_two
+                  exact hm ⟨hm_two, hm_self⟩
+                have hm_zero : m = 0 := by omega
+                subst m
+                by_contra hP_n_zero_ne
+                have hsupport_zero := hP_support n 0 hn hP_n_zero_ne
+                rcases hsupport_zero.1 with ⟨c, hc⟩
+                omega
+          simp [hm, hP_zero]
+      have hG_tsum : (∑' m : ℕ, G m) = 1 := by
+        rw [hG_eq_P]
+        exact hP_row n (by omega)
+      have hP_qsum :
+          (∑' (q : ℕ), if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0) = 1 := by
+        have hq_fin :
+            (∑' (q : ℕ), if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0) =
+              ∑ q ∈ n.divisors, if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0 := by
+          refine tsum_eq_sum (L := SummationFilter.unconditional ℕ) (s := n.divisors)
+            (f := fun q : ℕ => if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0) ?_
+          intro q hq_not_mem
+          have hq_not_dvd : ¬q ∣ n := by
+            intro hq_dvd
+            exact hq_not_mem (Nat.mem_divisors.mpr ⟨hq_dvd, hn_ne_zero⟩)
+          simp [hq_not_dvd]
+        have hG_fin :
+            (∑' m : ℕ, G m) = ∑ m ∈ n.divisors, G m := by
+          refine tsum_eq_sum (L := SummationFilter.unconditional ℕ) (s := n.divisors) (f := G) ?_
+          intro m hm_not_mem
+          dsimp [G]
+          by_cases hm : 2 ≤ m ∧ m ≠ n
+          · by_cases hP_nm : P n m = 0
+            · simp [hm, hP_nm]
+            · have hsupport_m := hP_support n m hn hP_nm
+              exact False.elim (hm_not_mem (Nat.mem_divisors.mpr ⟨hsupport_m.1, hn_ne_zero⟩))
+          · simp [hm]
+        have hfin_reindex :
+            (∑ q ∈ n.divisors, if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0) =
+              ∑ m ∈ n.divisors, G m := by
+          calc
+            (∑ q ∈ n.divisors, if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0)
+                = ∑ q ∈ n.divisors, G (n / q) := by
+                  refine Finset.sum_congr rfl ?_
+                  intro q hq_mem
+                  have hq_dvd : q ∣ n := (Nat.mem_divisors.mp hq_mem).1
+                  have hq_pos : 0 < q := Nat.pos_of_dvd_of_pos hq_dvd hn_pos
+                  by_cases hq_one : q = 1
+                  · subst q
+                    simp [G]
+                  · have hq_gt_one : 1 < q := by omega
+                    have hquot_ne : n / q ≠ n := by
+                      have hquot_lt : n / q < n := Nat.div_lt_self hn_pos hq_gt_one
+                      omega
+                    simp [G, hq_gt_one, hq_dvd, hquot_ne]
+            _ = ∑ m ∈ n.divisors, G m := Nat.sum_div_divisors n G
+        rw [hq_fin, hfin_reindex]
+        rw [← hG_fin]
+        exact hG_tsum
+      have hweighted_sum :
+          (∑' (q : ℕ),
+            if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+              erdos_weight (n / q) * U (some (n / q)) (some n)
+            else 0) = erdos_weight n := by
+        have hterm_eq : ∀ q : ℕ,
+            (if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+              erdos_weight (n / q) * U (some (n / q)) (some n)
+            else 0) =
+              erdos_weight n *
+                (if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0) := by
+          intro q
+          by_cases hq : 1 < q ∧ q ∣ n ∧ 2 ≤ n / q
+          · have hquot_ne_n : n ≠ n / q := by
+              have hquot_lt : n / q < n := Nat.div_lt_self hn_pos hq.1
+              omega
+            have hweight_quot_ne : erdos_weight (n / q) ≠ 0 := by
+              have hquot_pos : 0 < ((n / q : ℕ) : ℝ) := by
+                exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hq.2.2)
+              have hlog_pos : 0 < Real.log ((n / q : ℕ) : ℝ) := by
+                apply Real.log_pos
+                exact_mod_cast (Nat.lt_of_lt_of_le Nat.one_lt_two hq.2.2)
+              rw [erdos_weight]
+              exact ne_of_gt (one_div_pos.mpr (mul_pos hquot_pos hlog_pos))
+            rw [if_pos hq, if_pos hq]
+            rw [hU_formula (n / q) n hq.2.2 hn hquot_ne_n]
+            field_simp [hweight_quot_ne]
+          · simp [hq]
+        calc
+          (∑' (q : ℕ),
+            if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then
+              erdos_weight (n / q) * U (some (n / q)) (some n)
+            else 0)
+              = ∑' q : ℕ,
+                  erdos_weight n *
+                    (if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0) := by
+                exact tsum_congr hterm_eq
+          _ = erdos_weight n *
+                (∑' q : ℕ, if 1 < q ∧ q ∣ n ∧ 2 ≤ n / q then P n (n / q) else 0) := by
+                rw [tsum_mul_left]
+          _ = erdos_weight n := by
+                rw [hP_qsum, mul_one]
+      simp [Set.indicator_of_notMem hnprime, hweighted_sum]
+  · intro n
+    rfl
+  · rcases erdos_sarkozy_szemeredi_1196 with ⟨C, hC⟩
+    have hprim : primitive_set prime_layer := by
+      rw [primitive_set]
+      intro a ha b hb hne hdiv
+      have hpa : Nat.Prime a := by
+        simpa [prime_layer] using ha
+      have hpb : Nat.Prime b := by
+        simpa [prime_layer] using hb
+      have hb_eq_a : b = a := (Nat.Prime.dvd_iff_eq hpb hpa.ne_one).mp hdiv
+      exact hne hb_eq_a.symm
+    have hsupp : supported_above prime_layer 2 := by
+      intro n hn
+      have hnprime : Nat.Prime n := by
+        simpa [prime_layer] using hn
+      exact_mod_cast hnprime.two_le
+    exact (hC.2 2 (by norm_num) prime_layer hprim hsupp).1
 
 @[blueprint "lem:eps-adjoint-pathwise-primitive-chain-antichain-bound"
   (statement := /-- For every downward kernel
