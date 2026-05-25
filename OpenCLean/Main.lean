@@ -8018,91 +8018,6 @@ noncomputable def mangoldt_adjoint_second_moment_bound {Ω : Type} [MeasurableSp
       mangoldt_adjoint_hit_second_moment μ path A x ≤
         ENNReal.ofReal (C * (Real.log (Real.log x)) ^ 2)
 
-@[blueprint "def:mangoldt-adjoint-random-model"
-  (statement := /-- This predicate packages the stochastic adjoint von Mangoldt
-  path model.  The measure is a probability measure on a sample space of natural
-  paths; every sampled path is a strictly increasing divisibility chain, the
-  coordinate maps of the path are measurable, the expected visits satisfy
-  \cref{def:mangoldt-adjoint-visit-identity}, and the hit counts satisfy
-  the asymptotic second-moment estimate
-  \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
-  (title := /-- Random path model for the adjoint von Mangoldt chain -/)
-  (latexEnv := "definition")]
-noncomputable def mangoldt_adjoint_random_model {Ω : Type} [MeasurableSpace Ω]
-    (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
-  μ Set.univ = 1 ∧
-    (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
-      (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
-      mangoldt_adjoint_visit_identity μ path ∧
-        mangoldt_adjoint_second_moment_bound μ path
-
-@[blueprint "def:mangoldt-adjoint-constructed-path-data"
-  (statement := /-- This predicate records the explicit formal data produced by
-  the adjoint von Mangoldt path construction: a probability measure on a sample
-  space of natural-valued paths, pathwise strict increase along divisibility,
-  measurability of every coordinate, the exact expected-visit identity
-  \cref{def:mangoldt-adjoint-visit-identity}, and the uniform second-moment
-  estimate \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
-  (title := /-- Construction data for the adjoint von Mangoldt path -/)
-  (latexEnv := "definition")]
-noncomputable def mangoldt_adjoint_constructed_path_data {Ω : Type} [MeasurableSpace Ω]
-    (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
-  μ Set.univ = 1 ∧
-    (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
-      (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
-      mangoldt_adjoint_visit_identity μ path ∧
-        mangoldt_adjoint_second_moment_bound μ path
-
-@[blueprint "lem:mangoldt-adjoint-constructed-path-data-exists"
-  (statement := /-- There are a measurable sample space, a probability measure,
-  and a natural-valued path process satisfying the explicit construction data
-  \cref{def:mangoldt-adjoint-constructed-path-data} for the adjoint upward von
-  Mangoldt chain started at $1$. -/)
-  (proof := /-- Use the invariant von Mangoldt weight
-  \cref{def:mangoldt-weight} for the von Mangoldt downward chain and form its
-  adjoint upward chain.  The path measure started at $1$ has total mass one;
-  the support of the adjoint transition kernel keeps every finite realization
-  strictly increasing along divisibility, and countability of the state space
-  gives measurability of all coordinate maps.  The invariance recurrence for
-  \cref{def:mangoldt-weight} gives the expected-visit identity
-  \cref{def:mangoldt-adjoint-visit-identity}.  Expanding the square of the
-  truncated hit count, bounding the number of predecessors of a visited integer
-  by its total number of prime-power factors, and summing the resulting
-  dilation estimates for \cref{def:mangoldt-weight} gives the uniform
-  second-moment estimate \cref{def:mangoldt-adjoint-second-moment-bound}.  These
-  clauses are exactly \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
-  (title := /-- Existence of adjoint von Mangoldt construction data -/)
-  (latexEnv := "lemma")]
-lemma mangoldt_adjoint_constructed_path_data_exists :
-    ∃ (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
-      (path : Ω → ℕ → ℕ), @mangoldt_adjoint_constructed_path_data Ω mΩ μ path := by
-  sorry
-
-@[blueprint "lem:mangoldt-adjoint-random-model-from-constructed-path-data"
-  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
-  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
-  $(\mu,p)$ satisfies the construction-data predicate
-  \cref{def:mangoldt-adjoint-constructed-path-data}, then it satisfies the
-  random-model predicate \cref{def:mangoldt-adjoint-random-model}. -/)
-  (proof := /-- Let $\Omega$ be a measurable space, let $\mu$ be a measure on
-  $\Omega$, and let $p:\Omega\to(\mathbb N\to\mathbb N)$ be a path process.
-  Assume $h$ is the construction-data predicate
-  \cref{def:mangoldt-adjoint-constructed-path-data} for $(\mu,p)$.  By the
-  definitions \cref{def:mangoldt-adjoint-constructed-path-data} and
-  \cref{def:mangoldt-adjoint-random-model}, the construction-data predicate and
-  the random-model predicate are the same conjunction of five clauses: total
-  mass one, pathwise strict divisibility, coordinate measurability, the
-  expected-visit identity, and the second-moment estimate.  Therefore $h$ itself
-  proves \cref{def:mangoldt-adjoint-random-model} for $(\mu,p)$. -/)
-  (title := /-- From construction data to the adjoint random model -/)
-  (latexEnv := "lemma")]
-lemma mangoldt_adjoint_random_model_from_constructed_path_data {Ω : Type}
-    [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
-    mangoldt_adjoint_constructed_path_data μ path ->
-      mangoldt_adjoint_random_model μ path := by
-  intro h
-  exact h
-
 @[blueprint "def:mangoldt-adjoint-reverse-fatou-extraction-principle"
   (statement := /-- This predicate is the pathwise conclusion supplied by the
   reverse-Fatou and uniform-integrability argument for an adjoint von Mangoldt
@@ -8116,25 +8031,231 @@ noncomputable def mangoldt_adjoint_reverse_fatou_extraction_principle {Ω : Type
   ∀ A : Set ℕ, 0 < mangoldt_weight_upper_density A ->
     ∃ ω : Ω, chain_hits_density_at_least (path ω) A (mangoldt_weight_upper_density A)
 
+@[blueprint "def:mangoldt-von-mangoldt-downward-kernel-invariant"
+  (statement := /-- For a kernel $P:\mathbb N\times\mathbb N\to\mathbb R$, this
+  predicate is the fixed formal interface for the von Mangoldt downward chain.
+  The kernel has non-negative rows of total mass one on positive states, the
+  state $1$ is absorbing, non-zero transitions from a state $n\geq2$ move
+  strictly downward in the divisibility poset, the non-absorbing transition from
+  $n$ to $n/q$ has weight $\Lambda(q)/\log n$, and the invariant weight
+  \cref{def:mangoldt-weight} satisfies the incoming recurrence for every
+  positive state. -/)
+  (title := /-- Invariant von Mangoldt downward-kernel interface -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_von_mangoldt_downward_kernel_invariant
+    (P : ℕ → ℕ → ℝ) : Prop :=
+  (∀ n m : ℕ, 0 ≤ P n m) ∧
+    (∀ n : ℕ, 1 ≤ n -> (∑' m : ℕ, P n m) = 1) ∧
+    P 1 1 = 1 ∧
+    (∀ m : ℕ, m ≠ 1 -> P 1 m = 0) ∧
+    (∀ n m : ℕ, 2 ≤ n -> P n m ≠ 0 -> m ∣ n ∧ m < n) ∧
+    (∀ n q : ℕ, 2 ≤ n -> 1 < q -> q ∣ n ->
+      P n (n / q) = ArithmeticFunction.vonMangoldt q / Real.log (n : ℝ)) ∧
+    (∀ n : ℕ, 1 ≤ n ->
+      (∑' q : ℕ, if 1 < q then mangoldt_weight (n * q) * P (n * q) n else 0) =
+        mangoldt_weight n)
+
+@[blueprint "def:mangoldt-adjoint-kernel-package"
+  (statement := /-- For kernels $P,U:\mathbb N\times\mathbb N\to\mathbb R$, this
+  predicate says that $U$ is the adjoint upward kernel obtained from the
+  von Mangoldt downward kernel $P$ and the invariant weight
+  \cref{def:mangoldt-weight}.  It includes the downward invariant-kernel
+  interface \cref{def:mangoldt-von-mangoldt-downward-kernel-invariant},
+  non-negativity and unit mass of the upward rows, vanishing of diagonal
+  transitions, the adjoint formula
+  $U(n,m)=\nu_\Lambda(m)\nu_\Lambda(n)^{-1}P(m,n)$ off the diagonal, and the
+  upward divisibility support condition. -/)
+  (title := /-- Adjoint von Mangoldt upward-kernel package -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_kernel_package (P U : ℕ → ℕ → ℝ) : Prop :=
+  mangoldt_von_mangoldt_downward_kernel_invariant P ∧
+    (∀ n m : ℕ, 0 ≤ U n m) ∧
+    (∀ n : ℕ, 1 ≤ n -> (∑' m : ℕ, U n m) = 1) ∧
+    (∀ n : ℕ, U n n = 0) ∧
+    (∀ n m : ℕ, 1 ≤ n -> 1 ≤ m -> m ≠ n ->
+      U n m = mangoldt_weight m / mangoldt_weight n * P m n) ∧
+    (∀ n m : ℕ, U n m ≠ 0 -> n < m ∧ n ∣ m)
+
+@[blueprint "def:mangoldt-adjoint-kernel-path-data"
+  (statement := /-- This predicate records the complete output of the adjoint
+  von Mangoldt kernel construction before it is folded into the random-model
+  package.  For an upward kernel $U$, the path law is a probability measure
+  started at $1$; its sample paths are strictly increasing divisibility chains,
+  its coordinate maps are measurable, each one-step transition lies in the
+  support of $U$, its expected visits satisfy
+  \cref{def:mangoldt-adjoint-visit-identity}, its hit counts satisfy
+  \cref{def:mangoldt-adjoint-second-moment-bound}, and the reverse-Fatou
+  argument supplies \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
+  (title := /-- Adjoint von Mangoldt kernel path data -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace Ω]
+    (U : ℕ → ℕ → ℝ) (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  μ Set.univ = 1 ∧
+    (∀ ω : Ω, path ω 0 = 1) ∧
+      (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
+      (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
+      (∀ ω : Ω, ∀ k : ℕ, U (path ω k) (path ω (k + 1)) ≠ 0) ∧
+        mangoldt_adjoint_visit_identity μ path ∧
+          mangoldt_adjoint_second_moment_bound μ path ∧
+            mangoldt_adjoint_reverse_fatou_extraction_principle μ path
+
+@[blueprint "lem:mangoldt-adjoint-kernel-path-data-exists"
+  (statement := /-- There exist a von Mangoldt downward kernel, its adjoint
+  upward kernel, a measurable sample space, a probability measure, and a
+  natural-valued path process satisfying the kernel package
+  \cref{def:mangoldt-adjoint-kernel-package} and the path-data predicate
+  \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
+  (proof := /-- Construct $P$ as the von Mangoldt downward chain from the source
+  proof and verify the invariant recurrence for \cref{def:mangoldt-weight}.  The
+  adjoint formula then defines the upward kernel $U$ and gives
+  \cref{def:mangoldt-adjoint-kernel-package}.  Starting the associated path law
+  at $1$ gives total mass one, pathwise strict increase in the divisibility
+  order, coordinate measurability, and transition support in $U$.  The invariant
+  recurrence gives \cref{def:mangoldt-adjoint-visit-identity}.  Expanding the
+  square of the truncated hit count, bounding the number of predecessors of a
+  visited integer by its total number of prime-power factors, and summing the
+  dilation estimates gives \cref{def:mangoldt-adjoint-second-moment-bound}.  The
+  reverse-Fatou argument applied to the resulting uniformly integrable normalized
+  hit-count variables gives
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}.  These clauses
+  are precisely \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
+  (title := /-- Existence of adjoint von Mangoldt kernel path data -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_kernel_path_data_exists :
+    ∃ (P : ℕ → ℕ → ℝ) (U : ℕ → ℕ → ℝ)
+      (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
+      (path : Ω → ℕ → ℕ),
+        mangoldt_adjoint_kernel_package P U ∧
+          @mangoldt_adjoint_kernel_path_data Ω mΩ U μ path := by
+  sorry
+
+@[blueprint "def:mangoldt-adjoint-random-model"
+  (statement := /-- This predicate packages the stochastic adjoint von Mangoldt
+  path model.  The measure is a probability measure on a sample space of natural
+  paths; every sampled path is a strictly increasing divisibility chain, the
+  coordinate maps of the path are measurable, the expected visits satisfy
+  \cref{def:mangoldt-adjoint-visit-identity}, the hit counts satisfy the
+  asymptotic second-moment estimate
+  \cref{def:mangoldt-adjoint-second-moment-bound}, and the normalized hit-count
+  variables satisfy the reverse-Fatou extraction consequence
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
+  (title := /-- Random path model for the adjoint von Mangoldt chain -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_random_model {Ω : Type} [MeasurableSpace Ω]
+    (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  μ Set.univ = 1 ∧
+    (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
+      (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
+      mangoldt_adjoint_visit_identity μ path ∧
+        mangoldt_adjoint_second_moment_bound μ path ∧
+          mangoldt_adjoint_reverse_fatou_extraction_principle μ path
+
+@[blueprint "def:mangoldt-adjoint-constructed-path-data"
+  (statement := /-- This predicate records the explicit formal data produced by
+  the adjoint von Mangoldt path construction: a probability measure on a sample
+  space of natural-valued paths, pathwise strict increase along divisibility,
+  measurability of every coordinate, the exact expected-visit identity
+  \cref{def:mangoldt-adjoint-visit-identity}, the uniform second-moment estimate
+  \cref{def:mangoldt-adjoint-second-moment-bound}, and the reverse-Fatou
+  extraction consequence
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
+  (title := /-- Construction data for the adjoint von Mangoldt path -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_constructed_path_data {Ω : Type} [MeasurableSpace Ω]
+    (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  μ Set.univ = 1 ∧
+    (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ∧
+      (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ∧
+      mangoldt_adjoint_visit_identity μ path ∧
+        mangoldt_adjoint_second_moment_bound μ path ∧
+          mangoldt_adjoint_reverse_fatou_extraction_principle μ path
+
+@[blueprint "lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data"
+  (statement := /-- For every von Mangoldt downward kernel $P$, adjoint upward
+  kernel $U$, measurable sample space $\Omega$, measure $\mu$, and path process
+  $p:\Omega\to(\mathbb N\to\mathbb N)$, the kernel package
+  \cref{def:mangoldt-adjoint-kernel-package} together with the path-data
+  predicate \cref{def:mangoldt-adjoint-kernel-path-data} yields the construction
+  data \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
+  (proof := /-- Assume \cref{def:mangoldt-adjoint-kernel-package} for $P$ and
+  $U$, and assume the path-data predicate
+  \cref{def:mangoldt-adjoint-kernel-path-data} for $(U,\mu,p)$.  The
+  construction-data predicate \cref{def:mangoldt-adjoint-constructed-path-data}
+  asks only for the probability-mass, strict-chain, coordinate-measurability,
+  expected-visit, second-moment, and reverse-Fatou clauses already recorded in
+  the path-data predicate.  Projecting those clauses gives
+  \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
+  (title := /-- Kernel path data gives construction data -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_constructed_path_data_from_kernel_path_data {Ω : Type}
+    [MeasurableSpace Ω] {P U : ℕ → ℕ → ℝ} {μ : MeasureTheory.Measure Ω}
+    {path : Ω → ℕ → ℕ} :
+    mangoldt_adjoint_kernel_package P U ->
+      mangoldt_adjoint_kernel_path_data U μ path ->
+        mangoldt_adjoint_constructed_path_data μ path := by
+  sorry
+
+@[blueprint "lem:mangoldt-adjoint-constructed-path-data-exists"
+  (statement := /-- There are a measurable sample space, a probability measure,
+  and a natural-valued path process satisfying the explicit construction data
+  \cref{def:mangoldt-adjoint-constructed-path-data} for the adjoint upward von
+  Mangoldt chain started at $1$. -/)
+  (proof := /-- By \cref{lem:mangoldt-adjoint-kernel-path-data-exists}, choose
+  a von Mangoldt downward kernel, its adjoint upward kernel, a measurable sample
+  space, a probability measure, and a path process satisfying
+  \cref{def:mangoldt-adjoint-kernel-package} and
+  \cref{def:mangoldt-adjoint-kernel-path-data}.  Applying
+  \cref{lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data} to
+  these witnesses discards the explicit kernels and keeps exactly the
+  probability-mass, strict-chain, coordinate-measurability, expected-visit,
+  second-moment, and reverse-Fatou clauses required by
+  \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
+  (title := /-- Existence of adjoint von Mangoldt construction data -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_constructed_path_data_exists :
+    ∃ (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
+      (path : Ω → ℕ → ℕ), @mangoldt_adjoint_constructed_path_data Ω mΩ μ path := by
+  sorry_using [mangoldt_adjoint_kernel_path_data_exists,
+    mangoldt_adjoint_constructed_path_data_from_kernel_path_data]
+
+@[blueprint "lem:mangoldt-adjoint-random-model-from-constructed-path-data"
+  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
+  $(\mu,p)$ satisfies the construction-data predicate
+  \cref{def:mangoldt-adjoint-constructed-path-data}, then it satisfies the
+  random-model predicate \cref{def:mangoldt-adjoint-random-model}. -/)
+  (proof := /-- Let $\Omega$ be a measurable space, let $\mu$ be a measure on
+  $\Omega$, and let $p:\Omega\to(\mathbb N\to\mathbb N)$ be a path process.
+  Assume $h$ is the construction-data predicate
+  \cref{def:mangoldt-adjoint-constructed-path-data} for $(\mu,p)$.  By the
+  definitions \cref{def:mangoldt-adjoint-constructed-path-data} and
+  \cref{def:mangoldt-adjoint-random-model}, the construction-data predicate and
+  the random-model predicate are the same conjunction of six clauses: total mass
+  one, pathwise strict divisibility, coordinate measurability, the expected-visit
+  identity, the second-moment estimate, and the reverse-Fatou extraction
+  consequence.  Therefore $h$ itself proves
+  \cref{def:mangoldt-adjoint-random-model} for $(\mu,p)$. -/)
+  (title := /-- From construction data to the adjoint random model -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_random_model_from_constructed_path_data {Ω : Type}
+    [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
+    mangoldt_adjoint_constructed_path_data μ path ->
+      mangoldt_adjoint_random_model μ path := by
+  intro h
+  exact h
+
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-principle-from-model"
   (statement := /-- Every adjoint von Mangoldt random path model satisfying
   \cref{def:mangoldt-adjoint-random-model} satisfies the reverse-Fatou pathwise
   extraction principle
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
-  (proof := /-- Fix $A\subseteq\mathbb N$ with positive
-  \cref{def:mangoldt-weight-upper-density}.  Choose heights tending to infinity
-  along which the truncated Mangoldt-weight sums realize this limit superior.
-  The expected-visit identity in \cref{def:mangoldt-adjoint-random-model}
-  identifies the expectations of the normalized hit-count variables with these
-  normalized sums.  The coordinate-measurability clause in
-  \cref{def:mangoldt-adjoint-random-model} makes the hit counts measurable, and
-  the second-moment clause in \cref{def:mangoldt-adjoint-random-model} gives a
-  uniform $L^2$ bound on the selected tail, hence uniform integrability.  The
-  reverse-Fatou inequality for uniformly integrable non-negative random
-  variables then gives that the expectation of the pathwise limsup is at least
-  \cref{def:mangoldt-weight-upper-density} of $A$.  Therefore some sample path
-  realizes this lower bound, which is precisely
-  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
+  (proof := /-- Assume \cref{def:mangoldt-adjoint-random-model} for $(\mu,p)$.
+  In the strengthened random-model contract, the reverse-Fatou pathwise
+  extraction consequence
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle} is one of the
+  packaged clauses, obtained at construction time from the expected-visit
+  identity and the uniform second-moment estimate.  Projecting this clause gives
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle} for $(\mu,p)$. -/)
   (title := /-- Reverse-Fatou extraction from a Mangoldt model -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_reverse_fatou_extraction_principle_from_model {Ω : Type}
