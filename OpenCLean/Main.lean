@@ -7963,21 +7963,66 @@ lemma mangoldt_weight_aggregate_comparison :
     using (summable_error_limsup_transfer (w := mangoldt_weight) (v := erdos_weight)
       mangoldt_weight_erdos_summable_error A)
 
+@[blueprint "def:mangoldt-weight-upper-density"
+  (statement := /-- For a set $A\subseteq\mathbb N$, this is the upper doubly
+  logarithmic density formed from the truncated invariant von Mangoldt weight:
+  the limit superior of
+  $\sum_{n\in A\cap[1,x]}\nu_\Lambda(n)/\log\log x$ as the real parameter
+  $x$ tends to infinity. -/)
+  (title := /-- Upper doubly logarithmic density for the von Mangoldt weight -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_weight_upper_density (A : Set ℕ) : ℝ :=
+  Filter.limsup
+    (fun x : ℝ => mangoldt_weight_sum_up_to A x / Real.log (Real.log x))
+    Filter.atTop
+
+@[blueprint "lem:mangoldt-adjoint-chain-density-selection"
+  (statement := /-- If a set $A\subseteq\mathbb N$ has positive upper doubly
+  logarithmic density with respect to the invariant von Mangoldt weight
+  \cref{def:mangoldt-weight-upper-density}, then there is a strictly increasing
+  divisibility chain whose visits to $A$ have upper doubly logarithmic density at
+  least that Mangoldt-weight density. -/)
+  (proof := /-- Form the adjoint upward Markov chain to the von Mangoldt
+  downward chain with respect to the invariant weight $\nu_\Lambda$, and start it
+  at $1$.  Invariance gives the exact expected-visit identity: for every natural
+  number $n$, the expected number of visits of the upward path to $n$ is
+  $\nu_\Lambda(n)$.  Hence, for every real height $x$, the expected number of
+  visits to $A\cap[1,x]$ is precisely the truncated sum appearing in
+  \cref{def:mangoldt-weight-upper-density}.  Choose a sequence $x_j\to\infty$
+  along which these normalized expectations converge to the positive limsup.
+  The second-moment estimate for the adjoint chain gives a uniform $L^2$ bound for the
+  corresponding normalized hit counts, so the family is uniformly integrable.
+  The reverse Fatou inequality therefore implies that the expectation of the
+  pathwise limsup is at least the limsup of the expectations.  Since this lower
+  bound is positive, some realization has normalized hit-count limsup at least
+  \cref{def:mangoldt-weight-upper-density}.  The upward path almost surely stays
+  in $\mathbb N$ and is strictly increasing along divisibility, giving
+  \cref{def:strictly-increasing-divisibility-chain}; its pathwise lower bound is
+  exactly \cref{def:chain-hits-density-at-least}. -/)
+  (title := /-- Path selection for the adjoint von Mangoldt chain -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_chain_density_selection :
+    ∀ A : Set ℕ, 0 < mangoldt_weight_upper_density A ->
+      ∃ n : ℕ → ℕ,
+        strictly_increasing_divisibility_chain n ∧
+        chain_hits_density_at_least n A (mangoldt_weight_upper_density A) := by
+  sorry
+
 @[blueprint "lem:probabilistic-dense-ambient-chain"
   (statement := /-- If $A\subseteq\mathbb N$ has positive upper doubly
   logarithmic density, then there exists a strictly increasing divisibility
   chain in $\mathbb N$ whose visits to $A$ have upper doubly logarithmic
   density at least that of $A$. -/)
-  (proof := /-- Use the adjoint of the von Mangoldt downward chain with
-  respect to the invariant weight $\nu_\Lambda$, started at $1$.  The invariant
-  recursion implies that the expected number of visits to each state $n$ is
-  $\nu_\Lambda(n)$.  By \cref{lem:mangoldt-weight-aggregate-comparison}, the
-  expected normalized number of visits to $A\cap[1,x]$ has limit superior equal
-  to the upper doubly logarithmic density of $A$.  The second-moment estimate
-  in the source bounds the normalized visit counts uniformly in $L^2$, and the
-  reverse Fatou argument then gives positive probability that the realized
-  chain has visit-density at least this value.  Choosing such a realization
-  gives the asserted ambient chain. -/)
+  (proof := /-- Fix $A\subseteq\mathbb N$ and assume that its upper doubly
+  logarithmic density, defined in \cref{def:upper-doubly-log-density}, is positive.  By
+  \cref{lem:mangoldt-weight-aggregate-comparison}, the Mangoldt-weight upper
+  density \cref{def:mangoldt-weight-upper-density} is equal to this upper doubly
+  logarithmic density, and hence is positive.  Applying
+  \cref{lem:mangoldt-adjoint-chain-density-selection} gives a strictly
+  increasing divisibility chain whose visits to $A$ have upper density at least
+  the Mangoldt-weight density.  Substituting the equality supplied by
+  \cref{lem:mangoldt-weight-aggregate-comparison} converts this lower bound into
+  the asserted lower bound by the original upper doubly logarithmic density. -/)
   (title := /-- Dense ambient chain from the zeta process -/)
   (latexEnv := "lemma")]
 lemma probabilistic_dense_ambient_chain :
@@ -7985,7 +8030,7 @@ lemma probabilistic_dense_ambient_chain :
       ∃ n : ℕ → ℕ,
         strictly_increasing_divisibility_chain n ∧
         chain_hits_density_at_least n A (upper_doubly_log_density A) := by
-  sorry_using [mangoldt_weight_aggregate_comparison]
+  sorry_using [mangoldt_weight_aggregate_comparison, mangoldt_adjoint_chain_density_selection]
 
 @[blueprint "lem:dense-hits-subchain-in-set"
   (statement := /-- For every set $A\subseteq\mathbb N$ and every sequence
