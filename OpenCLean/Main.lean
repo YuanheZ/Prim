@@ -8048,10 +8048,8 @@ noncomputable def mangoldt_adjoint_random_model {Ω : Type} [MeasurableSpace Ω]
   (title := /-- Existence of the adjoint von Mangoldt random path model -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_random_model_exists :
-    ∃ (Ω : Type) (mΩ : MeasurableSpace Ω),
-      letI : MeasurableSpace Ω := mΩ
-      ∃ (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ),
-        mangoldt_adjoint_random_model μ path := by
+    ∃ (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
+      (path : Ω → ℕ → ℕ), @mangoldt_adjoint_random_model Ω mΩ μ path := by
   sorry
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-path-extraction"
