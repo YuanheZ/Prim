@@ -6773,7 +6773,7 @@ theorem erdos_primitive_set_conjecture_164 :
       ∀ A : Set ℕ, primitive_set A ->
         Summable (fun n : ℕ => A.indicator erdos_weight n) ∧
           erdos_sum A ≤ erdos_sum prime_layer := by
-  sorry_using [eps_chain_antichain_bound]
+  exact eps_chain_antichain_bound
 
 @[blueprint "def:real-initial-segment"
   (statement := /-- For a real parameter $x$, the initial segment
