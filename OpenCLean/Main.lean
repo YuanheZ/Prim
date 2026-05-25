@@ -5053,39 +5053,725 @@ def eps_modified_chain_subinvariant_package : Prop :=
   ∃ P : ℕ → ℕ → ℝ, eps_modified_chain_kernel_subinvariant P
 
 @[blueprint "lem:eps-modified-chain-subinvariant"
-  (statement := /-- The modified von Mangoldt downward chain with absorbing
-  states the primes satisfies the sub-invariance package of
-  \cref{def:eps-modified-chain-subinvariant-package}. -/)
+  (statement := /-- There exists a transition kernel
+  $P:\mathbb{N}\times\mathbb{N}\to\mathbb{R}$ satisfying the fixed
+  modified-chain interface of
+  \cref{def:eps-modified-chain-kernel-subinvariant}.  Equivalently, the
+  modified-chain sub-invariance package of
+  \cref{def:eps-modified-chain-subinvariant-package} is inhabited. -/)
   (proof := /-- Define the transition kernel exactly as in the source proof:
   away from prime powers it is the von Mangoldt downward chain, primes are
   absorbing, and for $p^k$ with $k\geq2$ the mass that would jump from $p^k$ to
   $1$ is redirected to the transition from $p^k$ to $p$; the state $1$ is
   included only as the isolated positive state needed to totalize the Lean
-  kernel.  The Markov property follows from
-  $\sum_{q\mid n}\Lambda(q)=\log n$ and the identity $(k-2)/k+2/k=1$, and the
-  support clauses follow directly from the displayed transition rules.  For
-  sub-invariance, first fix a state $m\geq2$ and a finite set of multipliers.
-  The ordinary von Mangoldt part of the corresponding finite incoming sum is
-  bounded by the finite tail estimate underlying
-  \cref{lem:mangoldt-subinvariant-bound}.  If $m$ is prime, then
+  kernel.  For non-prime-power rows, the Markov property follows from
+  \cref{lem:von-mangoldt-divisor-sum} after reindexing divisors by
+  $d\mapsto n/d$; for prime-power rows it follows from
+  $\Lambda(p^j)=\log p$, the logarithmic identity
+  $\log(p^k)=k\log p$, and the equality $(k-2)/k+2/k=1$.  The support clauses
+  follow directly from the displayed transition rules.  For sub-invariance,
+  first fix a state $m\geq2$ and a finite set of multipliers.  If $m$ is
+  composite, then every incoming transition has the ordinary von Mangoldt value;
+  \cref{lem:mangoldt-tail-finite-sum-le} reduces the finite incoming sum to the
+  full ordinary tail, and \cref{lem:mangoldt-subinvariant-bound} bounds the
+  latter by $\nu_0(m)$.  If $m$ is prime, then
   \cref{lem:eps-modified-chain-prime-power-incoming-reindex} splits the
   multiplier-indexed incoming mass into the same ordinary tail and a finite set
   of redirected prime-power exponent terms.  The finite form of
   \cref{lem:modified-prime-power-incoming-bound} bounds this combined ordinary
-  and redirected contribution by $\nu_0(m)$; its infinite form gives the
-  corresponding t-sum bound.  If $m$ is composite, there is no redirected
-  contribution, so
-  \cref{lem:mangoldt-subinvariant-bound} is sufficient.  Hence every finite
-  incoming partial sum is at most $\nu_0(m)$.  Since all incoming terms are
-  non-negative, this finite bound also gives summability of the incoming series
-  and the stated infinite sub-invariance inequality.  These verifications give
+  and redirected contribution by $\nu_0(m)$.  Hence every finite incoming
+  partial sum is at most $\nu_0(m)$, and the standard finite-sum criterion for
+  t-sums gives the stated infinite sub-invariance inequality.  These verifications give
   every clause of \cref{def:eps-modified-chain-kernel-subinvariant}, and hence
   the existential package \cref{def:eps-modified-chain-subinvariant-package}. -/)
   (title := /-- Sub-invariance of the modified chain -/)
   (latexEnv := "lemma")]
 lemma eps_modified_chain_subinvariant :
     eps_modified_chain_subinvariant_package := by
-  sorry_using [mangoldt_subinvariant_bound, modified_prime_power_incoming_bound, eps_modified_chain_prime_power_incoming_reindex]
+  classical
+  let ppBase : (n : ℕ) → IsPrimePow n → ℕ := fun n hn =>
+    Classical.choose ((isPrimePow_nat_iff n).mp hn)
+  let ppExp : (n : ℕ) → (hn : IsPrimePow n) → ℕ := fun n hn =>
+    Classical.choose (Classical.choose_spec ((isPrimePow_nat_iff n).mp hn))
+  have pp_spec : ∀ n (hn : IsPrimePow n),
+      Nat.Prime (ppBase n hn) ∧ 0 < ppExp n hn ∧
+        (ppBase n hn) ^ (ppExp n hn) = n := by
+    intro n hn
+    dsimp [ppBase, ppExp]
+    exact Classical.choose_spec (Classical.choose_spec ((isPrimePow_nat_iff n).mp hn))
+  let P : ℕ → ℕ → ℝ := fun n m =>
+    if n = 1 then
+      if m = 1 then 1 else 0
+    else if n ∈ prime_layer then
+      if m = n then 1 else 0
+    else if hnpp : IsPrimePow n then
+      let p := ppBase n hnpp
+      let k := ppExp n hnpp
+      if m = p then
+        ArithmeticFunction.vonMangoldt (p ^ (k - 1)) / Real.log (n : ℝ) + 1 / (k : ℝ)
+      else if hm : ∃ j : ℕ, 1 ≤ j ∧ j ≤ k - 2 ∧ m = p ^ (k - j) then
+        ArithmeticFunction.vonMangoldt (p ^ (Classical.choose hm)) / Real.log (n : ℝ)
+      else 0
+    else if m ∣ n ∧ m < n then
+      ArithmeticFunction.vonMangoldt (n / m) / Real.log (n : ℝ)
+    else 0
+  have pp_unique : ∀ {n p k : ℕ} (hnpp : IsPrimePow n),
+      Nat.Prime p -> 0 < k -> p ^ k = n ->
+        ppBase n hnpp = p ∧ ppExp n hnpp = k := by
+    intro n p k hnpp hp hk hpow
+    have hspec := pp_spec n hnpp
+    have hEq : ppBase n hnpp ^ ppExp n hnpp = p ^ k := by
+      calc
+        ppBase n hnpp ^ ppExp n hnpp = n := hspec.2.2
+        _ = p ^ k := hpow.symm
+    exact Nat.Prime.pow_inj' hspec.1 hp (ne_of_gt hspec.2.1) (ne_of_gt hk) hEq
+  have prime_power_ne_one : ∀ {p k : ℕ}, p ∈ prime_layer -> 1 ≤ k -> p ^ k ≠ 1 := by
+    intro p k hp hk
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    exact ne_of_gt (Nat.one_lt_pow (by omega) hp_prime.one_lt)
+  have prime_power_not_prime : ∀ {p k : ℕ}, p ∈ prime_layer -> 2 ≤ k -> p ^ k ∉ prime_layer := by
+    intro p k hp hk hprime_layer
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    have htail_ne_one : p ^ (k - 1) ≠ 1 := by
+      exact ne_of_gt (Nat.one_lt_pow (by omega) hp_prime.one_lt)
+    have hpow_mul : p ^ k = p * p ^ (k - 1) := by
+      have hk_succ : k = (k - 1) + 1 := by omega
+      have hidx : k - 1 + 1 - 1 = k - 1 := by omega
+      rw [hk_succ, pow_succ, hidx, mul_comm]
+    have hprime_nat : Nat.Prime (p ^ k) := by
+      simpa [prime_layer] using hprime_layer
+    rw [hpow_mul] at hprime_nat
+    exact (Nat.not_prime_mul hp_prime.ne_one htail_ne_one) hprime_nat
+  have pp_exp_two_of_not_prime : ∀ {n : ℕ} (hnpp : IsPrimePow n),
+      n ∉ prime_layer -> 2 ≤ ppExp n hnpp := by
+    intro n hnpp hnprime
+    have hspec := pp_spec n hnpp
+    by_contra hknot
+    have hk_one : ppExp n hnpp = 1 := by omega
+    have hn_prime_nat : Nat.Prime n := by
+      rw [← hspec.2.2, hk_one, pow_one]
+      exact hspec.1
+    exact hnprime (by simpa [prime_layer] using hn_prime_nat)
+  have hordinaryP : ∀ n q : ℕ, 2 ≤ n -> n ∉ prime_layer ->
+      (∀ p k : ℕ, p ∈ prime_layer -> 2 ≤ k -> n ≠ p ^ k) ->
+      1 < q -> q ∣ n ->
+        P n (n / q) = ArithmeticFunction.vonMangoldt q / Real.log (n : ℝ) := by
+    intro n q hn hnprime hnotpp hq hqdiv
+    have hn_ne_one : n ≠ 1 := by omega
+    have hnpp_false : ¬ IsPrimePow n := by
+      intro hnpp
+      rcases (isPrimePow_nat_iff n).mp hnpp with ⟨p, k, hp, hkpos, hpow⟩
+      by_cases hk_one : k = 1
+      · have hn_prime_nat : Nat.Prime n := by
+          rw [← hpow, hk_one, pow_one]
+          exact hp
+        exact hnprime (by simpa [prime_layer] using hn_prime_nat)
+      · have hk_two : 2 ≤ k := by omega
+        exact hnotpp p k (by simpa [prime_layer] using hp) hk_two (by rw [← hpow])
+    have hdiv : n / q ∣ n ∧ n / q < n := by
+      constructor
+      · exact Nat.div_dvd_of_dvd hqdiv
+      · have hqpos : 0 < q := by omega
+        rw [Nat.div_lt_iff_lt_mul hqpos]
+        have hnpos : 0 < n := by omega
+        simpa using Nat.mul_lt_mul_of_pos_left hq hnpos
+    have hq_eq : n / (n / q) = q := by
+      exact Nat.div_div_self hqdiv (by omega)
+    simp [P, hn_ne_one, hnprime, hnpp_false, hdiv, hq_eq]
+  have hbaseP : ∀ p k : ℕ, p ∈ prime_layer -> 2 ≤ k ->
+      P (p ^ k) p =
+        ArithmeticFunction.vonMangoldt (p ^ (k - 1)) /
+          Real.log ((p ^ k : ℕ) : ℝ) + 1 / (k : ℝ) := by
+    intro p k hp hk
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    have hnot_prime : p ^ k ∉ prime_layer := prime_power_not_prime hp hk
+    have hnpp : IsPrimePow (p ^ k) := by
+      rw [isPrimePow_nat_iff]
+      exact ⟨p, k, hp_prime, by omega, rfl⟩
+    have huniq := pp_unique hnpp hp_prime (by omega) rfl
+    have hk_ne_zero : k ≠ 0 := by omega
+    simp [P, hp_prime.ne_one, hk_ne_zero, hnot_prime, hnpp, huniq.1, huniq.2]
+  have hstepP : ∀ p k j : ℕ, p ∈ prime_layer -> 2 ≤ k -> 1 ≤ j -> j ≤ k - 2 ->
+      P (p ^ k) (p ^ (k - j)) =
+        ArithmeticFunction.vonMangoldt (p ^ j) / Real.log ((p ^ k : ℕ) : ℝ) := by
+    intro p k j hp hk hj hjle
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    have hnot_prime : p ^ k ∉ prime_layer := prime_power_not_prime hp hk
+    have hnpp : IsPrimePow (p ^ k) := by
+      rw [isPrimePow_nat_iff]
+      exact ⟨p, k, hp_prime, by omega, rfl⟩
+    have huniq := pp_unique hnpp hp_prime (by omega) rfl
+    have hk_ne_zero : k ≠ 0 := by omega
+    have hnot_base : p ^ (k - j) ≠ p := by
+      intro hpow
+      have hexp : k - j = 1 := by
+        exact Nat.pow_right_injective hp_prime.two_le (by simpa [pow_one] using hpow)
+      omega
+    let hstep : ∃ j' : ℕ, 1 ≤ j' ∧ j' ≤ k - 2 ∧ p ^ (k - j) = p ^ (k - j') :=
+      ⟨j, hj, hjle, rfl⟩
+    have hchoose_eq : Classical.choose hstep = j := by
+      have hspec := Classical.choose_spec hstep
+      have hexp : k - j = k - Classical.choose hstep := by
+        exact Nat.pow_right_injective hp_prime.two_le hspec.2.2
+      omega
+    simp [P, hp_prime.ne_one, hk_ne_zero, hnot_prime, hnpp, huniq.1, huniq.2,
+      hnot_base, hstep, hchoose_eq]
+  have hsupportPrimePowerP : ∀ p k m : ℕ, p ∈ prime_layer -> 2 ≤ k -> P (p ^ k) m ≠ 0 ->
+      m = p ∨ ∃ j : ℕ, 1 ≤ j ∧ j ≤ k - 2 ∧ m = p ^ (k - j) := by
+    intro p k m hp hk hP
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    have hnot_prime : p ^ k ∉ prime_layer := prime_power_not_prime hp hk
+    have hnpp : IsPrimePow (p ^ k) := by
+      rw [isPrimePow_nat_iff]
+      exact ⟨p, k, hp_prime, by omega, rfl⟩
+    have huniq := pp_unique hnpp hp_prime (by omega) rfl
+    have hk_ne_zero : k ≠ 0 := by omega
+    by_cases hm_base : m = p
+    · exact Or.inl hm_base
+    · by_cases hmstep : ∃ j : ℕ, 1 ≤ j ∧ j ≤ k - 2 ∧ m = p ^ (k - j)
+      · exact Or.inr hmstep
+      · exfalso
+        have hzero : P (p ^ k) m = 0 := by
+          simp [P, hp_prime.ne_one, hk_ne_zero, hnot_prime, hnpp, huniq.1, huniq.2,
+            hm_base, hmstep]
+        exact hP hzero
+  have hcompositeTransition : ∀ m q : ℕ, 2 ≤ m -> m ∉ prime_layer -> 1 < q ->
+      P (m * q) m = ArithmeticFunction.vonMangoldt q / Real.log ((m * q : ℕ) : ℝ) := by
+    intro m q hm hmprime hq
+    have hm_ne_one : m ≠ 1 := by omega
+    have hq_ne_one : q ≠ 1 := by omega
+    have hmq_two : 2 ≤ m * q := by
+      exact Nat.mul_le_mul hm (by omega : 1 ≤ q)
+    have hmq_not_prime : m * q ∉ prime_layer := by
+      intro hprime_layer
+      have hprime_nat : Nat.Prime (m * q) := by
+        simpa [prime_layer] using hprime_layer
+      exact (Nat.not_prime_mul hm_ne_one hq_ne_one) hprime_nat
+    by_cases hmqpp : IsPrimePow (m * q)
+    · rcases (isPrimePow_nat_iff (m * q)).mp hmqpp with ⟨p, k, hp, hkpos, hpk⟩
+      have hp_layer : p ∈ prime_layer := by
+        simpa [prime_layer] using hp
+      have hmpp : IsPrimePow m := by
+        exact IsPrimePow.dvd hmqpp (dvd_mul_right m q) hm_ne_one
+      rcases (isPrimePow_nat_iff m).mp hmpp with ⟨r, a, hr, hapos, hra⟩
+      have hr_dvd_pk : r ∣ p ^ k := by
+        rw [hpk]
+        have hr_dvd_m : r ∣ m := by
+          rw [← hra]
+          simpa [pow_one] using Nat.pow_dvd_pow r (by omega : 1 ≤ a)
+        exact dvd_mul_of_dvd_left hr_dvd_m q
+      have hr_eq_hp : r = p := Nat.prime_eq_prime_of_dvd_pow hr hp hr_dvd_pk
+      subst r
+      have ha_two : 2 ≤ a := by
+        by_contra ha_not
+        have ha_one : a = 1 := by omega
+        have hm_prime_nat : Nat.Prime m := by
+          rw [← hra, ha_one, pow_one]
+          exact hp
+        exact hmprime (by simpa [prime_layer] using hm_prime_nat)
+      have hpa_dvd_pk : p ^ a ∣ p ^ k := by
+        rw [hpk, hra]
+        exact dvd_mul_right m q
+      have ha_le_k : a ≤ k := (Nat.pow_dvd_pow_iff_le_right hp.one_lt).mp hpa_dvd_pk
+      have hq_eq : q = p ^ (k - a) := by
+        have hpow_split : p ^ k = p ^ a * p ^ (k - a) := by
+          rw [← pow_add]
+          congr 1
+          omega
+        have hmul : p ^ a * q = p ^ a * p ^ (k - a) := by
+          calc
+            p ^ a * q = m * q := by rw [hra]
+            _ = p ^ k := hpk.symm
+            _ = p ^ a * p ^ (k - a) := hpow_split
+        exact Nat.mul_left_cancel (Nat.pow_pos (a := p) (n := a) hp.pos) hmul
+      have hj : 1 ≤ k - a := by
+        by_contra hj_not
+        have hka_zero : k - a = 0 := by omega
+        have hq_one : q = 1 := by
+          rw [hq_eq, hka_zero, pow_zero]
+        exact hq_ne_one hq_one
+      have hjle : k - a ≤ k - 2 := by omega
+      have hk_two : 2 ≤ k := by omega
+      have hm_eq : m = p ^ (k - (k - a)) := by
+        rw [← hra]
+        congr 1
+        omega
+      have hstep := hstepP p k (k - a) hp_layer hk_two hj hjle
+      simpa [hpk, hra, hq_eq, hm_eq] using hstep
+    · have hnotpp_clause : ∀ p k : ℕ, p ∈ prime_layer -> 2 ≤ k -> m * q ≠ p ^ k := by
+        intro p k hp hk hEq
+        apply hmqpp
+        rw [isPrimePow_nat_iff]
+        exact ⟨p, k, by simpa [prime_layer] using hp, by omega, hEq.symm⟩
+      have hq_dvd : q ∣ m * q := by
+        exact ⟨m, by rw [mul_comm]⟩
+      have hdiv_eq : (m * q) / q = m := by
+        rw [mul_comm]
+        exact Nat.mul_div_right m (by omega)
+      simpa [hdiv_eq] using hordinaryP (m * q) q hmq_two hmq_not_prime hnotpp_clause hq hq_dvd
+  have hsubinvFinite : ∀ m : ℕ, 2 ≤ m -> ∀ s : Finset ℕ,
+      (∑ q ∈ s, if 1 < q then erdos_weight (m * q) * P (m * q) m else 0) ≤
+        erdos_weight m := by
+    intro m hm s
+    have hm_one : 1 ≤ m := by omega
+    have hlogm_pos : 0 < Real.log (m : ℝ) := by
+      apply Real.log_pos
+      exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hm)
+    have hweight_nonneg : 0 ≤ erdos_weight m := by
+      rw [erdos_weight]
+      positivity
+    by_cases hmprime : m ∈ prime_layer
+    · rcases (eps_modified_chain_prime_power_incoming_reindex P hordinaryP hbaseP
+        hsupportPrimePowerP m hmprime).2 s with ⟨t, hst⟩
+      have hbound := (modified_prime_power_incoming_bound m hmprime).2 s t
+      calc
+        (∑ q ∈ s, if 1 < q then erdos_weight (m * q) * P (m * q) m else 0) ≤
+            erdos_weight m *
+              (Real.log (m : ℝ) *
+                  (∑ q ∈ s, if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term m q else 0) +
+                modified_prime_power_redirected_finite m t) := hst
+        _ ≤ erdos_weight m * 1 := by
+          exact mul_le_mul_of_nonneg_left hbound hweight_nonneg
+        _ = erdos_weight m := by ring
+    · let T : ℕ → ℝ := fun q =>
+        if (2 : ℝ) ≤ (q : ℝ) then mangoldt_tail_term m q else 0
+      have hpoint : ∀ q ∈ s,
+          (if 1 < q then erdos_weight (m * q) * P (m * q) m else 0) =
+            erdos_weight m * (Real.log (m : ℝ) * T q) := by
+        intro q hqmem
+        by_cases hq : 1 < q
+        · have hq_two : 2 ≤ q := by omega
+          have hq_two_real : (2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq_two
+          have hmq_two : 2 ≤ m * q := Nat.mul_le_mul hm (by omega : 1 ≤ q)
+          have hlogmq_pos : 0 < Real.log ((m * q : ℕ) : ℝ) := by
+            apply Real.log_pos
+            have hmq_gt_one : 1 < m * q := lt_of_lt_of_le Nat.one_lt_two hmq_two
+            exact_mod_cast hmq_gt_one
+          have hm_real_ne : (m : ℝ) ≠ 0 := by positivity
+          have hq_real_ne : (q : ℝ) ≠ 0 := by positivity
+          rw [if_pos hq]
+          dsimp [T]
+          rw [if_pos hq_two_real, hcompositeTransition m q hm hmprime hq]
+          rw [erdos_weight, mangoldt_tail_term, Nat.cast_mul]
+          field_simp [hm_real_ne, hq_real_ne, hlogm_pos.ne', hlogmq_pos.ne']
+          have hmul : (m : ℝ) * erdos_weight m * Real.log (m : ℝ) = 1 := by
+            rw [erdos_weight]
+            field_simp [hm_real_ne, hlogm_pos.ne']
+          calc
+            ArithmeticFunction.vonMangoldt q / Real.log ((m : ℝ) * (q : ℝ)) ^ 2 =
+                ArithmeticFunction.vonMangoldt q / Real.log ((m : ℝ) * (q : ℝ)) ^ 2 * 1 := by ring
+            _ = ArithmeticFunction.vonMangoldt q / Real.log ((m : ℝ) * (q : ℝ)) ^ 2 *
+                ((m : ℝ) * erdos_weight m * Real.log (m : ℝ)) := by rw [hmul]
+            _ = (m : ℝ) * ArithmeticFunction.vonMangoldt q * erdos_weight m *
+                Real.log (m : ℝ) / Real.log ((m : ℝ) * (q : ℝ)) ^ 2 := by ring
+        · have hq_lt_two : q < 2 := by omega
+          have hq_not_two : ¬2 ≤ q := by omega
+          have hq_not_two_real : ¬(2 : ℝ) ≤ (q : ℝ) := by exact_mod_cast hq_not_two
+          have hT_zero : T q = 0 := by
+            dsimp [T]
+            simp [hq_not_two_real]
+          simp [hq, hT_zero]
+      calc
+        (∑ q ∈ s, if 1 < q then erdos_weight (m * q) * P (m * q) m else 0) =
+            ∑ q ∈ s, erdos_weight m * (Real.log (m : ℝ) * T q) := by
+          apply Finset.sum_congr rfl
+          intro q hqmem
+          exact hpoint q hqmem
+        _ = erdos_weight m * (Real.log (m : ℝ) * ∑ q ∈ s, T q) := by
+          rw [← Finset.mul_sum, ← Finset.mul_sum]
+        _ ≤ erdos_weight m * 1 := by
+          have htail_le : (∑ q ∈ s, T q) ≤ mangoldt_tail_sum m 2 := by
+            dsimp [T]
+            exact mangoldt_tail_finite_sum_le m hm_one 2 (by norm_num) s
+          have hinside_le : Real.log (m : ℝ) * (∑ q ∈ s, T q) ≤ 1 := by
+            exact (mul_le_mul_of_nonneg_left htail_le hlogm_pos.le).trans
+              (mangoldt_subinvariant_bound m hm)
+          exact mul_le_mul_of_nonneg_left hinside_le hweight_nonneg
+        _ = erdos_weight m := by ring
+  have hsubinvInfinite : ∀ m : ℕ, 2 ≤ m ->
+      (∑' q : ℕ, if 1 < q then erdos_weight (m * q) * P (m * q) m else 0) ≤
+        erdos_weight m := by
+    intro m hm
+    apply tsum_le_of_sum_le'
+    · rw [erdos_weight]
+      positivity
+    · intro s
+      exact hsubinvFinite m hm s
+  refine ⟨P, ?_⟩
+  unfold eps_modified_chain_kernel_subinvariant
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · intro n m
+    dsimp [P]
+    split_ifs with hn_one hm_one hn_prime hm_self hnpp hm_base hm_step hm_div
+    · positivity
+    · positivity
+    · positivity
+    · positivity
+    · have hspec := pp_spec n hnpp
+      have hlog_pos : 0 < Real.log (n : ℝ) := by
+        apply Real.log_pos
+        have hn_gt_one : 1 < n := by
+          rw [← hspec.2.2]
+          exact Nat.one_lt_pow (ne_of_gt hspec.2.1) hspec.1.one_lt
+        exact_mod_cast hn_gt_one
+      exact add_nonneg
+        (div_nonneg ArithmeticFunction.vonMangoldt_nonneg hlog_pos.le)
+        (by positivity)
+    · have hspec := pp_spec n hnpp
+      have hlog_pos : 0 < Real.log (n : ℝ) := by
+        apply Real.log_pos
+        have hn_gt_one : 1 < n := by
+          rw [← hspec.2.2]
+          exact Nat.one_lt_pow (ne_of_gt hspec.2.1) hspec.1.one_lt
+        exact_mod_cast hn_gt_one
+      exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg hlog_pos.le
+    · positivity
+    · have hn_gt_one : 1 < n := by omega
+      have hlog_pos : 0 < Real.log (n : ℝ) := by
+        apply Real.log_pos
+        exact_mod_cast hn_gt_one
+      exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg hlog_pos.le
+    · positivity
+  · intro n hnpos
+    by_cases hn_one : n = 1
+    · subst n
+      calc
+        (∑' m : ℕ, P 1 m) = ∑ m ∈ ({1} : Finset ℕ), P 1 m := by
+          refine tsum_eq_sum (s := ({1} : Finset ℕ)) ?_
+          intro m hm
+          have hm_ne : m ≠ 1 := by simpa using hm
+          simp [P, hm_ne]
+        _ = 1 := by simp [P]
+    · by_cases hn_prime : n ∈ prime_layer
+      · calc
+          (∑' m : ℕ, P n m) = ∑ m ∈ ({n} : Finset ℕ), P n m := by
+            refine tsum_eq_sum (s := ({n} : Finset ℕ)) ?_
+            intro m hm
+            have hm_ne : m ≠ n := by simpa using hm
+            simp [P, hn_one, hn_prime, hm_ne]
+          _ = 1 := by simp [P, hn_one, hn_prime]
+      · by_cases hnpp : IsPrimePow n
+        · let p := ppBase n hnpp
+          let k := ppExp n hnpp
+          have hspec := pp_spec n hnpp
+          have hp : Nat.Prime p := by
+            dsimp [p]
+            exact hspec.1
+          have hk_two : 2 ≤ k := by
+            dsimp [k]
+            exact pp_exp_two_of_not_prime hnpp hn_prime
+          have hk_ne_zero : k ≠ 0 := by omega
+          have hn_eq : n = p ^ k := by
+            dsimp [p, k]
+            exact hspec.2.2.symm
+          have hlogp_pos : 0 < Real.log (p : ℝ) := by
+            apply Real.log_pos
+            exact_mod_cast hp.one_lt
+          have hlogn : Real.log (n : ℝ) = (k : ℝ) * Real.log (p : ℝ) := by
+            rw [hn_eq, Nat.cast_pow]
+            exact Real.log_pow (p : ℝ) k
+          let S : Finset ℕ := ({p} : Finset ℕ) ∪
+            (Finset.Icc 1 (k - 2)).image (fun j : ℕ => p ^ (k - j))
+          have htsum : (∑' m : ℕ, P n m) = ∑ m ∈ S, P n m := by
+            refine tsum_eq_sum (s := S) ?_
+            intro m hmS
+            have hm_ne_p : m ≠ p := by
+              intro hm
+              apply hmS
+              dsimp [S]
+              simp [hm]
+            have hm_step_false : ¬∃ j : ℕ, 1 ≤ j ∧ j ≤ k - 2 ∧ m = p ^ (k - j) := by
+              intro hmstep
+              rcases hmstep with ⟨j, hj, hjle, hm_eq⟩
+              apply hmS
+              dsimp [S]
+              exact Finset.mem_insert.mpr
+                (Or.inr (Finset.mem_image.mpr
+                  ⟨j, Finset.mem_Icc.mpr ⟨hj, hjle⟩, hm_eq.symm⟩))
+            simp [P, p, k, hn_one, hn_prime, hnpp, hm_ne_p, hm_step_false]
+          have hdisj : Disjoint ({p} : Finset ℕ)
+              ((Finset.Icc 1 (k - 2)).image (fun j : ℕ => p ^ (k - j))) := by
+            rw [Finset.disjoint_left]
+            intro x hx hpows
+            simp only [Finset.mem_singleton] at hx
+            subst x
+            rcases Finset.mem_image.mp hpows with ⟨j, hjmem, hjpow⟩
+            have hj := (Finset.mem_Icc.mp hjmem).1
+            have hjle := (Finset.mem_Icc.mp hjmem).2
+            have hexp : k - j = 1 := by
+              exact Nat.pow_right_injective hp.two_le (by simpa [pow_one] using hjpow)
+            omega
+          have hinj : ∀ a ∈ Finset.Icc 1 (k - 2), ∀ b ∈ Finset.Icc 1 (k - 2),
+              p ^ (k - a) = p ^ (k - b) -> a = b := by
+            intro a ha b hb hab
+            have ha_bounds := Finset.mem_Icc.mp ha
+            have hb_bounds := Finset.mem_Icc.mp hb
+            have ha_le : a ≤ k := by omega
+            have hb_le : b ≤ k := by omega
+            have hexp : k - a = k - b := Nat.pow_right_injective hp.two_le hab
+            omega
+          have hbase_value : P n p =
+              ArithmeticFunction.vonMangoldt (p ^ (k - 1)) / Real.log (n : ℝ) + 1 / (k : ℝ) := by
+            simp [P, p, k, hn_one, hn_prime, hnpp]
+          have hstep_value : ∀ j ∈ Finset.Icc 1 (k - 2),
+              P n (p ^ (k - j)) =
+                ArithmeticFunction.vonMangoldt (p ^ j) / Real.log (n : ℝ) := by
+            intro j hjmem
+            have hj : 1 ≤ j := (Finset.mem_Icc.mp hjmem).1
+            have hjle : j ≤ k - 2 := (Finset.mem_Icc.mp hjmem).2
+            have hnot_base : p ^ (k - j) ≠ p := by
+              intro hpow
+              have hexp : k - j = 1 := by
+                exact Nat.pow_right_injective hp.two_le (by simpa [pow_one] using hpow)
+              omega
+            let hstep : ∃ j' : ℕ, 1 ≤ j' ∧ j' ≤ k - 2 ∧ p ^ (k - j) = p ^ (k - j') :=
+              ⟨j, hj, hjle, rfl⟩
+            have hchoose_eq : Classical.choose hstep = j := by
+              have hspec_step := Classical.choose_spec hstep
+              have hexp : k - j = k - Classical.choose hstep := by
+                exact Nat.pow_right_injective hp.two_le hspec_step.2.2
+              omega
+            simp [P, p, k, hn_one, hn_prime, hnpp, hnot_base, hstep, hchoose_eq]
+          have hsum_steps :
+              (∑ j ∈ Finset.Icc 1 (k - 2),
+                ArithmeticFunction.vonMangoldt (p ^ j) / Real.log (n : ℝ)) =
+                ((k - 2 : ℕ) : ℝ) * (Real.log (p : ℝ) / Real.log (n : ℝ)) := by
+            calc
+              (∑ j ∈ Finset.Icc 1 (k - 2),
+                ArithmeticFunction.vonMangoldt (p ^ j) / Real.log (n : ℝ)) =
+                  ∑ j ∈ Finset.Icc 1 (k - 2),
+                    Real.log (p : ℝ) / Real.log (n : ℝ) := by
+                    apply Finset.sum_congr rfl
+                    intro j hjmem
+                    have hj_ne : j ≠ 0 := by
+                      have hj : 1 ≤ j := (Finset.mem_Icc.mp hjmem).1
+                      omega
+                    rw [ArithmeticFunction.vonMangoldt_apply_pow hj_ne,
+                      ArithmeticFunction.vonMangoldt_apply_prime hp]
+              _ = ((Finset.Icc 1 (k - 2)).card : ℝ) *
+                    (Real.log (p : ℝ) / Real.log (n : ℝ)) := by
+                    simp
+              _ = ((k - 2 : ℕ) : ℝ) *
+                    (Real.log (p : ℝ) / Real.log (n : ℝ)) := by
+                    congr 1
+                    simp
+          have hbase_von : ArithmeticFunction.vonMangoldt (p ^ (k - 1)) = Real.log (p : ℝ) := by
+            have hkpred_ne : k - 1 ≠ 0 := by omega
+            rw [ArithmeticFunction.vonMangoldt_apply_pow hkpred_ne,
+              ArithmeticFunction.vonMangoldt_apply_prime hp]
+          rw [htsum]
+          calc
+            (∑ m ∈ S, P n m) =
+                P n p + ∑ m ∈ (Finset.Icc 1 (k - 2)).image (fun j : ℕ => p ^ (k - j)), P n m := by
+              dsimp [S]
+              have hp_not_mem : p ∉ (Finset.Icc 1 (k - 2)).image (fun j : ℕ => p ^ (k - j)) := by
+                intro hpows
+                exact (Finset.disjoint_left.mp hdisj) (by simp) hpows
+              rw [Finset.sum_insert hp_not_mem]
+            _ = P n p + ∑ j ∈ Finset.Icc 1 (k - 2), P n (p ^ (k - j)) := by
+              rw [Finset.sum_image]
+              intro a ha b hb hab
+              exact hinj a (by simpa using ha) b (by simpa using hb) hab
+            _ = (ArithmeticFunction.vonMangoldt (p ^ (k - 1)) / Real.log (n : ℝ) + 1 / (k : ℝ)) +
+                ∑ j ∈ Finset.Icc 1 (k - 2),
+                  ArithmeticFunction.vonMangoldt (p ^ j) / Real.log (n : ℝ) := by
+              rw [hbase_value]
+              congr 1
+              apply Finset.sum_congr rfl
+              intro j hj
+              exact hstep_value j hj
+            _ = (Real.log (p : ℝ) / Real.log (n : ℝ) + 1 / (k : ℝ)) +
+                ((k - 2 : ℕ) : ℝ) * (Real.log (p : ℝ) / Real.log (n : ℝ)) := by
+              rw [hbase_von, hsum_steps]
+            _ = 1 := by
+              rw [hlogn]
+              have hk_cast : ((k - 2 : ℕ) : ℝ) = (k : ℝ) - 2 := by
+                norm_num [Nat.cast_sub hk_two]
+              rw [hk_cast]
+              field_simp [hlogp_pos.ne', hk_ne_zero]
+              ring
+        · have hn_ne_zero : n ≠ 0 := by omega
+          have hlog_pos : 0 < Real.log (n : ℝ) := by
+            apply Real.log_pos
+            have hn_gt_one : 1 < n := by omega
+            exact_mod_cast hn_gt_one
+          have hdiv_compl :
+              (∑ m ∈ n.divisors, ArithmeticFunction.vonMangoldt (n / m)) =
+                ∑ q ∈ n.divisors, ArithmeticFunction.vonMangoldt q := by
+            refine Finset.sum_bij' (fun m _ => n / m) (fun q _ => n / q) ?_ ?_ ?_ ?_ ?_
+            · intro m hm
+              have hmdvd : m ∣ n := (Nat.mem_divisors.mp hm).1
+              exact Nat.mem_divisors.mpr ⟨Nat.div_dvd_of_dvd hmdvd, hn_ne_zero⟩
+            · intro q hq
+              have hqdvd : q ∣ n := (Nat.mem_divisors.mp hq).1
+              exact Nat.mem_divisors.mpr ⟨Nat.div_dvd_of_dvd hqdvd, hn_ne_zero⟩
+            · intro m hm
+              have hmdvd : m ∣ n := (Nat.mem_divisors.mp hm).1
+              exact Nat.div_div_self hmdvd hn_ne_zero
+            · intro q hq
+              have hqdvd : q ∣ n := (Nat.mem_divisors.mp hq).1
+              exact Nat.div_div_self hqdvd hn_ne_zero
+            · intro m hm
+              rfl
+          calc
+            (∑' m : ℕ, P n m) = ∑ m ∈ n.divisors, P n m := by
+              refine tsum_eq_sum (s := n.divisors) ?_
+              intro m hm
+              have hmcond_false : ¬(m ∣ n ∧ m < n) := by
+                intro hcond
+                exact hm (Nat.mem_divisors.mpr ⟨hcond.1, hn_ne_zero⟩)
+              simp [P, hn_one, hn_prime, hnpp, hmcond_false]
+            _ = ∑ m ∈ n.divisors,
+                ArithmeticFunction.vonMangoldt (n / m) / Real.log (n : ℝ) := by
+              apply Finset.sum_congr rfl
+              intro m hm
+              have hmdvd : m ∣ n := (Nat.mem_divisors.mp hm).1
+              have hm_le : m ≤ n := Nat.le_of_dvd (Nat.pos_of_ne_zero hn_ne_zero) hmdvd
+              by_cases hlt : m < n
+              · have hmcond : m ∣ n ∧ m < n := ⟨hmdvd, hlt⟩
+                simp [P, hn_one, hn_prime, hnpp, hmcond]
+              · have hm_eq : m = n := by omega
+                subst m
+                have hmcond_false : ¬(n ∣ n ∧ n < n) := by omega
+                simp [P, hn_one, hn_prime, hnpp, hmcond_false, Nat.div_self (Nat.pos_of_ne_zero hn_ne_zero)]
+            _ = (1 / Real.log (n : ℝ)) *
+                (∑ m ∈ n.divisors, ArithmeticFunction.vonMangoldt (n / m)) := by
+              rw [Finset.mul_sum]
+              apply Finset.sum_congr rfl
+              intro m hm
+              ring
+            _ = (1 / Real.log (n : ℝ)) * Real.log (n : ℝ) := by
+              rw [hdiv_compl, von_mangoldt_divisor_sum]
+            _ = 1 := by
+              field_simp [hlog_pos.ne']
+  · simp [P]
+  · intro m hm
+    simp [P, hm]
+  · intro p hp
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    simp [P, hp, hp_prime.ne_one]
+  · intro p m hp hm
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    simp [P, hp, hp_prime.ne_one, hm]
+  · intro n m hn hPne
+    dsimp [P] at hPne
+    split_ifs at hPne with hn_one hm_one hn_prime hm_self hnpp hm_base hmstep hmdiv
+    · omega
+    · exact (hPne rfl).elim
+    · subst m
+      exact ⟨dvd_rfl, Or.inl ⟨rfl, hn_prime⟩⟩
+    · exact (hPne rfl).elim
+    · have hspec := pp_spec n hnpp
+      have hk_two : 2 ≤ ppExp n hnpp := pp_exp_two_of_not_prime hnpp hn_prime
+      have hdiv : ppBase n hnpp ∣ n := by
+        have hdiv_pow : ppBase n hnpp ∣ ppBase n hnpp ^ ppExp n hnpp := by
+          simpa [pow_one] using Nat.pow_dvd_pow (ppBase n hnpp) (by omega : 1 ≤ ppExp n hnpp)
+        simpa [hspec.2.2] using hdiv_pow
+      have hlt : ppBase n hnpp < n := by
+        have hlt_pow : ppBase n hnpp < ppBase n hnpp ^ ppExp n hnpp := by
+          simpa [pow_one] using Nat.pow_lt_pow_right hspec.1.one_lt (by omega : 1 < ppExp n hnpp)
+        simpa [hspec.2.2] using hlt_pow
+      rw [hm_base]
+      exact ⟨hdiv, Or.inr hlt⟩
+    · have hspec := pp_spec n hnpp
+      rcases hmstep with ⟨j, hj, hjle, hm_eq⟩
+      have hdiv : m ∣ n := by
+        have hdiv_pow : ppBase n hnpp ^ (ppExp n hnpp - j) ∣
+            ppBase n hnpp ^ ppExp n hnpp := by
+          exact Nat.pow_dvd_pow (ppBase n hnpp) (by omega : ppExp n hnpp - j ≤ ppExp n hnpp)
+        simpa [hm_eq, hspec.2.2] using hdiv_pow
+      have hlt : m < n := by
+        have hlt_pow : ppBase n hnpp ^ (ppExp n hnpp - j) <
+            ppBase n hnpp ^ ppExp n hnpp := by
+          exact Nat.pow_lt_pow_right hspec.1.one_lt (by omega : ppExp n hnpp - j < ppExp n hnpp)
+        simpa [hm_eq, hspec.2.2] using hlt_pow
+      exact ⟨hdiv, Or.inr hlt⟩
+    · exact (hPne rfl).elim
+    · exact ⟨hmdiv.1, Or.inr hmdiv.2⟩
+    · exact (hPne rfl).elim
+  · intro n q hn hnprime hnotpp hq hqdiv
+    have hn_ne_one : n ≠ 1 := by omega
+    have hnpp_false : ¬ IsPrimePow n := by
+      intro hnpp
+      rcases (isPrimePow_nat_iff n).mp hnpp with ⟨p, k, hp, hkpos, hpow⟩
+      by_cases hk_one : k = 1
+      · have hn_prime_nat : Nat.Prime n := by
+          rw [← hpow, hk_one, pow_one]
+          exact hp
+        exact hnprime (by simpa [prime_layer] using hn_prime_nat)
+      · have hk_two : 2 ≤ k := by omega
+        exact hnotpp p k (by simpa [prime_layer] using hp) hk_two (by rw [← hpow])
+    have hdiv : n / q ∣ n ∧ n / q < n := by
+      constructor
+      · exact Nat.div_dvd_of_dvd hqdiv
+      · have hqpos : 0 < q := by omega
+        rw [Nat.div_lt_iff_lt_mul hqpos]
+        have hnpos : 0 < n := by omega
+        simpa using Nat.mul_lt_mul_of_pos_left hq hnpos
+    have hq_eq : n / (n / q) = q := by
+      exact Nat.div_div_self hqdiv (by omega)
+    simp [P, hn_ne_one, hnprime, hnpp_false, hdiv, hq_eq]
+  · intro p k hp hk
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    have hne_one : p ^ k ≠ 1 := prime_power_ne_one hp (by omega)
+    have hnot_prime : p ^ k ∉ prime_layer := prime_power_not_prime hp hk
+    have hnpp : IsPrimePow (p ^ k) := by
+      rw [isPrimePow_nat_iff]
+      exact ⟨p, k, hp_prime, by omega, rfl⟩
+    have huniq := pp_unique hnpp hp_prime (by omega) rfl
+    have hk_ne_zero : k ≠ 0 := by omega
+    simp [P, hp_prime.ne_one, hk_ne_zero, hnot_prime, hnpp, huniq.1, huniq.2]
+  · intro p k j hp hk hj hjle
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    have hnot_prime : p ^ k ∉ prime_layer := prime_power_not_prime hp hk
+    have hnpp : IsPrimePow (p ^ k) := by
+      rw [isPrimePow_nat_iff]
+      exact ⟨p, k, hp_prime, by omega, rfl⟩
+    have huniq := pp_unique hnpp hp_prime (by omega) rfl
+    have hk_ne_zero : k ≠ 0 := by omega
+    have hnot_base : p ^ (k - j) ≠ p := by
+      intro hpow
+      have hexp : k - j = 1 := by
+        exact Nat.pow_right_injective hp_prime.two_le (by simpa [pow_one] using hpow)
+      omega
+    let hstep : ∃ j' : ℕ, 1 ≤ j' ∧ j' ≤ k - 2 ∧ p ^ (k - j) = p ^ (k - j') :=
+      ⟨j, hj, hjle, rfl⟩
+    have hchoose_eq : Classical.choose hstep = j := by
+      have hspec := Classical.choose_spec hstep
+      have hexp : k - j = k - Classical.choose hstep := by
+        exact Nat.pow_right_injective hp_prime.two_le hspec.2.2
+      omega
+    simp [P, hp_prime.ne_one, hk_ne_zero, hnot_prime, hnpp, huniq.1, huniq.2,
+      hnot_base, hstep, hchoose_eq]
+  · intro p k m hp hk hP
+    have hp_prime : Nat.Prime p := by
+      simpa [prime_layer] using hp
+    have hnot_prime : p ^ k ∉ prime_layer := prime_power_not_prime hp hk
+    have hnpp : IsPrimePow (p ^ k) := by
+      rw [isPrimePow_nat_iff]
+      exact ⟨p, k, hp_prime, by omega, rfl⟩
+    have huniq := pp_unique hnpp hp_prime (by omega) rfl
+    have hk_ne_zero : k ≠ 0 := by omega
+    by_cases hm_base : m = p
+    · exact Or.inl hm_base
+    · by_cases hmstep : ∃ j : ℕ, 1 ≤ j ∧ j ≤ k - 2 ∧ m = p ^ (k - j)
+      · exact Or.inr hmstep
+      · exfalso
+        have hzero : P (p ^ k) m = 0 := by
+          simp [P, hp_prime.ne_one, hk_ne_zero, hnot_prime, hnpp, huniq.1, huniq.2,
+            hm_base, hmstep]
+        exact hP hzero
+  · exact hsubinvInfinite
+  · exact hsubinvFinite
 
 @[blueprint "def:eps-adjoint-kernel-package"
   (statement := /-- Let $P$ be a fixed modified downward kernel.  This predicate
