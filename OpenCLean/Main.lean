@@ -9276,9 +9276,12 @@ lemma reciprocal_zeta_derivative_integral_one :
   simpa [f, f'] using hftc
 
 @[blueprint "lem:mangoldt-weight-reciprocal-zeta-integration-by-parts"
-  (statement := /-- For every integer $n\geq2$, improper integration by parts
-  on $(1,\infty)$ transforms the reciprocal-zeta derivative integral with
-  kernel $n^{-s}$ into the defining reciprocal-zeta Mangoldt-weight integral. -/)
+  (statement := /-- For every natural number $n$ with $2\leq n$, on the real
+  half-line $(1,\infty)$ one has
+  $$\int_1^\infty {\operatorname{deriv}_s\bigl((\operatorname{Re}\zeta(s))^{-1}\bigr)\over n^s}\,ds
+  = \int_1^\infty {\log n\over \operatorname{Re}\zeta(s)\,n^s}\,ds.$$
+  Here $\zeta(s)$ is evaluated on the real axis, and $n^s$ denotes the real
+  power. -/)
   (proof := /-- Apply the improper integration-by-parts theorem on
   $(1,\infty)$ with
   $u(s)=(\operatorname{Re}\zeta(s))^{-1}$ and $v(s)=n^{-s}$.
@@ -9297,7 +9300,71 @@ lemma mangoldt_weight_reciprocal_zeta_integration_by_parts
       ∫ s : ℝ in Set.Ioi (1 : ℝ),
         Real.log (n : ℝ) /
           (((riemannZeta (s : ℂ)).re) * Real.rpow (n : ℝ) s) := by
-  sorry_using [reciprocal_zeta_ibp_regularity]
+  rcases reciprocal_zeta_ibp_regularity with ⟨hu_deriv, _, hreg⟩
+  rcases hreg n hn with ⟨hv_deriv, huvDeriv_int, huDerivv_int, hzero_one, hzero_top⟩
+  let u : ℝ → ℝ := fun s => 1 / ((riemannZeta (s : ℂ)).re)
+  let v : ℝ → ℝ := fun s => 1 / Real.rpow (n : ℝ) s
+  let uDeriv : ℝ → ℝ := fun s => deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s
+  let vDeriv : ℝ → ℝ := fun s => -(Real.log (n : ℝ) / Real.rpow (n : ℝ) s)
+  have huDerivv_int' : MeasureTheory.IntegrableOn (fun s : ℝ => uDeriv s * v s)
+      (Set.Ioi (1 : ℝ)) := by
+    simpa [uDeriv, v] using huDerivv_int
+  have huvDeriv_int' : MeasureTheory.IntegrableOn (fun s : ℝ => u s * vDeriv s)
+      (Set.Ioi (1 : ℝ)) := by
+    simpa [u, vDeriv] using huvDeriv_int
+  have hsum_int : MeasureTheory.IntegrableOn (uDeriv * v + u * vDeriv)
+      (Set.Ioi (1 : ℝ)) := by
+    simpa [Pi.add_apply, Pi.mul_apply] using huDerivv_int'.add huvDeriv_int'
+  have hibp :
+      (∫ s : ℝ in Set.Ioi (1 : ℝ), uDeriv s * v s + u s * vDeriv s) = 0 := by
+    have h := MeasureTheory.integral_Ioi_deriv_mul_eq_sub
+      (a := (1 : ℝ)) (u := u) (u' := uDeriv) (v := v) (v' := vDeriv)
+      (a' := (0 : ℝ)) (b' := (0 : ℝ))
+      (hu := by
+        intro s hs
+        simpa [u, uDeriv] using hu_deriv s hs)
+      (hv := by
+        intro s hs
+        simpa [v, vDeriv] using hv_deriv s hs)
+      hsum_int
+      (by simpa [u, v, Pi.mul_apply] using hzero_one)
+      (by simpa [u, v, Pi.mul_apply] using hzero_top)
+    simpa using h
+  have hsum :
+      (∫ s : ℝ in Set.Ioi (1 : ℝ), uDeriv s * v s) +
+        (∫ s : ℝ in Set.Ioi (1 : ℝ), u s * vDeriv s) = 0 := by
+    have hadd := MeasureTheory.integral_add
+      (μ := MeasureTheory.volume.restrict (Set.Ioi (1 : ℝ)))
+      huDerivv_int' huvDeriv_int'
+    rw [← hadd]
+    exact hibp
+  have hright :
+      (∫ s : ℝ in Set.Ioi (1 : ℝ),
+        Real.log (n : ℝ) /
+          (((riemannZeta (s : ℂ)).re) * Real.rpow (n : ℝ) s)) =
+        - (∫ s : ℝ in Set.Ioi (1 : ℝ), u s * vDeriv s) := by
+    rw [← MeasureTheory.integral_neg]
+    apply MeasureTheory.setIntegral_congr_fun measurableSet_Ioi
+    intro s _hs
+    dsimp [u, vDeriv]
+    ring_nf
+  have hmain :
+      (∫ s : ℝ in Set.Ioi (1 : ℝ), uDeriv s * v s) =
+        ∫ s : ℝ in Set.Ioi (1 : ℝ),
+          Real.log (n : ℝ) /
+            (((riemannZeta (s : ℂ)).re) * Real.rpow (n : ℝ) s) := by
+    linarith
+  calc
+    (∫ s : ℝ in Set.Ioi (1 : ℝ),
+        deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s /
+          Real.rpow (n : ℝ) s)
+        = ∫ s : ℝ in Set.Ioi (1 : ℝ), uDeriv s * v s := by
+          apply MeasureTheory.setIntegral_congr_fun measurableSet_Ioi
+          intro s _hs
+          simp [uDeriv, v, div_eq_mul_inv]
+    _ = ∫ s : ℝ in Set.Ioi (1 : ℝ),
+          Real.log (n : ℝ) /
+            (((riemannZeta (s : ℂ)).re) * Real.rpow (n : ℝ) s) := hmain
 
 @[blueprint "lem:mangoldt-weight-reciprocal-zeta-endpoint-evaluation"
   (statement := /-- For every positive integer $n$, the reciprocal-zeta
