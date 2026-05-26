@@ -9646,8 +9646,8 @@ lemma mangoldt_adjoint_second_moment_bound_from_kernel_path_data {Ω : Type}
   process $p:\Omega\to(\mathbb N\to\mathbb N)$, if $P$ and $U$ satisfy the
   adjoint von Mangoldt kernel package
   \cref{def:mangoldt-adjoint-kernel-package} and $(U,\mu,p)$ satisfies the
-  Markov path-data predicate \cref{def:mangoldt-adjoint-kernel-path-data}, then $p$
-  satisfies the reverse-Fatou pathwise extraction principle
+  Markov path-data predicate \cref{def:mangoldt-adjoint-kernel-path-data}, then
+  the pair $(\mu,p)$ satisfies the reverse-Fatou pathwise extraction principle
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (proof := /-- Assume the kernel package
   \cref{def:mangoldt-adjoint-kernel-package} and the Markov path-data predicate
@@ -9664,7 +9664,8 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_from_kernel_path_data {Ω : Type
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_reverse_fatou_extraction_principle μ path := by
-  sorry
+  intro _ hpath
+  exact hpath.2.2.2.2.2.2.2.2
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data"
   (statement := /-- For every type $\Omega$ equipped with a measurable-space
