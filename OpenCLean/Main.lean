@@ -11855,27 +11855,963 @@ lemma mertens_prime_reciprocal :
       abs_add_le _ _
     _ ≤ C₂ + C₁ := add_le_add hbridge hmangoldt
 
+@[blueprint "lem:mangoldt-adjoint-erdos-weight-le-log-increment-local"
+  (statement := /-- For every natural number $n\ge2$, the Erd\H{o}s weight
+  $1/(n\log n)$ is bounded by the adjacent logarithmic increment
+  $(\log n-\log(n-1))/\log n$. -/)
+  (proof := /-- The inequality
+  $1/n\le \log(n/(n-1))$ follows from the elementary bound
+  $1-y^{-1}\le\log y$ applied to $y=n/(n-1)$.  Dividing by the positive
+  quantity $\log n$ and using
+  $\log(n/(n-1))=\log n-\log(n-1)$ gives the result after expanding
+  \cref{def:erdos-weight}. -/)
+  (title := /-- Erd\H{o}s weight is bounded by a log increment -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_erdos_weight_le_log_increment_local (n : ℕ) (hn : 2 ≤ n) :
+    erdos_weight n ≤
+      (Real.log (n : ℝ) - Real.log ((n - 1 : ℕ) : ℝ)) / Real.log (n : ℝ) := by
+  have hn_pos : 0 < (n : ℝ) := by
+    exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hn)
+  have hn_one : 1 < (n : ℝ) := by
+    exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hn)
+  have hn_sub_pos_nat : 0 < n - 1 := by omega
+  have hn_sub_pos : 0 < ((n - 1 : ℕ) : ℝ) := by exact_mod_cast hn_sub_pos_nat
+  have hlog_pos : 0 < Real.log (n : ℝ) := Real.log_pos hn_one
+  have hratio_pos : 0 < (n : ℝ) / ((n - 1 : ℕ) : ℝ) := div_pos hn_pos hn_sub_pos
+  have hlog_lower : 1 / (n : ℝ) ≤ Real.log ((n : ℝ) / ((n - 1 : ℕ) : ℝ)) := by
+    have hbase := Real.one_sub_inv_le_log_of_pos hratio_pos
+    have hleft : 1 - ((n : ℝ) / ((n - 1 : ℕ) : ℝ))⁻¹ = 1 / (n : ℝ) := by
+      have hsub_cast : ((n - 1 : ℕ) : ℝ) = (n : ℝ) - 1 := by
+        norm_num [Nat.cast_sub (by omega : 1 ≤ n)]
+      rw [hsub_cast]
+      field_simp [hn_pos.ne', sub_ne_zero.mpr (ne_of_gt hn_one)]
+      nlinarith
+    rw [hleft] at hbase
+    simpa [one_div] using hbase
+  have hlog_div : Real.log ((n : ℝ) / ((n - 1 : ℕ) : ℝ)) =
+      Real.log (n : ℝ) - Real.log ((n - 1 : ℕ) : ℝ) := by
+    rw [Real.log_div hn_pos.ne' hn_sub_pos.ne']
+  rw [erdos_weight]
+  calc
+    1 / ((n : ℝ) * Real.log (n : ℝ)) = (1 / (n : ℝ)) / Real.log (n : ℝ) := by ring
+    _ ≤ Real.log ((n : ℝ) / ((n - 1 : ℕ) : ℝ)) / Real.log (n : ℝ) := by
+      exact div_le_div_of_nonneg_right hlog_lower hlog_pos.le
+    _ = (Real.log (n : ℝ) - Real.log ((n - 1 : ℕ) : ℝ)) / Real.log (n : ℝ) := by
+      rw [hlog_div]
+
+@[blueprint "lem:mangoldt-adjoint-erdos-weight-natural-terminal-sum-bound-local"
+  (statement := /-- There is a non-negative constant $K$ such that, for every
+  natural cutoff $N\ge2$, the sum of the Erd\H{o}s weights over
+  $2\le n\le N$ is at most $K+\log\log N$. -/)
+  (proof := /-- Each summand is bounded by the adjacent logarithmic increment
+  by \cref{lem:mangoldt-adjoint-erdos-weight-le-log-increment-local}.  The sum
+  of those increments is the elementary main term controlled by
+  \cref{lem:mangoldt-log-reciprocal-main-term-bound}; the absolute-value bound
+  gives the required one-sided estimate. -/)
+  (title := /-- Natural terminal Erd\H{o}s sum bound -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_erdos_weight_natural_terminal_sum_bound_local :
+    ∃ K : ℝ, 0 ≤ K ∧ ∀ N : ℕ, 2 ≤ N ->
+      (∑ n ∈ Finset.Ico 2 (N + 1), erdos_weight n) ≤
+        K + Real.log (Real.log (N : ℝ)) := by
+  obtain ⟨K, hK_nonneg, hK⟩ := mangoldt_log_reciprocal_main_term_bound
+  refine ⟨K, hK_nonneg, ?_⟩
+  intro N hN
+  let main : ℕ → ℝ := fun q =>
+    (Real.log (q : ℝ) - Real.log ((q - 1 : ℕ) : ℝ)) / Real.log (q : ℝ)
+  have hsum_le : (∑ n ∈ Finset.Ico 2 (N + 1), erdos_weight n) ≤
+      ∑ q ∈ Finset.Ico 2 (N + 1), main q := by
+    refine Finset.sum_le_sum ?_
+    intro n hn
+    exact mangoldt_adjoint_erdos_weight_le_log_increment_local n (Finset.mem_Ico.mp hn).1
+  have hmain_bound := hK N hN
+  have hmain_le : (∑ q ∈ Finset.Ico 2 (N + 1), main q) ≤
+      K + Real.log (Real.log (N : ℝ)) := by
+    have hle_abs :
+        (∑ q ∈ Finset.Ico 2 (N + 1), main q) - Real.log (Real.log (N : ℝ)) ≤
+          |(∑ q ∈ Finset.Ico 2 (N + 1), main q) - Real.log (Real.log (N : ℝ))| :=
+      le_abs_self _
+    linarith
+  exact hsum_le.trans hmain_le
+
+@[blueprint "lem:mangoldt-adjoint-card-factors-le-prime-power-divisor-count-local"
+  (statement := /-- If $2\le n\le N$, then $\Omega(n)$ is bounded by the
+  number of pairs $(p,j)$ with $p$ prime, $2\le p\le N$, $1\le j\le N$, and
+  $p^j\mid n$. -/)
+  (proof := /-- Expand $\Omega(n)$ as the sum of the exponents in the prime
+  factorization using the Mathlib identity for `ArithmeticFunction.cardFactors`.
+  For a prime $p$ in the support of the factorization, the exponent is the
+  number of integers $1\le j\le v_p(n)$, and each such $j$ satisfies
+  $p^j\mid n$.  The crude bound $v_p(n)<n\le N$ embeds these indices into
+  $1\le j\le N$, and enlarging the prime support to all primes at most $N$
+  only adds non-negative terms. -/)
+  (title := /-- Prime-power divisor count dominates $\Omega$ -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_card_factors_le_prime_power_divisor_count_local
+    (n N : ℕ) (hn_two : 2 ≤ n) (hnN : n ≤ N) :
+    ArithmeticFunction.cardFactors n ≤
+      ∑ p ∈ Finset.Ico 2 (N + 1),
+        if Nat.Prime p then
+          ∑ j ∈ Finset.Icc 1 N, if p ^ j ∣ n then 1 else 0
+        else 0 := by
+  classical
+  have hn_ne : n ≠ 0 := by omega
+  rw [ArithmeticFunction.cardFactors_eq_sum_factorization]
+  change n.factorization.sum (fun p k => k) ≤
+      ∑ p ∈ Finset.Ico 2 (N + 1),
+        if Nat.Prime p then
+          ∑ j ∈ Finset.Icc 1 N, if p ^ j ∣ n then 1 else 0
+        else 0
+  calc
+    n.factorization.sum (fun p k => k) =
+        ∑ p ∈ n.factorization.support, n.factorization p := by rfl
+    _ ≤ ∑ p ∈ n.factorization.support,
+        (if Nat.Prime p then
+          ∑ j ∈ Finset.Icc 1 N, if p ^ j ∣ n then 1 else 0
+        else 0) := by
+        refine Finset.sum_le_sum ?_
+        intro p hp
+        have hp_mem_primeFactors : p ∈ n.primeFactors := by simpa using hp
+        have hp_prime : Nat.Prime p := (Nat.mem_primeFactors.mp hp_mem_primeFactors).1
+        have hp_exp_le_N : n.factorization p ≤ N := by
+          exact (le_of_lt (Nat.factorization_lt p hn_ne)).trans hnN
+        rw [if_pos hp_prime]
+        calc
+          n.factorization p = ∑ j ∈ Finset.Icc 1 (n.factorization p), 1 := by
+            simp
+          _ ≤ ∑ j ∈ Finset.Icc 1 N, if p ^ j ∣ n then 1 else 0 := by
+            have hleft_eq : (∑ j ∈ Finset.Icc 1 (n.factorization p), 1) =
+                ∑ j ∈ Finset.Icc 1 (n.factorization p), if p ^ j ∣ n then 1 else 0 := by
+              refine Finset.sum_congr rfl ?_
+              intro j hj
+              have hj_le : j ≤ n.factorization p := (Finset.mem_Icc.mp hj).2
+              have hdvd : p ^ j ∣ n := (hp_prime.pow_dvd_iff_le_factorization hn_ne).mpr hj_le
+              simp [hdvd]
+            rw [hleft_eq]
+            refine Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_
+            · intro j hj
+              exact Finset.mem_Icc.mpr ⟨(Finset.mem_Icc.mp hj).1,
+                (Finset.mem_Icc.mp hj).2.trans hp_exp_le_N⟩
+            · intro j hjN hjnot
+              by_cases hdvd : p ^ j ∣ n <;> simp [hdvd]
+    _ ≤ ∑ p ∈ Finset.Ico 2 (N + 1),
+        (if Nat.Prime p then
+          ∑ j ∈ Finset.Icc 1 N, if p ^ j ∣ n then 1 else 0
+        else 0) := by
+        refine Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_
+        · intro p hp
+          have hp_mem_primeFactors : p ∈ n.primeFactors := by simpa using hp
+          have hpdvd : p ∣ n := (Nat.mem_primeFactors.mp hp_mem_primeFactors).2.1
+          have hp_prime : Nat.Prime p := (Nat.mem_primeFactors.mp hp_mem_primeFactors).1
+          have hp_two : 2 ≤ p := hp_prime.two_le
+          have hp_le_n : p ≤ n := Nat.le_of_dvd (by omega) hpdvd
+          exact Finset.mem_Ico.mpr ⟨hp_two, Nat.lt_succ_iff.mpr (hp_le_n.trans hnN)⟩
+        · intro p hpI hpnot
+          by_cases hp_prime : Nat.Prime p
+          · simp [hp_prime]
+          · simp [hp_prime]
+
+@[blueprint "lem:mangoldt-adjoint-erdos-weight-mul-le-local"
+  (statement := /-- If $q\ge2$ and $m\ge1$, then
+  $\nu_0(qm)$ is bounded by $q^{-1}\nu_0(m)$ for $m\ge2$, while for
+  $m=1$ it is bounded by $q^{-1}/\log2$. -/)
+  (proof := /-- Expand \cref{def:erdos-weight}.  For $m=1$, monotonicity of
+  the logarithm gives $\log2\le\log q$.  For $m\ge2$, one has
+  $\log m\le\log(qm)$, and division by the positive denominators gives the
+  asserted inequality. -/)
+  (title := /-- Erd\H{o}s weight under multiplication -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_erdos_weight_mul_le_local (q m : ℕ) (hq : 2 ≤ q) (hm : 1 ≤ m) :
+    erdos_weight (q * m) ≤
+      (1 / (q : ℝ)) * (if m = 1 then 1 / Real.log (2 : ℝ) else erdos_weight m) := by
+  have hq_pos : 0 < (q : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hq)
+  have hq_one : 1 < (q : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hq)
+  have hm_pos : 0 < (m : ℝ) := by exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_one hm)
+  have hqm_pos : 0 < ((q * m : ℕ) : ℝ) := by positivity
+  have hqm_one : 1 < ((q * m : ℕ) : ℝ) := by
+    have hqm_two : 2 ≤ q * m := Nat.mul_le_mul hq hm
+    exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hqm_two)
+  have hlogqm_pos : 0 < Real.log ((q * m : ℕ) : ℝ) := Real.log_pos hqm_one
+  by_cases hm_one : m = 1
+  · subst m
+    have hlog2_pos : 0 < Real.log (2 : ℝ) := Real.log_pos (by norm_num)
+    have hlog2_le : Real.log (2 : ℝ) ≤ Real.log (q : ℝ) := by
+      exact Real.log_le_log (by norm_num) (by exact_mod_cast hq : (2 : ℝ) ≤ q)
+    rw [erdos_weight]
+    simp [Nat.cast_mul]
+    have hinv_log_le : (Real.log (q : ℝ))⁻¹ ≤ (Real.log (2 : ℝ))⁻¹ := by
+      simpa [one_div] using one_div_le_one_div_of_le hlog2_pos hlog2_le
+    calc
+      (Real.log (q : ℝ))⁻¹ * (q : ℝ)⁻¹ ≤
+          (Real.log (2 : ℝ))⁻¹ * (q : ℝ)⁻¹ := by
+        exact mul_le_mul_of_nonneg_right hinv_log_le (inv_nonneg.mpr hq_pos.le)
+      _ = (q : ℝ)⁻¹ * (Real.log (2 : ℝ))⁻¹ := by ring
+  · have hm_two : 2 ≤ m := by omega
+    have hm_one_real : 1 < (m : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hm_two)
+    have hlogm_pos : 0 < Real.log (m : ℝ) := Real.log_pos hm_one_real
+    have hm_le_qm_nat : m ≤ q * m := by
+      simpa [one_mul] using Nat.mul_le_mul_right m (by omega : 1 ≤ q)
+    have hm_le_qm : (m : ℝ) ≤ ((q * m : ℕ) : ℝ) := by exact_mod_cast hm_le_qm_nat
+    have hlogm_le : Real.log (m : ℝ) ≤ Real.log ((q * m : ℕ) : ℝ) :=
+      Real.log_le_log hm_pos hm_le_qm
+    rw [erdos_weight]
+    simp [hm_one]
+    rw [erdos_weight]
+    simp [Nat.cast_mul]
+    have hinv_log_le : (Real.log ((q : ℝ) * (m : ℝ)))⁻¹ ≤ (Real.log (m : ℝ))⁻¹ := by
+      have hlogqm_eq : Real.log ((q : ℝ) * (m : ℝ)) = Real.log ((q * m : ℕ) : ℝ) := by
+        simp [Nat.cast_mul]
+      rw [hlogqm_eq]
+      simpa [one_div] using one_div_le_one_div_of_le hlogm_pos hlogm_le
+    have hcoef_nonneg : 0 ≤ (m : ℝ)⁻¹ * (q : ℝ)⁻¹ := by positivity
+    calc
+      (Real.log ((q : ℝ) * (m : ℝ)))⁻¹ * ((m : ℝ)⁻¹ * (q : ℝ)⁻¹) ≤
+          (Real.log (m : ℝ))⁻¹ * ((m : ℝ)⁻¹ * (q : ℝ)⁻¹) := by
+        exact mul_le_mul_of_nonneg_right hinv_log_le hcoef_nonneg
+      _ = (q : ℝ)⁻¹ * ((Real.log (m : ℝ))⁻¹ * (m : ℝ)⁻¹) := by ring
+
+@[blueprint "lem:mangoldt-adjoint-erdos-weight-multiples-sum-le-local"
+  (statement := /-- For $q\ge2$, the Erd\H{o}s-weight sum over multiples of
+  $q$ up to a natural cutoff $N$ is bounded by $q^{-1}$ times the sum of a
+  fixed $m=1$ contribution and the Erd\H{o}s-weight sum up to $N$. -/)
+  (proof := /-- Filter the finite interval to multiples of $q$ and reindex it
+  by the quotient $m=n/q$.  The maps $n\mapsto n/q$ and $m\mapsto qm$ are
+  inverse on the filtered finite sets.  The pointwise estimate
+  \cref{lem:mangoldt-adjoint-erdos-weight-mul-le-local} then bounds each
+  reindexed term, and enlarging the quotient set to $1\le m\le N$ adds only
+  non-negative terms. -/)
+  (title := /-- Erd\H{o}s weight over multiples -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_erdos_weight_multiples_sum_le_local (q N : ℕ) (hq : 2 ≤ q) :
+    (∑ n ∈ Finset.Ico 2 (N + 1), if q ∣ n then erdos_weight n else 0) ≤
+      (1 / (q : ℝ)) *
+        (1 / Real.log (2 : ℝ) + ∑ m ∈ Finset.Ico 2 (N + 1), erdos_weight m) := by
+  classical
+  let S : Finset ℕ := (Finset.Ico 2 (N + 1)).filter (fun n => q ∣ n)
+  let T : Finset ℕ := (Finset.Icc 1 N).filter (fun m => q * m ∈ Finset.Ico 2 (N + 1))
+  have hleft : (∑ n ∈ Finset.Ico 2 (N + 1), if q ∣ n then erdos_weight n else 0) =
+      ∑ n ∈ S, erdos_weight n := by
+    dsimp [S]
+    rw [← Finset.sum_filter]
+  have hbij : (∑ n ∈ S, erdos_weight n) = ∑ m ∈ T, erdos_weight (q * m) := by
+    refine Finset.sum_bij' (fun n _ => n / q) (fun m _ => q * m) ?_ ?_ ?_ ?_ ?_
+    · intro n hn
+      dsimp [S, T] at hn ⊢
+      simp only [Finset.mem_filter] at hn ⊢
+      rcases hn with ⟨hnI, hdvd⟩
+      rcases Finset.mem_Ico.mp hnI with ⟨hn_two, hn_lt⟩
+      have hq_pos_nat : 0 < q := by omega
+      have hq_le_n : q ≤ n := Nat.le_of_dvd (by omega) hdvd
+      have hdiv_pos : 1 ≤ n / q := Nat.div_pos hq_le_n hq_pos_nat
+      constructor
+      · exact Finset.mem_Icc.mpr ⟨hdiv_pos, (Nat.div_le_self n q).trans (Nat.le_of_lt_succ hn_lt)⟩
+      · have hmul : q * (n / q) = n := by
+          rw [mul_comm]
+          exact Nat.div_mul_cancel hdvd
+        simpa [hmul] using hnI
+    · intro m hm
+      dsimp [S, T] at hm ⊢
+      simp only [Finset.mem_filter] at hm ⊢
+      exact ⟨hm.2, dvd_mul_right q m⟩
+    · intro n hn
+      dsimp [S] at hn
+      simp only [Finset.mem_filter] at hn
+      have hdvd : q ∣ n := hn.2
+      simpa [mul_comm] using Nat.div_mul_cancel hdvd
+    · intro m hm
+      have hq_pos_nat : 0 < q := by omega
+      exact Nat.mul_div_right m hq_pos_nat
+    · intro n hn
+      dsimp [S] at hn
+      simp only [Finset.mem_filter] at hn
+      have hdvd : q ∣ n := hn.2
+      have hmul : q * (n / q) = n := by simpa [mul_comm] using Nat.div_mul_cancel hdvd
+      simp [hmul]
+  have hpoint : ∀ m ∈ T,
+      erdos_weight (q * m) ≤
+        (1 / (q : ℝ)) * (if m = 1 then 1 / Real.log (2 : ℝ) else erdos_weight m) := by
+    intro m hm
+    dsimp [T] at hm
+    have hm_one : 1 ≤ m := (Finset.mem_Icc.mp (Finset.mem_filter.mp hm).1).1
+    exact mangoldt_adjoint_erdos_weight_mul_le_local q m hq hm_one
+  have hT_le : (∑ m ∈ T, erdos_weight (q * m)) ≤
+      ∑ m ∈ T, (1 / (q : ℝ)) * (if m = 1 then 1 / Real.log (2 : ℝ) else erdos_weight m) := by
+    exact Finset.sum_le_sum hpoint
+  have hT_subset : T ⊆ Finset.Icc 1 N := by
+    intro m hm
+    exact (Finset.mem_filter.mp hm).1
+  have hnonneg_extra : ∀ m ∈ Finset.Icc 1 N, m ∉ T ->
+      0 ≤ (1 / (q : ℝ)) * (if m = 1 then 1 / Real.log (2 : ℝ) else erdos_weight m) := by
+    intro m hm hmnot
+    apply mul_nonneg
+    · positivity
+    · by_cases hm1 : m = 1
+      · rw [if_pos hm1]
+        exact div_nonneg zero_le_one (le_of_lt (Real.log_pos (by norm_num : (1 : ℝ) < 2)))
+      · have hm_two : 2 ≤ m := by
+          have hm_ge_one : 1 ≤ m := (Finset.mem_Icc.mp hm).1
+          omega
+        simp [hm1, erdos_weight]
+        positivity
+  have hT_enlarge : (∑ m ∈ T,
+      (1 / (q : ℝ)) * (if m = 1 then 1 / Real.log (2 : ℝ) else erdos_weight m)) ≤
+      ∑ m ∈ Finset.Icc 1 N,
+        (1 / (q : ℝ)) * (if m = 1 then 1 / Real.log (2 : ℝ) else erdos_weight m) := by
+    exact Finset.sum_le_sum_of_subset_of_nonneg hT_subset hnonneg_extra
+  have hIcc_bound : (∑ m ∈ Finset.Icc 1 N,
+        (1 / (q : ℝ)) * (if m = 1 then 1 / Real.log (2 : ℝ) else erdos_weight m)) ≤
+      (1 / (q : ℝ)) *
+        (1 / Real.log (2 : ℝ) + ∑ m ∈ Finset.Ico 2 (N + 1), erdos_weight m) := by
+    rw [← Finset.mul_sum]
+    apply mul_le_mul_of_nonneg_left ?_ (by positivity)
+    calc
+      (∑ m ∈ Finset.Icc 1 N, if m = 1 then 1 / Real.log (2 : ℝ) else erdos_weight m) ≤
+          (if 1 ∈ Finset.Icc 1 N then 1 / Real.log (2 : ℝ) else 0) +
+            ∑ m ∈ (Finset.Icc 1 N).erase 1, erdos_weight m := by
+        by_cases hmem : 1 ∈ Finset.Icc 1 N
+        · have hsum_erase :
+              (∑ m ∈ (Finset.Icc 1 N).erase 1,
+                if m = 1 then 1 / Real.log (2 : ℝ) else erdos_weight m) =
+              ∑ m ∈ (Finset.Icc 1 N).erase 1, erdos_weight m := by
+            refine Finset.sum_congr rfl ?_
+            intro m hm
+            have hm_ne : m ≠ 1 := Finset.ne_of_mem_erase hm
+            simp [hm_ne]
+          rw [← Finset.sum_erase_add _ _ hmem, hsum_erase]
+          simp [hmem]
+          rw [add_comm (∑ x ∈ Finset.Ioc 1 N, erdos_weight x) ((Real.log 2)⁻¹)]
+        · have herase : (Finset.Icc 1 N).erase 1 = Finset.Icc 1 N := by
+            exact Finset.erase_eq_of_notMem hmem
+          have hempty : Finset.Icc 1 N = ∅ := by
+            ext m
+            simp [Finset.mem_Icc] at hmem ⊢
+            omega
+          simp [hmem, herase, hempty]
+      _ ≤ 1 / Real.log (2 : ℝ) + ∑ m ∈ Finset.Ico 2 (N + 1), erdos_weight m := by
+        apply add_le_add
+        · by_cases hmem : 1 ∈ Finset.Icc 1 N
+          · simp [hmem]
+          · simp [hmem]
+            positivity
+        · refine Finset.sum_le_sum_of_subset_of_nonneg ?_ ?_
+          · intro m hm
+            have hmIcc := Finset.mem_of_mem_erase hm
+            have hm_ne : m ≠ 1 := Finset.ne_of_mem_erase hm
+            rcases Finset.mem_Icc.mp hmIcc with ⟨hm_ge_one, hm_le_N⟩
+            have hm_two : 2 ≤ m := by omega
+            exact Finset.mem_Ico.mpr ⟨hm_two, Nat.lt_succ_iff.mpr hm_le_N⟩
+          · intro m hmIco hmnot
+            rw [erdos_weight]
+            positivity
+  rw [hleft, hbij]
+  exact (hT_le.trans hT_enlarge).trans hIcc_bound
+
+@[blueprint "lem:mangoldt-adjoint-prime-power-reciprocal-sum-le-prime-sum-local"
+  (statement := /-- For every natural cutoff $N$, the finite sum of
+  $p^{-j}$ over primes $p\le N$ and exponents $1\le j\le N$ is at most twice
+  the reciprocal prime sum up to $N$. -/)
+  (proof := /-- For each prime $p\ge2$, the finite geometric sum
+  $\sum_{j=1}^N p^{-j}$ is bounded by the infinite geometric majorant
+  $(1/p)/(1-1/p)$, which is at most $2/p$.  Summing this pointwise estimate
+  over primes up to $N$ and identifying the resulting finite sum with the
+  unconditional sum over \cref{def:prime-layer,def:real-initial-segment} gives
+  the result. -/)
+  (title := /-- Prime-power reciprocals are bounded by prime reciprocals -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_prime_power_reciprocal_sum_le_prime_sum_local (N : ℕ) :
+    (∑ p ∈ Finset.Ico 2 (N + 1),
+        if Nat.Prime p then ∑ j ∈ Finset.Icc 1 N, ((1 : ℝ) / (p : ℝ)) ^ j else 0) ≤
+      2 * (∑' p : ℕ,
+        (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+          (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) := by
+  classical
+  have hprime_finite :
+      (∑' p : ℕ,
+        (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+          (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) =
+        ∑ p ∈ Finset.Ico 2 (N + 1), if Nat.Prime p then (1 : ℝ) / (p : ℝ) else 0 := by
+    rw [tsum_eq_sum (s := Finset.Ico 2 (N + 1))]
+    · refine Finset.sum_congr rfl ?_
+      intro p hpI
+      rcases Finset.mem_Ico.mp hpI with ⟨hp_two, hp_lt⟩
+      have hp_one : 1 ≤ p := by omega
+      have hp_le_N : p ≤ N := Nat.lt_succ_iff.mp hp_lt
+      have hp_le_N_real : (p : ℝ) ≤ (N : ℝ) := by exact_mod_cast hp_le_N
+      by_cases hp_prime : Nat.Prime p
+      · have hpseg : p ∈ prime_layer ∩ real_initial_segment (N : ℝ) :=
+          ⟨hp_prime, hp_one, hp_le_N_real⟩
+        simp [Set.indicator_of_mem hpseg, hp_prime]
+      · have hpnotseg : p ∉ prime_layer ∩ real_initial_segment (N : ℝ) := by
+          intro h
+          exact hp_prime h.1
+        simp [Set.indicator_of_notMem hpnotseg, hp_prime]
+    · intro p hpnot
+      by_cases hpseg : p ∈ prime_layer ∩ real_initial_segment (N : ℝ)
+      · have hp_prime : Nat.Prime p := hpseg.1
+        have hp_two : 2 ≤ p := hp_prime.two_le
+        have hp_le_N : p ≤ N := by exact_mod_cast hpseg.2.2
+        exact False.elim (hpnot (Finset.mem_Ico.mpr ⟨hp_two, Nat.lt_succ_iff.mpr hp_le_N⟩))
+      · simp [Set.indicator_of_notMem hpseg]
+  have hpoint : ∀ p ∈ Finset.Ico 2 (N + 1),
+      (if Nat.Prime p then ∑ j ∈ Finset.Icc 1 N, ((1 : ℝ) / (p : ℝ)) ^ j else 0) ≤
+        2 * (if Nat.Prime p then (1 : ℝ) / (p : ℝ) else 0) := by
+    intro p hpI
+    by_cases hp_prime : Nat.Prime p
+    · have hp_two : 2 ≤ p := hp_prime.two_le
+      have hp_pos : 0 < (p : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hp_two)
+      have hp_ge_two : (2 : ℝ) ≤ (p : ℝ) := by exact_mod_cast hp_two
+      have hbase_nonneg : 0 ≤ (1 : ℝ) / (p : ℝ) := by positivity
+      have hbase_lt_one : (1 : ℝ) / (p : ℝ) < 1 := by
+        rw [div_lt_one₀ hp_pos]
+        exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hp_two)
+      have hIcc_eq :
+          (∑ j ∈ Finset.Icc 1 N, ((1 : ℝ) / (p : ℝ)) ^ j) =
+            ∑ j ∈ Finset.Ico 1 (N + 1), ((1 : ℝ) / (p : ℝ)) ^ j := by
+        refine Finset.sum_congr ?_ ?_
+        · ext j
+          simp [Finset.mem_Icc, Finset.mem_Ico]
+        · intro j hj
+          rfl
+      have hgeom := geom_sum_Ico_le_of_lt_one (m := 1) (n := N + 1) hbase_nonneg hbase_lt_one
+      have hgeom' :
+          (∑ j ∈ Finset.Icc 1 N, ((1 : ℝ) / (p : ℝ)) ^ j) ≤
+            ((1 : ℝ) / (p : ℝ)) / (1 - (1 : ℝ) / (p : ℝ)) := by
+        simpa [hIcc_eq] using hgeom
+      have hmajor : ((1 : ℝ) / (p : ℝ)) / (1 - (1 : ℝ) / (p : ℝ)) ≤
+          2 * ((1 : ℝ) / (p : ℝ)) := by
+        have hp_minus_pos : 0 < (p : ℝ) - 1 := by linarith
+        have hden_pos : 0 < 1 - (1 : ℝ) / (p : ℝ) := by
+          rw [sub_pos]
+          exact hbase_lt_one
+        field_simp [hp_pos.ne', hden_pos.ne', hp_minus_pos.ne']
+        nlinarith
+      simpa [hp_prime] using hgeom'.trans hmajor
+    · simp [hp_prime]
+  calc
+    (∑ p ∈ Finset.Ico 2 (N + 1),
+        if Nat.Prime p then ∑ j ∈ Finset.Icc 1 N, ((1 : ℝ) / (p : ℝ)) ^ j else 0) ≤
+        ∑ p ∈ Finset.Ico 2 (N + 1), 2 * (if Nat.Prime p then (1 : ℝ) / (p : ℝ) else 0) := by
+      exact Finset.sum_le_sum hpoint
+    _ = 2 * (∑ p ∈ Finset.Ico 2 (N + 1), if Nat.Prime p then (1 : ℝ) / (p : ℝ) else 0) := by
+      rw [Finset.mul_sum]
+    _ = 2 * (∑' p : ℕ,
+        (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+          (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) := by
+      rw [hprime_finite]
+
+@[blueprint "lem:mangoldt-adjoint-card-factors-erdos-natural-product-bound-local"
+  (statement := /-- At every natural cutoff $N$, the terminal Erd\H{o}s sum
+  weighted by $\Omega(n)+1$ is bounded by four times the product of the
+  Erd\H{o}s terminal sum with the reciprocal prime sum, with the harmless
+  $1/\log2$ contribution for quotient $m=1$. -/)
+  (proof := /-- For $n\ge2$, the inequality $1\le\Omega(n)$ gives
+  $\Omega(n)+1\le2\Omega(n)$.  The local prime-power divisor count
+  \cref{lem:mangoldt-adjoint-card-factors-le-prime-power-divisor-count-local}
+  expands $\Omega(n)$ into pairs $(p,j)$ with $p^j\mid n$.  Interchanging the
+  finite sums, the contribution for each $p^j$ is bounded by
+  \cref{lem:mangoldt-adjoint-erdos-weight-multiples-sum-le-local}.  Finally
+  \cref{lem:mangoldt-adjoint-prime-power-reciprocal-sum-le-prime-sum-local}
+  bounds the prime-power reciprocal factor by twice the prime reciprocal sum. -/)
+  (title := /-- Natural divisor-weighted Erd\H{o}s product bound -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_card_factors_erdos_natural_product_bound_local (N : ℕ) :
+    (∑ n ∈ Finset.Ico 2 (N + 1),
+        ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n)) ≤
+      4 *
+        (1 / Real.log (2 : ℝ) + ∑ m ∈ Finset.Ico 2 (N + 1), erdos_weight m) *
+          (∑' p : ℕ,
+            (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+              (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) := by
+  classical
+  let I : Finset ℕ := Finset.Ico 2 (N + 1)
+  let J : Finset ℕ := Finset.Icc 1 N
+  let E : ℝ := 1 / Real.log (2 : ℝ) + ∑ m ∈ I, erdos_weight m
+  let P : ℝ := ∑' p : ℕ,
+    (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+      (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p
+  have hE_nonneg : 0 ≤ E := by
+    dsimp [E, I]
+    apply add_nonneg
+    · positivity
+    · refine Finset.sum_nonneg ?_
+      intro m hm
+      rw [erdos_weight]
+      positivity
+  have hpoint : ∀ n ∈ I,
+      ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n) ≤
+        2 * (∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then erdos_weight n else 0 else 0) := by
+    intro n hnI
+    rcases Finset.mem_Ico.mp hnI with ⟨hn_two, hn_lt⟩
+    have hn_le_N : n ≤ N := Nat.lt_succ_iff.mp hn_lt
+    have homega_pos : 1 ≤ ArithmeticFunction.cardFactors n := by
+      exact Nat.succ_le_of_lt (ArithmeticFunction.cardFactors_pos_iff_one_lt.mpr (by omega : 1 < n))
+    have hcoeff_le_nat : ArithmeticFunction.cardFactors n + 1 ≤ 2 * ArithmeticFunction.cardFactors n := by
+      nlinarith
+    have hcount := mangoldt_adjoint_card_factors_le_prime_power_divisor_count_local n N hn_two hn_le_N
+    have herd_nonneg : 0 ≤ erdos_weight n := by
+      rw [erdos_weight]
+      positivity
+    have hcoeff_le : ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ)) ≤
+        2 * (∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then 1 else 0 else 0 : ℕ) := by
+      have hcount2 : ArithmeticFunction.cardFactors n + 1 ≤
+          2 * (∑ p ∈ I,
+            if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then 1 else 0 else 0 : ℕ) := by
+        exact hcoeff_le_nat.trans (Nat.mul_le_mul_left 2 hcount)
+      exact_mod_cast hcount2
+    calc
+      ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n) ≤
+          (2 * (∑ p ∈ I,
+            if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then 1 else 0 else 0 : ℕ) : ℝ) *
+            erdos_weight n := by
+        exact mul_le_mul_of_nonneg_right hcoeff_le herd_nonneg
+      _ = 2 * (∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then erdos_weight n else 0 else 0) := by
+        have hcast_mul :
+            ((∑ p ∈ I,
+              if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then 1 else 0 else 0 : ℕ) : ℝ) *
+              erdos_weight n =
+            ∑ p ∈ I, if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then erdos_weight n else 0 else 0 := by
+          rw [Nat.cast_sum, Finset.sum_mul]
+          refine Finset.sum_congr rfl ?_
+          intro p hp
+          by_cases hp_prime : Nat.Prime p
+          · rw [if_pos hp_prime]
+            rw [if_pos hp_prime]
+            conv_rhs => rw [← Finset.sum_filter]
+            rw [Finset.sum_const]
+            simp [nsmul_eq_mul]
+          · simp [hp_prime]
+        calc
+          (2 * (∑ p ∈ I,
+            if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then 1 else 0 else 0 : ℕ) : ℝ) *
+              erdos_weight n =
+              2 * (((∑ p ∈ I,
+                if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then 1 else 0 else 0 : ℕ) : ℝ) *
+                  erdos_weight n) := by ring
+          _ = 2 * (∑ p ∈ I,
+              if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then erdos_weight n else 0 else 0) := by
+            rw [hcast_mul]
+  have hsum_point :
+      (∑ n ∈ I,
+        ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n)) ≤
+        ∑ n ∈ I, 2 * (∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then erdos_weight n else 0 else 0) := by
+    exact Finset.sum_le_sum hpoint
+  have hcomm :
+      (∑ n ∈ I, ∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then erdos_weight n else 0 else 0) =
+        ∑ p ∈ I, if Nat.Prime p then
+          ∑ j ∈ J, ∑ n ∈ I, if p ^ j ∣ n then erdos_weight n else 0
+        else 0 := by
+    rw [Finset.sum_comm]
+    refine Finset.sum_congr rfl ?_
+    intro p hp
+    by_cases hp_prime : Nat.Prime p
+    · simp [hp_prime]
+      rw [Finset.sum_comm]
+    · simp [hp_prime]
+  have hinner :
+      (∑ p ∈ I, if Nat.Prime p then
+          ∑ j ∈ J, ∑ n ∈ I, if p ^ j ∣ n then erdos_weight n else 0
+        else 0) ≤
+        E * (∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, ((1 : ℝ) / (p : ℝ)) ^ j else 0) := by
+    calc
+      (∑ p ∈ I, if Nat.Prime p then
+          ∑ j ∈ J, ∑ n ∈ I, if p ^ j ∣ n then erdos_weight n else 0
+        else 0) ≤
+          ∑ p ∈ I, if Nat.Prime p then ∑ j ∈ J, ((1 : ℝ) / (p : ℝ)) ^ j * E else 0 := by
+        refine Finset.sum_le_sum ?_
+        intro p hpI
+        by_cases hp_prime : Nat.Prime p
+        · rw [if_pos hp_prime, if_pos hp_prime]
+          refine Finset.sum_le_sum ?_
+          intro j hjJ
+          rcases Finset.mem_Icc.mp hjJ with ⟨hj_one, hj_le_N⟩
+          have hp_two : 2 ≤ p := hp_prime.two_le
+          have hq_two : 2 ≤ p ^ j := by
+            have hj_ne : j ≠ 0 := by omega
+            have hp_pow_ge : p ≤ p ^ j := Nat.le_self_pow hj_ne p
+            exact hp_two.trans hp_pow_ge
+          have hmult := mangoldt_adjoint_erdos_weight_multiples_sum_le_local (p ^ j) N hq_two
+          have hpow_eq : (1 / ((p ^ j : ℕ) : ℝ)) = ((1 : ℝ) / (p : ℝ)) ^ j := by
+            rw [Nat.cast_pow]
+            simp [one_div, inv_pow]
+          dsimp [E, I] at hmult ⊢
+          simpa [hpow_eq, mul_comm, mul_left_comm, mul_assoc] using hmult
+        · simp [hp_prime]
+      _ = E * (∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, ((1 : ℝ) / (p : ℝ)) ^ j else 0) := by
+        rw [Finset.mul_sum]
+        refine Finset.sum_congr rfl ?_
+        intro p hp
+        by_cases hp_prime : Nat.Prime p
+        · simp [hp_prime, Finset.mul_sum, mul_comm, mul_left_comm, mul_assoc]
+        · simp [hp_prime]
+  have hpp := mangoldt_adjoint_prime_power_reciprocal_sum_le_prime_sum_local N
+  calc
+    (∑ n ∈ I,
+        ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n)) ≤
+        ∑ n ∈ I, 2 * (∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then erdos_weight n else 0 else 0) := hsum_point
+    _ = 2 * (∑ n ∈ I, ∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, if p ^ j ∣ n then erdos_weight n else 0 else 0) := by
+      rw [Finset.mul_sum]
+    _ = 2 * (∑ p ∈ I, if Nat.Prime p then
+          ∑ j ∈ J, ∑ n ∈ I, if p ^ j ∣ n then erdos_weight n else 0
+        else 0) := by
+      rw [hcomm]
+    _ ≤ 2 * (E * (∑ p ∈ I,
+          if Nat.Prime p then ∑ j ∈ J, ((1 : ℝ) / (p : ℝ)) ^ j else 0)) := by
+      exact mul_le_mul_of_nonneg_left hinner (by norm_num)
+    _ ≤ 2 * (E * (2 * P)) := by
+      dsimp [P]
+      exact mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left hpp hE_nonneg) (by norm_num)
+    _ = 4 * E * P := by ring
+
+@[blueprint "lem:mangoldt-adjoint-card-factors-erdos-real-terminal-sum-bound-local"
+  (statement := /-- The terminal sum over a real initial segment with weight
+  $(\Omega(n)+1)\nu_0(n)$ is eventually bounded by a non-negative constant
+  times $(\log\log x)^2$. -/)
+  (proof := /-- Put $N=\lfloor x\rfloor$.  The real initial segment sum is the
+  natural finite sum over $2\le n\le N$, because the $n=1$ Erd\H{o}s weight is
+  zero.  Apply
+  \cref{lem:mangoldt-adjoint-card-factors-erdos-natural-product-bound-local}.
+  The Erd\H{o}s factor is bounded by
+  \cref{lem:mangoldt-adjoint-erdos-weight-natural-terminal-sum-bound-local},
+  and the prime reciprocal factor by \cref{lem:mertens-prime-reciprocal}; for
+  sufficiently large $x$, both additive constants are absorbed into multiples
+  of $\log\log x$. -/)
+  (title := /-- Real divisor-weighted Erd\H{o}s terminal sum bound -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_card_factors_erdos_real_terminal_sum_bound_local :
+    ∃ K : ℝ, 0 ≤ K ∧ ∀ᶠ x in Filter.atTop,
+      (∑' n : ℕ,
+        (real_initial_segment x).indicator
+          (fun n : ℕ => ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n)) n) ≤
+        K * (Real.log (Real.log x)) ^ 2 := by
+  obtain ⟨B, hB_nonneg, hB⟩ := mangoldt_adjoint_erdos_weight_natural_terminal_sum_bound_local
+  obtain ⟨C, hC_nonneg, hC⟩ := mertens_prime_reciprocal
+  let A : ℝ := 1 / Real.log (2 : ℝ) + B
+  let K : ℝ := 4 * (A + 1) * (C + 1)
+  refine ⟨K, ?_, ?_⟩
+  · dsimp [K, A]
+    positivity
+  have hloglog : Filter.Tendsto (fun x : ℝ => Real.log (Real.log x)) Filter.atTop Filter.atTop :=
+    Real.tendsto_log_atTop.comp Real.tendsto_log_atTop
+  filter_upwards [Filter.eventually_ge_atTop (3 : ℝ), hloglog.eventually_ge_atTop (1 : ℝ)] with x hx hll
+  let N : ℕ := ⌊x⌋₊
+  have hx_nonneg : 0 ≤ x := by linarith
+  have hN_two : 2 ≤ N := by
+    simpa [N] using Nat.le_floor (by linarith : (2 : ℝ) ≤ x)
+  have hN_le_x : (N : ℝ) ≤ x := by
+    simpa [N] using Nat.floor_le hx_nonneg
+  have hsum_eq :
+      (∑' n : ℕ,
+        (real_initial_segment x).indicator
+          (fun n : ℕ => ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n)) n) =
+        ∑ n ∈ Finset.Ico 2 (N + 1),
+          ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n) := by
+    rw [tsum_eq_sum (s := Finset.Ico 2 (N + 1))]
+    · refine Finset.sum_congr rfl ?_
+      intro n hn
+      rcases Finset.mem_Ico.mp hn with ⟨hn_two, hn_lt⟩
+      have hn_one : 1 ≤ n := by omega
+      have hn_le_N : n ≤ N := Nat.lt_succ_iff.mp hn_lt
+      have hn_le_x : (n : ℝ) ≤ x := by
+        have hn_le_N_real : (n : ℝ) ≤ (N : ℝ) := by exact_mod_cast hn_le_N
+        exact hn_le_N_real.trans hN_le_x
+      simp [real_initial_segment, hn_one, hn_le_x]
+    · intro n hn
+      by_cases hseg : n ∈ real_initial_segment x
+      · by_cases hn_two : 2 ≤ n
+        · have hn_le_N : n ≤ N := Nat.le_floor hseg.2
+          exfalso
+          exact hn (Finset.mem_Ico.mpr ⟨hn_two, Nat.lt_succ_iff.mpr hn_le_N⟩)
+        · have hn_cases : n = 0 ∨ n = 1 := by omega
+          rcases hn_cases with rfl | rfl
+          · simp [real_initial_segment] at hseg
+          · simp [erdos_weight]
+      · simp [Set.indicator_of_notMem hseg]
+  have hloglog_mono : Real.log (Real.log (N : ℝ)) ≤ Real.log (Real.log x) := by
+    have hN_pos : 0 < (N : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hN_two)
+    have hN_one : 1 < (N : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hN_two)
+    have hlogN_pos : 0 < Real.log (N : ℝ) := Real.log_pos hN_one
+    have hlog_le : Real.log (N : ℝ) ≤ Real.log x := Real.log_le_log hN_pos hN_le_x
+    exact Real.log_le_log hlogN_pos hlog_le
+  have hE_nat := hB N hN_two
+  have hprime_abs := hC (N : ℝ) (by exact_mod_cast hN_two : (2 : ℝ) ≤ N)
+  have hprime_le :
+      (∑' p : ℕ,
+        (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+          (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) ≤ C + Real.log (Real.log (N : ℝ)) := by
+    have hdiff_le :
+        (∑' p : ℕ,
+          (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+            (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) - Real.log (Real.log (N : ℝ)) ≤ C := by
+      exact (le_abs_self _).trans hprime_abs
+    linarith
+  have hprod := mangoldt_adjoint_card_factors_erdos_natural_product_bound_local N
+  have hE_bound :
+      1 / Real.log (2 : ℝ) + ∑ m ∈ Finset.Ico 2 (N + 1), erdos_weight m ≤
+        A + Real.log (Real.log x) := by
+    dsimp [A]
+    linarith
+  have hP_bound :
+      (∑' p : ℕ,
+        (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+          (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) ≤ C + Real.log (Real.log x) := by
+    linarith
+  have hE_nonneg : 0 ≤ 1 / Real.log (2 : ℝ) + ∑ m ∈ Finset.Ico 2 (N + 1), erdos_weight m := by
+    apply add_nonneg
+    · positivity
+    · refine Finset.sum_nonneg ?_
+      intro m hm
+      rw [erdos_weight]
+      positivity
+  have hP_nonneg : 0 ≤ (∑' p : ℕ,
+        (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+          (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) := by
+    apply tsum_nonneg
+    intro p
+    by_cases hp : p ∈ prime_layer ∩ real_initial_segment (N : ℝ)
+    · have hp_pos : 0 < (p : ℝ) := by
+        exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hp.1.two_le)
+      simp [Set.indicator_of_mem hp, le_of_lt hp_pos]
+    · simp [Set.indicator_of_notMem hp]
+  calc
+    (∑' n : ℕ,
+        (real_initial_segment x).indicator
+          (fun n : ℕ => ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n)) n) =
+        ∑ n ∈ Finset.Ico 2 (N + 1),
+          ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n) := hsum_eq
+    _ ≤ 4 *
+        (1 / Real.log (2 : ℝ) + ∑ m ∈ Finset.Ico 2 (N + 1), erdos_weight m) *
+          (∑' p : ℕ,
+            (prime_layer ∩ real_initial_segment (N : ℝ)).indicator
+              (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) := hprod
+    _ ≤ 4 * (A + Real.log (Real.log x)) * (C + Real.log (Real.log x)) := by
+      nlinarith [hE_bound, hP_bound, hE_nonneg, hP_nonneg]
+    _ ≤ K * (Real.log (Real.log x)) ^ 2 := by
+      dsimp [K]
+      have hA_nonneg : 0 ≤ A := by
+        dsimp [A]
+        positivity
+      let L : ℝ := Real.log (Real.log x)
+      have hL : 1 ≤ L := by simpa [L] using hll
+      have hA_fac : A + L ≤ (A + 1) * L := by nlinarith [hA_nonneg, hL]
+      have hC_fac : C + L ≤ (C + 1) * L := by nlinarith [hC_nonneg, hL]
+      have hCL_nonneg : 0 ≤ C + L := by nlinarith [hC_nonneg, hL]
+      calc
+        4 * (A + Real.log (Real.log x)) * (C + Real.log (Real.log x)) =
+            4 * (A + L) * (C + L) := by simp [L]
+        _ ≤ 4 * ((A + 1) * L) * ((C + 1) * L) := by
+          have hmul : (A + L) * (C + L) ≤ ((A + 1) * L) * ((C + 1) * L) := by
+            exact mul_le_mul hA_fac hC_fac hCL_nonneg (by nlinarith [hA_nonneg, hL])
+          nlinarith
+        _ = 4 * (A + 1) * (C + 1) * L ^ 2 := by ring
+        _ = 4 * (A + 1) * (C + 1) * Real.log (Real.log x) ^ 2 := by simp [L]
+
+@[blueprint "lem:mangoldt-adjoint-mangoldt-positive-part-le-erdos-local"
+  (statement := /-- The positive part of the invariant von Mangoldt weight is
+  bounded, for all $n\ge2$, by a fixed non-negative multiple of the
+  Erd\H{o}s weight. -/)
+  (proof := /-- The pointwise comparison
+  \cref{lem:mangoldt-weight-erdos-pointwise-error-bound} gives
+  $|\nu_\Lambda(n)-\nu_0(n)|\le C/(n(\log n)^2)$.  Since
+  $\log n\ge\log2$ for $n\ge2$, this error is at most
+  $(C/\log2)\nu_0(n)$.  Thus $\nu_\Lambda(n)$, and hence its positive part,
+  is bounded by $(1+C/\log2)\nu_0(n)$. -/)
+  (title := /-- Positive Mangoldt weight is dominated by Erd\H{o}s weight -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_mangoldt_positive_part_le_erdos_local :
+    ∃ M : ℝ, 0 ≤ M ∧ ∀ n : ℕ, 2 ≤ n ->
+      max (mangoldt_weight n) 0 ≤ M * erdos_weight n := by
+  obtain ⟨C, hC_nonneg, hC⟩ := mangoldt_weight_erdos_pointwise_error_bound
+  let M : ℝ := 1 + C / Real.log (2 : ℝ)
+  refine ⟨M, ?_, ?_⟩
+  · dsimp [M]
+    positivity
+  intro n hn
+  have hn_pos : 0 < (n : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 0 < 2) hn)
+  have hn_one : 1 < (n : ℝ) := by exact_mod_cast (lt_of_lt_of_le (by norm_num : 1 < 2) hn)
+  have hlog_pos : 0 < Real.log (n : ℝ) := Real.log_pos hn_one
+  have hlog2_pos : 0 < Real.log (2 : ℝ) := Real.log_pos (by norm_num)
+  have hlog2_le : Real.log (2 : ℝ) ≤ Real.log (n : ℝ) := by
+    exact Real.log_le_log (by norm_num) (by exact_mod_cast hn : (2 : ℝ) ≤ n)
+  have herd_nonneg : 0 ≤ erdos_weight n := by
+    rw [erdos_weight]
+    positivity
+  have herr := hC n hn
+  have herr_scaled : C * (1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2)) ≤
+      (C / Real.log (2 : ℝ)) * erdos_weight n := by
+    rw [erdos_weight]
+    have hden_pos : 0 < (n : ℝ) * Real.log (n : ℝ) ^ 2 :=
+      mul_pos hn_pos (pow_pos hlog_pos 2)
+    have htarget_nonneg : 0 ≤ C / Real.log (2 : ℝ) := div_nonneg hC_nonneg hlog2_pos.le
+    calc
+      C * (1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2)) =
+          (C / Real.log (n : ℝ)) * (1 / ((n : ℝ) * Real.log (n : ℝ))) := by
+        field_simp [hn_pos.ne', hlog_pos.ne']
+      _ ≤ (C / Real.log (2 : ℝ)) * (1 / ((n : ℝ) * Real.log (n : ℝ))) := by
+        have hcoef : C / Real.log (n : ℝ) ≤ C / Real.log (2 : ℝ) := by
+          exact div_le_div_of_nonneg_left hC_nonneg hlog2_pos hlog2_le
+        exact mul_le_mul_of_nonneg_right hcoef (by positivity)
+  have hmw_le : mangoldt_weight n ≤ M * erdos_weight n := by
+    have hdiff_le : mangoldt_weight n - erdos_weight n ≤
+        C * (1 / ((n : ℝ) * (Real.log (n : ℝ)) ^ 2)) :=
+      (le_abs_self _).trans herr
+    dsimp [M]
+    nlinarith
+  have hMerdos_nonneg : 0 ≤ M * erdos_weight n := mul_nonneg (by dsimp [M]; positivity) herd_nonneg
+  exact max_le hmw_le hMerdos_nonneg
+
+@[blueprint "lem:mangoldt-adjoint-terminal-sum-le-one-add-erdos-local"
+  (statement := /-- If the positive part of $\nu_\Lambda$ is bounded by
+  $M\nu_0$ for all $n\ge2$, then every subset terminal Mangoldt-positive sum
+  is bounded by $1$ plus $M$ times the corresponding Erd\H{o}s divisor-weighted
+  terminal sum over the full initial segment. -/)
+  (proof := /-- The summands are non-negative, so removing the subset $A$ can
+  only increase the sum.  For $n\ge2$, the assumed pointwise domination bounds
+  the Mangoldt-positive summand by $M$ times the Erd\H{o}s summand.  The only
+  remaining point of the real initial segment is $n=1$, where the Mangoldt
+  summand is exactly $1$ and the Erd\H{o}s weight is zero.  Since all supports
+  are finite initial segments, the pointwise comparison may be summed by
+  `tsum`. -/)
+  (title := /-- Terminal Mangoldt sum comparison with Erd\H{o}s sum -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_terminal_sum_le_one_add_erdos_local (M : ℝ) (hM_nonneg : 0 ≤ M)
+    (hM : ∀ n : ℕ, 2 ≤ n -> max (mangoldt_weight n) 0 ≤ M * erdos_weight n)
+    (A : Set ℕ) (x : ℝ) :
+    (∑' n : ℕ,
+      (A ∩ real_initial_segment x).indicator
+        (fun n : ℕ =>
+          ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+            max (mangoldt_weight n) 0)) n) ≤
+      1 + M * (∑' n : ℕ,
+        (real_initial_segment x).indicator
+          (fun n : ℕ => ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n)) n) := by
+  classical
+  let S : Set ℕ := A ∩ real_initial_segment x
+  let f : ℕ → ℝ := fun n => S.indicator
+    (fun n : ℕ => ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+      max (mangoldt_weight n) 0)) n
+  let e : ℕ → ℝ := fun n => (real_initial_segment x).indicator
+    (fun n : ℕ => ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n)) n
+  let single : ℕ → ℝ := fun n => if n = 1 then 1 else 0
+  let g : ℕ → ℝ := fun n => single n + M * e n
+  have hSfinite : S.Finite := by
+    exact (((Set.finite_le_nat ⌊x⌋₊).subset (by
+      intro n hn
+      exact Nat.le_floor hn.2)).inter_of_right A)
+  have hsegfinite : (real_initial_segment x).Finite := by
+    exact (Set.finite_le_nat ⌊x⌋₊).subset (by
+      intro n hn
+      exact Nat.le_floor hn.2)
+  have hf_summ : Summable f := by
+    refine summable_of_ne_finset_zero (s := hSfinite.toFinset) ?_
+    intro n hn
+    have hnS : n ∉ S := fun hmem => hn (hSfinite.mem_toFinset.mpr hmem)
+    simp [f, Set.indicator_of_notMem hnS]
+  have he_summ : Summable e := by
+    refine summable_of_ne_finset_zero (s := hsegfinite.toFinset) ?_
+    intro n hn
+    have hnseg : n ∉ real_initial_segment x := fun hmem => hn (hsegfinite.mem_toFinset.mpr hmem)
+    simp [e, Set.indicator_of_notMem hnseg]
+  have hsingle_summ : Summable single := by
+    refine summable_of_ne_finset_zero (s := ({1} : Finset ℕ)) ?_
+    intro n hn
+    have hn_ne : n ≠ 1 := by
+      intro h
+      apply hn
+      simp [h]
+    simp [single, hn_ne]
+  have hg_summ : Summable g := by
+    exact hsingle_summ.add (he_summ.mul_left M)
+  have he_nonneg_all : ∀ n : ℕ, 0 ≤ e n := by
+    intro n
+    by_cases hnseg : n ∈ real_initial_segment x
+    · have hcoeff_nonneg : 0 ≤ ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ)) := by
+        exact_mod_cast Nat.zero_le (ArithmeticFunction.cardFactors n + 1)
+      have herd_nonneg : 0 ≤ erdos_weight n := by
+        rw [erdos_weight]
+        positivity
+      simpa [e, Set.indicator_of_mem hnseg, Nat.cast_add, Nat.cast_one] using
+        mul_nonneg hcoeff_nonneg herd_nonneg
+    · simp [e, Set.indicator_of_notMem hnseg]
+  have hfg : ∀ n : ℕ, f n ≤ g n := by
+    intro n
+    by_cases hnS : n ∈ S
+    · have hnseg : n ∈ real_initial_segment x := hnS.2
+      by_cases hn_one : n = 1
+      · subst n
+        simp [f, g, single, e, S, hnS, hnseg, erdos_weight, mangoldt_weight]
+      · have hn_two : 2 ≤ n := by
+          have hn_ge_one : 1 ≤ n := hnseg.1
+          omega
+        have hcoeff_nonneg : 0 ≤ ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ)) := by
+          exact_mod_cast Nat.zero_le (ArithmeticFunction.cardFactors n + 1)
+        have hdom := hM n hn_two
+        have herd_nonneg : 0 ≤ erdos_weight n := by
+          rw [erdos_weight]
+          positivity
+        have hterm :
+            ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * max (mangoldt_weight n) 0) ≤
+              M * ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n) := by
+          calc
+            ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * max (mangoldt_weight n) 0) ≤
+                (((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * (M * erdos_weight n) := by
+              exact mul_le_mul_of_nonneg_left hdom hcoeff_nonneg
+            _ = M * ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n) := by ring
+        simp [f, g, single, e, S, hnS, hnseg, hn_one]
+        simpa [Nat.cast_add, Nat.cast_one] using hterm
+    · have hf_zero : f n = 0 := by
+        simp [f, Set.indicator_of_notMem hnS]
+      have hg_nonneg : 0 ≤ g n := by
+        by_cases hn_one : n = 1
+        · have hnonneg := add_nonneg zero_le_one (mul_nonneg hM_nonneg (he_nonneg_all 1))
+          simpa [g, single, hn_one] using hnonneg
+        · have he_nonneg : 0 ≤ e n := by
+            exact he_nonneg_all n
+          simp [g, single, hn_one, mul_nonneg hM_nonneg he_nonneg]
+      rw [hf_zero]
+      exact hg_nonneg
+  have hle := Summable.tsum_le_tsum hfg hf_summ hg_summ
+  have hsingle_tsum : (∑' n : ℕ, single n) = 1 := by
+    rw [tsum_eq_sum (s := ({1} : Finset ℕ))]
+    · simp [single]
+    · intro n hn
+      have hn_ne : n ≠ 1 := by
+        intro h
+        apply hn
+        simp [h]
+      simp [single, hn_ne]
+  have hg_tsum : (∑' n : ℕ, g n) = 1 + M * (∑' n : ℕ, e n) := by
+    dsimp [g]
+    rw [hsingle_summ.tsum_add (he_summ.mul_left M), hsingle_tsum]
+    rw [tsum_mul_left]
+  change (∑' n : ℕ, f n) ≤ 1 + M * (∑' n : ℕ, e n)
+  rwa [hg_tsum] at hle
+
 @[blueprint "lem:mangoldt-adjoint-card-factors-weighted-terminal-sum-bound"
-  (statement := /-- For every set $A\subseteq\mathbb N$, the terminal sum over
+  (statement := /-- For every set $A\subseteq\mathbb N$, there is a constant
+  $K\ge0$ such that, for all sufficiently large real $x$, the terminal sum over
   $A\cap[1,x]$ in which $n$ is weighted by
-  $(\Omega(n)+1)\max(\nu_\Lambda(n),0)$ is eventually bounded by a constant
-  multiple of $(\log\log x)^2$. -/)
-  (proof := /-- It is enough to prove the estimate with $A$ replaced by all of
-  $\mathbb N$, since the summands are non-negative.  By
-  \cref{lem:mangoldt-weight-erdos-pointwise-error-bound}, after enlarging the
-  constant and absorbing the finitely many exceptional values of $n$, the
-  positive part of $\nu_\Lambda(n)$ is dominated by a fixed multiple of the
-  Erd\H{o}s weight $\nu_0(n)$ from \cref{def:erdos-weight}.  The term coming
-  from the added $1$ in $\Omega(n)+1$ contributes $O(\log\log x)$ by the
-  integral comparison for $\sum_{n\le x}1/(n\log n)$.  For the $\Omega(n)$
-  part, expand $\Omega(n)$ as the number of prime-power divisors of $n$ and
-  interchange the non-negative sums.  For each prime power $p^j$, writing
-  $n=p^j m$ and expanding \cref{def:erdos-weight} gives
-  $\nu_0(p^j m)\le p^{-j}\nu_0(m)$.  Thus the contribution of this prime power
-  is at most $p^{-j}\sum_{m\le x}\nu_0(m)$, hence at most
-  $O(p^{-j}\log\log x)$.  Summing first in $j\ge1$ and then over primes
-  $p\le x$ gives $O((\log\log x)^2)$ by
-  \cref{lem:mertens-prime-reciprocal}. -/)
+  $(\Omega(n)+1)\max(\nu_\Lambda(n),0)$ is at most
+  $K(\log\log x)^2$. -/)
+  (proof := /-- By
+  \cref{lem:mangoldt-adjoint-mangoldt-positive-part-le-erdos-local}, the
+  positive part of $\nu_\Lambda(n)$ is bounded for all $n\ge2$ by a fixed
+  non-negative multiple $M\nu_0(n)$.  The comparison
+  \cref{lem:mangoldt-adjoint-terminal-sum-le-one-add-erdos-local} therefore
+  bounds the terminal Mangoldt-positive sum for any $A$ by $1$ plus $M$ times
+  the full terminal sum weighted by $(\Omega(n)+1)\nu_0(n)$.  The latter is
+  eventually bounded by a non-negative constant times $(\log\log x)^2$ by
+  \cref{lem:mangoldt-adjoint-card-factors-erdos-real-terminal-sum-bound-local}.
+  Since $\log\log x\to\infty$, the remaining additive constant $1$ is absorbed
+  into the same square-logarithmic scale. -/)
   (title := /-- Terminal divisor-weighted Mangoldt sum bound -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_card_factors_weighted_terminal_sum_bound :
@@ -11886,8 +12822,31 @@ lemma mangoldt_adjoint_card_factors_weighted_terminal_sum_bound :
             ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
               max (mangoldt_weight n) 0)) n) ≤
         K * (Real.log (Real.log x)) ^ 2 := by
-  sorry_using [mertens_prime_reciprocal,
-    mangoldt_weight_erdos_pointwise_error_bound]
+  obtain ⟨M, hM_nonneg, hM⟩ := mangoldt_adjoint_mangoldt_positive_part_le_erdos_local
+  obtain ⟨K, hK_nonneg, hK⟩ :=
+    mangoldt_adjoint_card_factors_erdos_real_terminal_sum_bound_local
+  intro A
+  refine ⟨1 + M * K, by positivity, ?_⟩
+  have hloglog : Filter.Tendsto (fun x : ℝ => Real.log (Real.log x)) Filter.atTop Filter.atTop :=
+    Real.tendsto_log_atTop.comp Real.tendsto_log_atTop
+  filter_upwards [hK, hloglog.eventually_ge_atTop (1 : ℝ)] with x hE hll
+  have hcompare := mangoldt_adjoint_terminal_sum_le_one_add_erdos_local M hM_nonneg hM A x
+  let L : ℝ := Real.log (Real.log x)
+  calc
+    (∑' n : ℕ,
+        (A ∩ real_initial_segment x).indicator
+          (fun n : ℕ =>
+            ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+              max (mangoldt_weight n) 0)) n) ≤
+        1 + M * (∑' n : ℕ,
+          (real_initial_segment x).indicator
+            (fun n : ℕ => ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) * erdos_weight n)) n) := hcompare
+    _ ≤ 1 + M * (K * L ^ 2) := by
+      dsimp [L] at hE ⊢
+      nlinarith
+    _ ≤ (1 + M * K) * L ^ 2 := by
+      have hLsq : 1 ≤ L ^ 2 := by nlinarith
+      nlinarith
 
 @[blueprint "lem:mangoldt-adjoint-second-moment-bound-from-two-point-divisor-bound"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
