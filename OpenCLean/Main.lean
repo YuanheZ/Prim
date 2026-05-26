@@ -11010,17 +11010,23 @@ lemma mangoldt_log_reciprocal_partial_summation :
   real $t\ge2$, the reciprocal sum over primes up to $t$ differs from the
   logarithmically weighted reciprocal von Mangoldt partial sum
   \cref{def:mangoldt-log-reciprocal-partial-sum} by at most $C$. -/)
-  (proof := /-- By \cref{def:prime-layer,def:real-initial-segment}, the prime
-  reciprocal sum is $\sum_{p\le t}1/p$.  Splitting the von Mangoldt sum in
-  \cref{def:mangoldt-log-reciprocal-partial-sum} according to the support of
-  $\Lambda$, the terms with $q=p$ are exactly $1/p$ because
-  $\Lambda(p)=\log p$.  The remaining terms have $q=p^k$ with $k\ge2$ and
-  contribute $1/(k p^k)$ in absolute value.  The double series
-  $\sum_p\sum_{k\ge2}1/(k p^k)$ is bounded by
-  $\sum_{n\ge2}\sum_{k\ge2}n^{-k}$, hence converges to an absolute constant.
-  Truncating at $q\le t$ can only decrease this non-negative prime-power
-  contribution, so the difference between the two partial sums is uniformly
-  bounded. -/)
+  (proof := /-- Define weights $w(n)=1/n$ when $n$ is prime and $w(n)=0$
+  otherwise, and $v(n)=\Lambda(n)/(n\log n)$ when $n\ge2$ and $v(n)=0$
+  otherwise.  The Mathlib summability theorem for the non-prime part of
+  $\Lambda(n)/n$ in the residue class modulo $1$, together with
+  $\log n\ge\log2$ for $n\ge2$, shows that the function $B(n)$ equal to
+  $\Lambda(n)/(n\log n)$ for non-prime $n\ge2$ and equal to $0$ otherwise is
+  summable.  For prime $n$, the identity $\Lambda(n)=\log n$ gives
+  $w(n)=v(n)$; for non-prime $n\ge2$, one has $w(n)=0$ and
+  $|w(n)-v(n)|=B(n)$; and for $n<2$ both weights vanish.  Hence
+  $\sum_n |w(n)-v(n)|=\sum_n B(n)$ is finite.  Applying
+  \cref{lem:summable-error-limsup-transfer-truncated-error-bound} to the set
+  $\mathbb N$ and the weights $w$ and $v$ bounds the difference of the two
+  real-initial-segment truncations by this summable error.  Finally,
+  \cref{def:prime-layer,def:real-initial-segment} identify the first
+  truncation with the reciprocal prime sum, while
+  \cref{def:mangoldt-log-reciprocal-partial-sum} identifies the second with
+  the logarithmically weighted von Mangoldt partial sum. -/)
   (title := /-- Prime reciprocals from the logarithmic von Mangoldt sum -/)
   (latexEnv := "lemma")]
 lemma prime_reciprocal_mangoldt_log_bridge :
@@ -11029,7 +11035,143 @@ lemma prime_reciprocal_mangoldt_log_bridge :
           (prime_layer ∩ real_initial_segment t).indicator
             (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) -
         mangoldt_log_reciprocal_partial_sum t| ≤ C := by
-  sorry
+  classical
+  have h := (ArithmeticFunction.vonMangoldt.summable_residueClass_non_primes_div
+    (a := (0 : ZMod 1)))
+  have hnonprime : Summable (fun n : ℕ =>
+      (if Nat.Prime n then 0 else ArithmeticFunction.vonMangoldt n) / (n : ℝ)) := by
+    simpa [ArithmeticFunction.vonMangoldt.residueClass, ZMod.natCast_eq_zero_iff] using h
+  have hB : Summable (fun n : ℕ =>
+      if 2 ≤ n ∧ ¬ Nat.Prime n then
+        ArithmeticFunction.vonMangoldt n / ((n : ℝ) * Real.log (n : ℝ))
+      else 0) := by
+    refine Summable.of_nonneg_of_le ?_ ?_
+      ((hnonprime.mul_left ((Real.log (2 : ℝ))⁻¹)))
+    · intro n
+      split_ifs with hn
+      · exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg
+          (mul_nonneg (by positivity)
+            (Real.log_nonneg (by exact_mod_cast (show 1 ≤ n by omega) : (1 : ℝ) ≤ n)))
+      · norm_num
+    · intro n
+      by_cases hn : 2 ≤ n ∧ ¬ Nat.Prime n
+      · simp [hn]
+        have hn2 : 2 ≤ n := hn.1
+        have hnp : ¬ Nat.Prime n := hn.2
+        have hn_pos : 0 < (n : ℝ) := by positivity
+        have hlog2_pos : 0 < Real.log (2 : ℝ) := Real.log_pos (by norm_num)
+        have hlogn_pos : 0 < Real.log (n : ℝ) := by
+          exact Real.log_pos (by exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hn2) : (1 : ℝ) < n)
+        have hlog2_le : Real.log (2 : ℝ) ≤ Real.log (n : ℝ) := by
+          exact Real.log_le_log (by norm_num) (by exact_mod_cast hn2 : (2 : ℝ) ≤ n)
+        calc
+          ArithmeticFunction.vonMangoldt n / ((n : ℝ) * Real.log (n : ℝ))
+              = (1 / Real.log (n : ℝ)) *
+                  (ArithmeticFunction.vonMangoldt n / (n : ℝ)) := by
+                field_simp [hn_pos.ne', hlogn_pos.ne']
+          _ ≤ (Real.log (2 : ℝ))⁻¹ *
+                (ArithmeticFunction.vonMangoldt n / (n : ℝ)) := by
+                have hcoef : (Real.log (n : ℝ))⁻¹ ≤ (Real.log (2 : ℝ))⁻¹ := by
+                  simpa [one_div] using one_div_le_one_div_of_le hlog2_pos hlog2_le
+                have hbase : 0 ≤ ArithmeticFunction.vonMangoldt n / (n : ℝ) := by
+                  exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg hn_pos.le
+                simpa [one_div] using mul_le_mul_of_nonneg_right hcoef hbase
+      · simp [hn]
+        apply mul_nonneg
+        · exact inv_nonneg.mpr (Real.log_pos (by norm_num : (1 : ℝ) < 2)).le
+        · by_cases hp : Nat.Prime n
+          · simp [hp]
+          · simp [hp, div_nonneg ArithmeticFunction.vonMangoldt_nonneg (by positivity : 0 ≤ (n : ℝ))]
+  let w : ℕ → ℝ := fun n => if Nat.Prime n then (1 : ℝ) / (n : ℝ) else 0
+  let v : ℕ → ℝ := fun n =>
+    if 2 ≤ n then ArithmeticFunction.vonMangoldt n / ((n : ℝ) * Real.log (n : ℝ)) else 0
+  let B : ℕ → ℝ := fun n =>
+    if 2 ≤ n ∧ ¬ Nat.Prime n then
+      ArithmeticFunction.vonMangoldt n / ((n : ℝ) * Real.log (n : ℝ))
+    else 0
+  have hB' : Summable B := by
+    simpa [B] using hB
+  have hdiff_eq_B : (fun n : ℕ => |w n - v n|) = B := by
+    funext n
+    by_cases hp : Nat.Prime n
+    · have hn2 : 2 ≤ n := hp.two_le
+      have hn_pos : 0 < (n : ℝ) := by positivity
+      have hlog_pos : 0 < Real.log (n : ℝ) := by
+        exact Real.log_pos (by exact_mod_cast hp.one_lt : (1 : ℝ) < n)
+      have hΛ : ArithmeticFunction.vonMangoldt n = Real.log (n : ℝ) :=
+        ArithmeticFunction.vonMangoldt_apply_prime hp
+      have hterm : (1 : ℝ) / (n : ℝ) -
+          ArithmeticFunction.vonMangoldt n / ((n : ℝ) * Real.log (n : ℝ)) = 0 := by
+        rw [hΛ]
+        field_simp [hn_pos.ne', hlog_pos.ne']
+        ring
+      have hterm' : (n : ℝ)⁻¹ -
+          ArithmeticFunction.vonMangoldt n / ((n : ℝ) * Real.log (n : ℝ)) = 0 := by
+        simpa [one_div] using hterm
+      simp [w, v, B, hp, hn2, hterm']
+    · by_cases hn2 : 2 ≤ n
+      · have hn_pos : 0 < (n : ℝ) := by
+          exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hn2)
+        have hlog_pos : 0 < Real.log (n : ℝ) := by
+          exact Real.log_pos (by exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hn2) : (1 : ℝ) < n)
+        have hterm_nonneg : 0 ≤
+            ArithmeticFunction.vonMangoldt n / ((n : ℝ) * Real.log (n : ℝ)) := by
+          exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg
+            (mul_nonneg hn_pos.le hlog_pos.le)
+        simp [w, v, B, hp, hn2, abs_of_nonneg hterm_nonneg]
+      · simp [w, v, B, hp, hn2]
+  have hdiff_summ : Summable (fun n : ℕ => |w n - v n|) := by
+    rw [hdiff_eq_B]
+    exact hB'
+  refine ⟨∑' n : ℕ, B n, ?_, ?_⟩
+  · exact tsum_nonneg fun n => by
+      by_cases hn : 2 ≤ n ∧ ¬ Nat.Prime n
+      · have hn_pos : 0 < (n : ℝ) := by
+          exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hn.1)
+        have hlog_pos : 0 < Real.log (n : ℝ) := by
+          exact Real.log_pos (by
+            exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hn.1) : (1 : ℝ) < n)
+        simp [B, hn, div_nonneg ArithmeticFunction.vonMangoldt_nonneg
+          (mul_nonneg hn_pos.le hlog_pos.le)]
+      · simp [B, hn]
+  · intro t ht
+    have htransfer :=
+      summable_error_limsup_transfer_truncated_error_bound hdiff_summ (Set.univ : Set ℕ) t
+    have hprime_eq :
+        (∑' p : ℕ,
+          (prime_layer ∩ real_initial_segment t).indicator
+            (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) =
+        ∑' n : ℕ, ((Set.univ : Set ℕ) ∩ real_initial_segment t).indicator w n := by
+      apply tsum_congr
+      intro n
+      by_cases hseg : n ∈ real_initial_segment t
+      · by_cases hp : Nat.Prime n
+        · simp [prime_layer, w, hseg, hp]
+        · simp [prime_layer, w, hseg, hp]
+      · simp [prime_layer, w, hseg]
+    have hmangoldt_eq : mangoldt_log_reciprocal_partial_sum t =
+        ∑' n : ℕ, ((Set.univ : Set ℕ) ∩ real_initial_segment t).indicator v n := by
+      rw [mangoldt_log_reciprocal_partial_sum]
+      apply tsum_congr
+      intro n
+      by_cases hn2 : 2 ≤ n
+      · have hn1 : 1 ≤ n := by omega
+        by_cases hle : (n : ℝ) ≤ t
+        · simp [v, real_initial_segment, hn2, hn1, hle]
+        · simp [v, real_initial_segment, hn2, hle]
+      · by_cases hseg : n ∈ real_initial_segment t
+        · simp [v, hseg, hn2]
+        · simp [v, hseg, hn2]
+    calc
+      |(∑' p : ℕ,
+          (prime_layer ∩ real_initial_segment t).indicator
+            (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) -
+        mangoldt_log_reciprocal_partial_sum t| =
+          |(∑' n : ℕ, ((Set.univ : Set ℕ) ∩ real_initial_segment t).indicator w n) -
+            (∑' n : ℕ, ((Set.univ : Set ℕ) ∩ real_initial_segment t).indicator v n)| := by
+            rw [hprime_eq, hmangoldt_eq]
+      _ ≤ ∑' n : ℕ, |w n - v n| := htransfer
+      _ = ∑' n : ℕ, B n := by rw [hdiff_eq_B]
 
 @[blueprint "lem:mertens-prime-reciprocal"
   (statement := /-- There is a non-negative constant $C$ such that, for every
