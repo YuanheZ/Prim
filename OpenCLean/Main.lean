@@ -9705,9 +9705,14 @@ lemma mangoldt_adjoint_constructed_path_data_from_kernel_path_data {Ω : Type}
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_constructed_path_data μ path := by
-  sorry_using [mangoldt_adjoint_visit_identity_from_kernel_path_data,
-    mangoldt_adjoint_second_moment_bound_from_kernel_path_data,
-    mangoldt_adjoint_reverse_fatou_extraction_from_kernel_path_data]
+  intro hkernel hpath
+  unfold mangoldt_adjoint_constructed_path_data
+  exact And.intro hpath.1
+    (And.intro hpath.2.2.1
+      (And.intro hpath.2.2.2.1
+        (And.intro (mangoldt_adjoint_visit_identity_from_kernel_path_data hkernel hpath)
+          (And.intro (mangoldt_adjoint_second_moment_bound_from_kernel_path_data hkernel hpath)
+            (mangoldt_adjoint_reverse_fatou_extraction_from_kernel_path_data hkernel hpath)))))
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-exists"
   (statement := /-- There are a measurable sample space, a probability measure,
