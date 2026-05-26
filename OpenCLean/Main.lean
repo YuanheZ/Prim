@@ -10335,7 +10335,11 @@ lemma mangoldt_adjoint_constructed_path_data_from_kernel_path_data {Ω : Type}
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_constructed_path_data μ path := by
-  sorry_using [mangoldt_adjoint_visit_identity_from_kernel_path_data]
+  intro hpack hdata
+  rcases hdata with ⟨hμ, hstart, hchain, hmeas, hsupp, hmarkov⟩
+  exact ⟨hμ, hchain, hmeas,
+    mangoldt_adjoint_visit_identity_from_kernel_path_data hpack
+      ⟨hμ, hstart, hchain, hmeas, hsupp, hmarkov⟩⟩
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-exists"
   (statement := /-- There are a measurable sample space, a probability measure,
