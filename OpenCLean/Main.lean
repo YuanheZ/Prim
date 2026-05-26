@@ -9420,8 +9420,9 @@ lemma mangoldt_weight_von_mangoldt_invariant_recurrence :
           mangoldt_weight (n * q) *
             (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
         else 0) = mangoldt_weight n := by
-  sorry_using [mangoldt_weight_incoming_integral_bridge,
-    mangoldt_weight_reciprocal_zeta_endpoint_evaluation]
+  intro n hn
+  rw [mangoldt_weight_incoming_integral_bridge n hn,
+    mangoldt_weight_reciprocal_zeta_endpoint_evaluation n hn]
 
 @[blueprint "def:mangoldt-adjoint-kernel-package"
   (statement := /-- For kernels $P,U:\mathbb N\times\mathbb N\to\mathbb R$, this
