@@ -10387,7 +10387,8 @@ lemma mangoldt_adjoint_random_model_from_constructed_path_data {Ω : Type}
       mangoldt_adjoint_second_moment_bound μ path ->
         mangoldt_adjoint_reverse_fatou_extraction_principle μ path ->
           mangoldt_adjoint_random_model μ path := by
-  sorry
+  intro hdata hsecond hfatou
+  exact ⟨hdata.1, hdata.2.1, hdata.2.2.1, hdata.2.2.2, hsecond, hfatou⟩
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-principle-from-model"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
