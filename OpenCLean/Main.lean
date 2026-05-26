@@ -10969,15 +10969,83 @@ lemma mangoldt_adjoint_two_point_divisor_bound_from_constructed_path_data
           norm_num
     exact hpair_le.trans htwo_le
 
+@[blueprint "def:mangoldt-log-reciprocal-partial-sum"
+  (statement := /-- For a real parameter $t$, this is the logarithmically
+  weighted reciprocal von Mangoldt sum
+  $\sum_{2\le q\le t}\Lambda(q)/(q\log q)$, expressed as an unconditional
+  sum over $\mathbb N$ with Lean's totalized real division.  The lower cutoff
+  at $2$ removes the only point at which the logarithmic denominator would
+  vanish in the intended classical expression. -/)
+  (title := /-- Logarithmically weighted reciprocal von Mangoldt partial sum -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_log_reciprocal_partial_sum (t : ℝ) : ℝ :=
+  ∑' q : ℕ,
+    if 2 ≤ q ∧ (q : ℝ) ≤ t then
+      ArithmeticFunction.vonMangoldt q / ((q : ℝ) * Real.log (q : ℝ))
+    else 0
+
+@[blueprint "lem:mangoldt-log-reciprocal-partial-summation"
+  (statement := /-- There is a non-negative constant $C$ such that, for every
+  real $t\ge2$, the logarithmically weighted reciprocal von Mangoldt partial
+  sum from \cref{def:mangoldt-log-reciprocal-partial-sum} differs from
+  $\log\log t$ by at most $C$. -/)
+  (proof := /-- Apply Abel summation to the partial sums
+  $A(u)=\sum_{1\le q\le u}\Lambda(q)/q$.  The bounded-error estimate
+  \cref{lem:mertens-von-mangoldt-reciprocal} gives
+  $A(u)=\log u+O(1)$ uniformly for $u\ge1$.  Integrating the function
+  $1/\log u$ against $dA(u)$ over $[2,t]$ gives
+  $\log\log t$ as the main term, while the bounded Mertens error contributes
+  only an absolute constant because the derivative of $1/\log u$ is
+  integrable on $[2,\infty)$ after the lower cutoff.  Enlarging the constant to
+  absorb the endpoint terms yields the asserted uniform bound. -/)
+  (title := /-- Partial summation for the logarithmic von Mangoldt sum -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_log_reciprocal_partial_summation :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ t : ℝ, 2 ≤ t ->
+      |mangoldt_log_reciprocal_partial_sum t - Real.log (Real.log t)| ≤ C := by
+  sorry_using [mertens_von_mangoldt_reciprocal]
+
+@[blueprint "lem:prime-reciprocal-mangoldt-log-bridge"
+  (statement := /-- There is a non-negative constant $C$ such that, for every
+  real $t\ge2$, the reciprocal sum over primes up to $t$ differs from the
+  logarithmically weighted reciprocal von Mangoldt partial sum
+  \cref{def:mangoldt-log-reciprocal-partial-sum} by at most $C$. -/)
+  (proof := /-- By \cref{def:prime-layer,def:real-initial-segment}, the prime
+  reciprocal sum is $\sum_{p\le t}1/p$.  Splitting the von Mangoldt sum in
+  \cref{def:mangoldt-log-reciprocal-partial-sum} according to the support of
+  $\Lambda$, the terms with $q=p$ are exactly $1/p$ because
+  $\Lambda(p)=\log p$.  The remaining terms have $q=p^k$ with $k\ge2$ and
+  contribute $1/(k p^k)$ in absolute value.  The double series
+  $\sum_p\sum_{k\ge2}1/(k p^k)$ is bounded by
+  $\sum_{n\ge2}\sum_{k\ge2}n^{-k}$, hence converges to an absolute constant.
+  Truncating at $q\le t$ can only decrease this non-negative prime-power
+  contribution, so the difference between the two partial sums is uniformly
+  bounded. -/)
+  (title := /-- Prime reciprocals from the logarithmic von Mangoldt sum -/)
+  (latexEnv := "lemma")]
+lemma prime_reciprocal_mangoldt_log_bridge :
+    ∃ C : ℝ, 0 ≤ C ∧ ∀ t : ℝ, 2 ≤ t ->
+      |(∑' p : ℕ,
+          (prime_layer ∩ real_initial_segment t).indicator
+            (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) -
+        mangoldt_log_reciprocal_partial_sum t| ≤ C := by
+  sorry
+
 @[blueprint "lem:mertens-prime-reciprocal"
   (statement := /-- There is a non-negative constant $C$ such that, for every
   real $t\geq2$, the reciprocal sum of primes up to $t$, written using the
   prime layer \cref{def:prime-layer} and the real initial segment
   \cref{def:real-initial-segment}, differs from $\log\log t$ by at most $C$. -/)
-  (proof := /-- This is Mertens' second theorem in the real-variable form needed
-  here.  The indicator restricts the totalized reciprocal function to the
-  finite set of primes in $[1,t]$, so the displayed infinite sum is exactly the
-  usual finite prime-reciprocal sum. -/)
+  (proof := /-- The partial-summation estimate
+  \cref{lem:mangoldt-log-reciprocal-partial-summation} bounds the difference
+  between the logarithmically weighted reciprocal von Mangoldt sum and
+  $\log\log t$ uniformly for $t\ge2$.  The bridge
+  \cref{lem:prime-reciprocal-mangoldt-log-bridge} bounds, uniformly in the
+  same range, the difference between that weighted von Mangoldt sum and the
+  prime reciprocal sum appearing in the statement.  The triangle inequality,
+  with the two constants added and then replaced by a non-negative larger
+  constant, gives the claimed bounded-error Mertens estimate for reciprocal
+  prime sums. -/)
   (title := /-- Mertens estimate for reciprocal prime sums -/)
   (latexEnv := "lemma")]
 lemma mertens_prime_reciprocal :
@@ -10986,7 +11054,8 @@ lemma mertens_prime_reciprocal :
           (prime_layer ∩ real_initial_segment t).indicator
             (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) -
         Real.log (Real.log t)| ≤ C := by
-  sorry
+  sorry_using [mangoldt_log_reciprocal_partial_summation,
+    prime_reciprocal_mangoldt_log_bridge]
 
 @[blueprint "lem:mangoldt-adjoint-card-factors-weighted-terminal-sum-bound"
   (statement := /-- For every set $A\subseteq\mathbb N$, the terminal sum over
@@ -11260,14 +11329,99 @@ lemma mangoldt_adjoint_normalized_hit_expectation_limsup_from_visit_identity
   rw [hsum_enn]
   exact ENNReal.toReal_ofReal (Finset.sum_nonneg hweight_nonneg)
 
+@[blueprint "def:mangoldt-adjoint-normalized-hit-count"
+  (statement := /-- For a sampled path $p:\Omega\to(\mathbb N\to\mathbb N)$,
+  a set $A\subseteq\mathbb N$, a height $x$, and a sample point $\omega$, this
+  is the normalized hit count
+  $\#\{i:p(\omega)_i\in A,\ p(\omega)_i\le x\}/\log\log x$ used in the
+  reverse-Fatou extraction argument. -/)
+  (title := /-- Normalized adjoint-chain hit count -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_normalized_hit_count {Ω : Type}
+    (path : Ω → ℕ → ℕ) (A : Set ℕ) (x : ℝ) (ω : Ω) : ℝ :=
+  (chain_hits_count_up_to (path ω) A x : ℝ) / Real.log (Real.log x)
+
+@[blueprint "def:mangoldt-adjoint-hit-count-moment-bridge"
+  (statement := /-- This predicate supplies the measure-theoretic bridge from
+  the one- and two-point adjoint-chain estimates to the actual normalized
+  hit-count random variables.  For every set $A$ of positive
+  \cref{def:mangoldt-weight-upper-density}, it provides heights $x_j\to\infty$
+  such that $x_j\ge2$, the corresponding hit-index sets are almost surely
+  finite, the normalized hit counts from
+  \cref{def:mangoldt-adjoint-normalized-hit-count} are almost everywhere
+  measurable, their first moments have limit superior equal to the density of
+  $A$, and their second moments are uniformly bounded. -/)
+  (title := /-- Count-variable moment bridge for reverse Fatou -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_hit_count_moment_bridge {Ω : Type}
+    [MeasurableSpace Ω] (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  ∀ A : Set ℕ, 0 < mangoldt_weight_upper_density A ->
+    ∃ xseq : ℕ → ℝ,
+      Filter.Tendsto xseq Filter.atTop Filter.atTop ∧
+        (∀ j : ℕ, 2 ≤ xseq j ∧ 0 < Real.log (Real.log (xseq j))) ∧
+        (∀ j : ℕ,
+          ∀ᵐ ω ∂μ,
+            ({i : ℕ | path ω i ∈ A ∧ (path ω i : ℝ) ≤ xseq j} : Set ℕ).Finite) ∧
+        (∀ j : ℕ,
+          AEMeasurable
+            (fun ω : Ω =>
+              ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+            μ) ∧
+        Filter.limsup
+          (fun j : ℕ =>
+            (∫⁻ ω,
+              ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω) ∂μ).toReal)
+          Filter.atTop =
+          mangoldt_weight_upper_density A ∧
+        ∃ C : ℝ, 0 ≤ C ∧ ∀ j : ℕ,
+          ∫⁻ ω,
+            ((ENNReal.ofReal
+              (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) ^ (2 : ℕ)) ∂μ ≤
+            ENNReal.ofReal C
+
+@[blueprint "lem:mangoldt-adjoint-hit-count-moment-bridge-from-first-second"
+  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if $\mu$ is a
+  probability measure, every sampled path satisfies the stated strict
+  divisibility-chain hypothesis, the coordinate maps are measurable, and the
+  existing first- and second-moment predicates hold, then the count-variable
+  moment bridge \cref{def:mangoldt-adjoint-hit-count-moment-bridge} holds. -/)
+  (proof := /-- Fix $A\subseteq\mathbb N$ with positive
+  \cref{def:mangoldt-weight-upper-density}.  Choose heights along which the
+  normalized first-moment limsup from
+  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup} is attained.
+  The strict divisibility-chain hypothesis makes the set of hit indices below
+  each fixed height finite on every sampled path, and coordinate measurability
+  makes the corresponding count random variable from
+  \cref{def:mangoldt-adjoint-normalized-hit-count} almost everywhere
+  measurable.  The first-moment identity identifies the lintegral of this
+  count variable with the one-point hit series in
+  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup}.  Expanding the
+  square of the same count variable expresses its second moment through the
+  pair-hit sum \cref{def:mangoldt-adjoint-hit-second-moment}, and the uniform
+  estimate \cref{def:mangoldt-adjoint-second-moment-bound} gives a uniform
+  bound along the selected heights.  These facts are exactly the clauses of
+  \cref{def:mangoldt-adjoint-hit-count-moment-bridge}. -/)
+  (title := /-- From first and second moments to count-variable moments -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_hit_count_moment_bridge_from_first_second
+    {Ω : Type} [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω}
+    {path : Ω → ℕ → ℕ} :
+    μ Set.univ = 1 ->
+      (∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) ->
+        (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ->
+          mangoldt_adjoint_normalized_hit_expectation_limsup μ path ->
+            mangoldt_adjoint_second_moment_bound μ path ->
+              mangoldt_adjoint_hit_count_moment_bridge μ path := by
+  sorry
+
 @[blueprint "def:mangoldt-adjoint-reverse-fatou-uniform-integrability-bridge"
   (statement := /-- This is the explicit analytic bridge used in the
   reverse-Fatou extraction step.  If $\mu$ is a probability measure, every
-  coordinate map of the path is measurable, the normalized first moments of the
-  hit counts have limsup
-  \cref{def:mangoldt-weight-upper-density}, and the normalized hit counts have
-  the second-moment control \cref{def:mangoldt-adjoint-second-moment-bound},
-  then the pathwise extraction conclusion
+  coordinate map of the path is measurable, and the normalized hit-count random
+  variables satisfy the count-variable moment bridge
+  \cref{def:mangoldt-adjoint-hit-count-moment-bridge}, then the pathwise
+  extraction conclusion
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle} follows. -/)
   (title := /-- Reverse-Fatou bridge from uniform integrability -/)
   (latexEnv := "definition")]
@@ -11276,26 +11430,28 @@ noncomputable def mangoldt_adjoint_reverse_fatou_uniform_integrability_bridge
     (path : Ω → ℕ → ℕ) : Prop :=
   μ Set.univ = 1 ->
     (∀ k : ℕ, Measurable fun ω : Ω => path ω k) ->
-      mangoldt_adjoint_normalized_hit_expectation_limsup μ path ->
-        mangoldt_adjoint_second_moment_bound μ path ->
-          mangoldt_adjoint_reverse_fatou_extraction_principle μ path
+      mangoldt_adjoint_hit_count_moment_bridge μ path ->
+        mangoldt_adjoint_reverse_fatou_extraction_principle μ path
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-bridge-from-uniform-integrability"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
   $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, coordinate
-  measurability, the normalized first-moment identity, and the second-moment
-  estimate imply the reverse-Fatou pathwise extraction principle through the bridge
+  measurability and the count-variable moment bridge imply the reverse-Fatou
+  pathwise extraction principle through
   \cref{def:mangoldt-adjoint-reverse-fatou-uniform-integrability-bridge}. -/)
   (proof := /-- Fix $A\subseteq\mathbb N$ with positive
-  \cref{def:mangoldt-weight-upper-density}.  Choose heights along which the
-  normalized first moments converge to this positive upper limit.  Coordinate
-  measurability makes each hit event, and hence each normalized hit-count
-  random variable, measurable.  The second-moment estimate gives uniform
-  integrability of these normalized hit-count random variables.  Applying the
-  reverse-Fatou inequality to this measurable uniformly integrable sequence
-  shows that the expectation of the pathwise nonnegative extended limsup is at
-  least the density of $A$.  Since $\mu$ has total mass one, some sample path
-  attains this lower bound, which is exactly
+  \cref{def:mangoldt-weight-upper-density}.  The count-variable bridge
+  \cref{def:mangoldt-adjoint-hit-count-moment-bridge} supplies heights
+  $x_j\to\infty$ for which the normalized hit counts from
+  \cref{def:mangoldt-adjoint-normalized-hit-count} are almost everywhere
+  measurable, have first-moment limsup equal to the density of $A$, and have
+  uniformly bounded second moments.  The almost-sure finiteness clause ensures
+  that these random variables are the same hit counts that define
+  \cref{def:chain-hits-density-at-least}.  Applying the reverse-Fatou
+  inequality to this uniformly integrable sequence shows that the expectation
+  of the pathwise nonnegative extended limsup is at least the density of $A$.
+  Since $\mu$ has total mass one, some sample path attains this lower bound,
+  which is exactly
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (title := /-- Reverse-Fatou bridge from uniform integrability -/)
   (latexEnv := "lemma")]
@@ -11346,10 +11502,13 @@ lemma mangoldt_adjoint_second_moment_bound_from_constructed_path_data {Ω : Type
   measurability input required for reverse Fatou.  Moreover,
   \cref{lem:mangoldt-adjoint-normalized-hit-expectation-limsup-from-visit-identity}
   converts the expected-visit identity into the normalized first-moment limsup
-  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup}.  The assumed
-  second-moment estimate is the uniform-integrability input required by
-  \cref{lem:mangoldt-adjoint-reverse-fatou-bridge-from-uniform-integrability}.
-  Applying that bridge yields the pathwise extraction conclusion
+  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup}.  Combining
+  this first-moment identity, the pathwise chain clause, coordinate
+  measurability, and the assumed second-moment estimate through
+  \cref{lem:mangoldt-adjoint-hit-count-moment-bridge-from-first-second} gives
+  the count-variable moment bridge.  Applying
+  \cref{lem:mangoldt-adjoint-reverse-fatou-bridge-from-uniform-integrability}
+  to that bridge yields the pathwise extraction conclusion
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (title := /-- Reverse-Fatou extraction from constructed adjoint path data -/)
   (latexEnv := "lemma")]
@@ -11360,6 +11519,7 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_principle_from_constructed_path_
       mangoldt_adjoint_second_moment_bound μ path ->
         mangoldt_adjoint_reverse_fatou_extraction_principle μ path := by
   sorry_using [mangoldt_adjoint_normalized_hit_expectation_limsup_from_visit_identity,
+    mangoldt_adjoint_hit_count_moment_bridge_from_first_second,
     mangoldt_adjoint_reverse_fatou_bridge_from_uniform_integrability]
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data"
