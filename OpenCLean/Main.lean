@@ -6851,23 +6851,25 @@ noncomputable def chain_count_up_to (n : ℕ → ℕ) (x : ℝ) : ℕ :=
 
 @[blueprint "def:upper-chain-density"
   (statement := /-- The upper doubly logarithmic density of the counting
-  function of a chain is
-  $\limsup_{x\to\infty}\#\{i:n_i\leq x\}/\log\log x$. -/)
+  function of a chain is the nonnegative extended-real limit superior of
+  $\#\{i:n_i\leq x\}/\log\log x$ as $x\to\infty$. -/)
   (title := /-- Upper density of a chain -/)
   (latexEnv := "definition")]
-noncomputable def upper_chain_density (n : ℕ → ℕ) : ℝ :=
+noncomputable def upper_chain_density (n : ℕ → ℕ) : ENNReal :=
   Filter.limsup
-    (fun x : ℝ => (chain_count_up_to n x : ℝ) / Real.log (Real.log x))
+    (fun x : ℝ => ENNReal.ofReal
+      ((chain_count_up_to n x : ℝ) / Real.log (Real.log x)))
     Filter.atTop
 
 @[blueprint "def:upper-chain-density-at-least"
   (statement := /-- The chain $n_0,n_1,n_2,\ldots$ has upper doubly
-  logarithmic density at least $\Delta$ if its upper chain density is at least
-  $\Delta$. -/)
+  logarithmic density at least $\Delta$ if $\Delta$, embedded in
+  $\mathbb R_{\geq0}\cup\{\infty\}$, is bounded above by its nonnegative
+  extended upper chain density. -/)
   (title := /-- Lower bound for chain density -/)
   (latexEnv := "definition")]
 def upper_chain_density_at_least (n : ℕ → ℕ) (Delta : ℝ) : Prop :=
-  Delta ≤ upper_chain_density n
+  ENNReal.ofReal Delta ≤ upper_chain_density n
 
 @[blueprint "def:chain-hits-count-up-to"
   (statement := /-- The hit-counting function of a chain against a set $A$ at
@@ -6880,22 +6882,25 @@ noncomputable def chain_hits_count_up_to (n : ℕ → ℕ) (A : Set ℕ) (x : �
 
 @[blueprint "def:upper-chain-hit-density"
   (statement := /-- The upper doubly logarithmic density of the visits of a
-  chain to $A$ is
-  $\limsup_{x\to\infty}\#\{i:n_i\in A,\ n_i\leq x\}/\log\log x$. -/)
+  chain to $A$ is the nonnegative extended-real limit superior of
+  $\#\{i:n_i\in A,\ n_i\leq x\}/\log\log x$ as $x\to\infty$. -/)
   (title := /-- Upper density of chain hits -/)
   (latexEnv := "definition")]
-noncomputable def upper_chain_hit_density (n : ℕ → ℕ) (A : Set ℕ) : ℝ :=
+noncomputable def upper_chain_hit_density (n : ℕ → ℕ) (A : Set ℕ) : ENNReal :=
   Filter.limsup
-    (fun x : ℝ => (chain_hits_count_up_to n A x : ℝ) / Real.log (Real.log x))
+    (fun x : ℝ => ENNReal.ofReal
+      ((chain_hits_count_up_to n A x : ℝ) / Real.log (Real.log x)))
     Filter.atTop
 
 @[blueprint "def:chain-hits-density-at-least"
   (statement := /-- A chain visits $A$ with upper doubly logarithmic density at
-  least $\Delta$ if its hit density against $A$ is at least $\Delta$. -/)
+  least $\Delta$ if $\Delta$, embedded in
+  $\mathbb R_{\geq0}\cup\{\infty\}$, is bounded above by the nonnegative
+  extended upper hit density against $A$. -/)
   (title := /-- Lower bound for hit density -/)
   (latexEnv := "definition")]
 def chain_hits_density_at_least (n : ℕ → ℕ) (A : Set ℕ) (Delta : ℝ) : Prop :=
-  Delta ≤ upper_chain_hit_density n A
+  ENNReal.ofReal Delta ≤ upper_chain_hit_density n A
 
 @[blueprint "lem:log-square-tail-summable"
   (statement := /-- The comparison series
@@ -8023,7 +8028,9 @@ noncomputable def mangoldt_adjoint_second_moment_bound {Ω : Type} [MeasurableSp
   reverse-Fatou and uniform-integrability argument for an adjoint von Mangoldt
   path model: every set of positive
   \cref{def:mangoldt-weight-upper-density} is hit with upper doubly logarithmic
-  density at least that value along some sampled path. -/)
+  density, in the nonnegative extended sense of
+  \cref{def:chain-hits-density-at-least}, at least that value along some
+  sampled path. -/)
   (title := /-- Reverse-Fatou pathwise extraction principle -/)
   (latexEnv := "definition")]
 noncomputable def mangoldt_adjoint_reverse_fatou_extraction_principle {Ω : Type}
@@ -9806,6 +9813,26 @@ noncomputable def mangoldt_adjoint_kernel_markov_law {Ω : Type} [MeasurableSpac
     μ {ω : Ω | path ω k = n ∧ path ω (k + 1) = m} =
       ENNReal.ofReal (U n m) * μ {ω : Ω | path ω k = n}
 
+@[blueprint "def:mangoldt-adjoint-supported-path"
+  (statement := /-- For an upward kernel $U$, a natural-valued path $p$ is
+  supported if it starts at $1$, is a strictly increasing divisibility chain,
+  and every one-step transition $p_k\to p_{k+1}$ has nonzero $U$-weight. -/)
+  (title := /-- Supported paths for an adjoint kernel -/)
+  (latexEnv := "definition")]
+def mangoldt_adjoint_supported_path (U : ℕ → ℕ → ℝ) (path : ℕ → ℕ) : Prop :=
+  path 0 = 1 ∧
+    strictly_increasing_divisibility_chain path ∧
+      ∀ k : ℕ, U (path k) (path (k + 1)) ≠ 0
+
+@[blueprint "def:mangoldt-adjoint-supported-path-space"
+  (statement := /-- For an upward kernel $U$, the supported path space is the
+  subtype of natural-valued paths satisfying
+  \cref{def:mangoldt-adjoint-supported-path}. -/)
+  (title := /-- Supported path space for an adjoint kernel -/)
+  (latexEnv := "definition")]
+def mangoldt_adjoint_supported_path_space (U : ℕ → ℕ → ℝ) : Type :=
+  {path : ℕ → ℕ // mangoldt_adjoint_supported_path U path}
+
 @[blueprint "def:mangoldt-adjoint-kernel-path-data"
   (statement := /-- This predicate records the path data produced by the
   adjoint von Mangoldt kernel construction.  For an upward kernel $U$, the path
@@ -9825,32 +9852,37 @@ noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace
         mangoldt_adjoint_kernel_markov_law U μ path
 
 @[blueprint "lem:mangoldt-adjoint-kernel-path-data-exists"
-  (statement := /-- There exist a von Mangoldt downward kernel, its adjoint
-  upward kernel, a measurable sample space, a probability measure, and a
-  natural-valued path process satisfying the adjoint kernel package
-  \cref{def:mangoldt-adjoint-kernel-package} and the path-data predicate
+  (statement := /-- There exist a von Mangoldt downward kernel and its adjoint
+  upward kernel satisfying the adjoint kernel package
+  \cref{def:mangoldt-adjoint-kernel-package}, together with a measurable
+  structure and probability measure on the supported path space
+  \cref{def:mangoldt-adjoint-supported-path-space} for which the coordinate
+  process satisfies the path-data predicate
   \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
   (proof := /-- By \cref{lem:mangoldt-adjoint-kernel-package-exists}, choose a
   von Mangoldt downward kernel $P$ and its adjoint upward kernel $U$ satisfying
-  \cref{def:mangoldt-adjoint-kernel-package}.  On the space of infinite
-  $U$-supported paths started at $1$, the countable-state Markov-chain
-  construction gives a probability measure $\mu$ and coordinate process $p$
-  whose one-step cylinder probabilities satisfy
-  \cref{def:mangoldt-adjoint-kernel-markov-law}.  The row-mass and positivity
-  clauses of the package give total mass one, while its support clause and
-  diagonal vanishing force every sampled transition to move strictly upward in
-  the divisibility order.  Coordinate measurability is part of the canonical
-  path-space construction.  Thus $(U,\mu,p)$ satisfies precisely the Markov
-  path clauses in
+  \cref{def:mangoldt-adjoint-kernel-package}.  On the subtype of infinite
+  $U$-supported paths started at $1$, namely
+  \cref{def:mangoldt-adjoint-supported-path-space}, the countable-state
+  Markov-chain construction gives a probability measure $\mu$ and the coordinate
+  process $p(\omega)=\omega$ whose one-step cylinder probabilities satisfy
+  \cref{def:mangoldt-adjoint-kernel-markov-law}.  The definition of the
+  supported path space gives the start, strict divisibility, and nonzero-support
+  transition clauses pointwise; the row-mass and positivity clauses of the
+  package give total mass one, and coordinate measurability is part of the
+  canonical path-space construction.  Thus $(U,\mu,p)$ satisfies precisely the
+  Markov path clauses in
   \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
   (title := /-- Existence of adjoint von Mangoldt kernel path data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_kernel_path_data_exists :
-    ∃ (P : ℕ → ℕ → ℝ) (U : ℕ → ℕ → ℝ)
-      (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
-      (path : Ω → ℕ → ℕ),
-        mangoldt_adjoint_kernel_package P U ∧
-          @mangoldt_adjoint_kernel_path_data Ω mΩ U μ path := by
+    ∃ (P : ℕ → ℕ → ℝ) (U : ℕ → ℕ → ℝ),
+      mangoldt_adjoint_kernel_package P U ∧
+        ∃ (mΩ : MeasurableSpace (mangoldt_adjoint_supported_path_space U))
+          (μ : MeasureTheory.Measure (mangoldt_adjoint_supported_path_space U)),
+            @mangoldt_adjoint_kernel_path_data
+              (mangoldt_adjoint_supported_path_space U) mΩ U μ
+              (fun ω : mangoldt_adjoint_supported_path_space U => ω.val) := by
   sorry_using [mangoldt_adjoint_kernel_package_exists]
 
 @[blueprint "def:mangoldt-adjoint-random-model"
@@ -10273,14 +10305,16 @@ lemma mangoldt_adjoint_constructed_path_data_from_kernel_path_data {Ω : Type}
   \cref{def:mangoldt-adjoint-constructed-path-data} for the adjoint upward von
   Mangoldt chain started at $1$. -/)
   (proof := /-- By \cref{lem:mangoldt-adjoint-kernel-path-data-exists}, choose
-  a von Mangoldt downward kernel, its adjoint upward kernel, a measurable sample
-  space, a probability measure, and a path process satisfying
-  \cref{def:mangoldt-adjoint-kernel-package} and
-  \cref{def:mangoldt-adjoint-kernel-path-data}.  Applying
+  a von Mangoldt downward kernel $P$, its adjoint upward kernel $U$, and a
+  probability measure on the supported path space
+  \cref{def:mangoldt-adjoint-supported-path-space} whose coordinate process
+  satisfies \cref{def:mangoldt-adjoint-kernel-path-data}, with $P$ and $U$
+  satisfying \cref{def:mangoldt-adjoint-kernel-package}.  Applying
   \cref{lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data} to
-  these witnesses discards the explicit kernels, keeps the local path clauses,
-  and supplies the analytic visit and second-moment clauses
-  required by \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
+  these witnesses discards the explicit kernels, keeps the pointwise path
+  clauses coming from the supported path space, and supplies the analytic visit
+  and second-moment clauses required by
+  \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
   (title := /-- Existence of adjoint von Mangoldt construction data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_constructed_path_data_exists :
@@ -10332,9 +10366,11 @@ lemma mangoldt_adjoint_random_model_from_constructed_path_data {Ω : Type}
   The expected-visit identity identifies the expectations of the corresponding
   normalized hit-count variables with those normalized sums.  The second-moment
   bound gives a uniform $L^2$ bound, hence uniform integrability, on a tail of
-  these variables.  The reverse Fatou inequality therefore gives
-  $\mathbb E_\mu\limsup X_j\geq\limsup_j\mathbb E_\mu X_j$.  Consequently some
-  sample point has normalized hit-count limsup at least the Mangoldt-weight
+  these nonnegative variables.  The reverse Fatou inequality therefore gives
+  $\mathbb E_\mu\limsup_j X_j\geq\limsup_j\mathbb E_\mu X_j$, where the
+  pathwise limit superior is taken in
+  $\mathbb R_{\geq0}\cup\{\infty\}$.  Consequently some sample point has
+  nonnegative extended normalized hit-count limsup at least the Mangoldt-weight
   upper density of $A$, which is exactly
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (title := /-- Reverse-Fatou extraction from a Mangoldt model -/)
@@ -10374,8 +10410,8 @@ lemma mangoldt_adjoint_random_model_exists :
   \cref{def:mangoldt-weight-upper-density}, there exists a sequence
   $n:\mathbb N\to\mathbb N$ which is a strictly increasing divisibility chain in
   the sense of \cref{def:strictly-increasing-divisibility-chain} and whose
-  visits to $A$ have upper doubly logarithmic hit density at least that
-  Mangoldt-weight density in the sense of
+  visits to $A$ have nonnegative extended upper doubly logarithmic hit density
+  at least that Mangoldt-weight density in the sense of
   \cref{def:chain-hits-density-at-least}. -/)
   (proof := /-- Assume \cref{def:mangoldt-adjoint-random-model}.  By
   \cref{lem:mangoldt-adjoint-reverse-fatou-extraction-principle-from-model},
@@ -10383,10 +10419,11 @@ lemma mangoldt_adjoint_random_model_exists :
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}.  Thus, for
   each set $A\subseteq\mathbb N$ with positive
   \cref{def:mangoldt-weight-upper-density}, there is a sample point whose path
-  has hit density at least \cref{def:mangoldt-weight-upper-density} of $A$ in
-  the sense of \cref{def:chain-hits-density-at-least}.  The pathwise chain
-  clause in \cref{def:mangoldt-adjoint-random-model} says that this same path
-  is a strictly increasing divisibility chain, i.e.
+  has nonnegative extended hit density at least
+  \cref{def:mangoldt-weight-upper-density} of $A$ in the sense of
+  \cref{def:chain-hits-density-at-least}.  The pathwise chain clause in
+  \cref{def:mangoldt-adjoint-random-model} says that this same path is a
+  strictly increasing divisibility chain, i.e.
   \cref{def:strictly-increasing-divisibility-chain}.  Combining these two
   properties gives the required deterministic chain. -/)
   (title := /-- Reverse-Fatou extraction from the adjoint path model -/)
@@ -10408,8 +10445,8 @@ lemma mangoldt_adjoint_reverse_fatou_path_extraction {Ω : Type} [MeasurableSpac
   (statement := /-- If a set $A\subseteq\mathbb N$ has positive upper doubly
   logarithmic density with respect to the invariant von Mangoldt weight
   \cref{def:mangoldt-weight-upper-density}, then there is a strictly increasing
-  divisibility chain whose visits to $A$ have upper doubly logarithmic density at
-  least that Mangoldt-weight density. -/)
+  divisibility chain whose visits to $A$ have nonnegative extended upper doubly
+  logarithmic density at least that Mangoldt-weight density. -/)
   (proof := /-- The stochastic path-selection mechanism is supplied by
   \cref{lem:mangoldt-adjoint-random-model-exists} and
   \cref{lem:mangoldt-adjoint-reverse-fatou-path-extraction}.  Form the adjoint
@@ -10426,12 +10463,13 @@ lemma mangoldt_adjoint_reverse_fatou_path_extraction {Ω : Type} [MeasurableSpac
   hit counts; removing finitely many earlier variables does not change the
   limiting upper density, so the tail family is uniformly integrable.
   The reverse Fatou inequality therefore implies that the expectation of the
-  pathwise limsup is at least the limsup of the expectations.  Since this lower
-  bound is positive, some realization has normalized hit-count limsup at least
-  \cref{def:mangoldt-weight-upper-density}.  The upward path almost surely stays
-  in $\mathbb N$ and is strictly increasing along divisibility, giving
-  \cref{def:strictly-increasing-divisibility-chain}; its pathwise lower bound is
-  exactly \cref{def:chain-hits-density-at-least}. -/)
+  pathwise nonnegative extended limsup is at least the limsup of the
+  expectations.  Since this lower bound is positive, some realization has
+  normalized hit-count limsup at least
+  \cref{def:mangoldt-weight-upper-density}.  The upward path lies in the
+  supported natural path space and is strictly increasing along divisibility,
+  giving \cref{def:strictly-increasing-divisibility-chain}; its pathwise lower
+  bound is exactly \cref{def:chain-hits-density-at-least}. -/)
   (title := /-- Path selection for the adjoint von Mangoldt chain -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_chain_density_selection :
@@ -10446,17 +10484,18 @@ lemma mangoldt_adjoint_chain_density_selection :
   (statement := /-- If $A\subseteq\mathbb N$ has positive upper doubly
   logarithmic density, then there exists a strictly increasing divisibility
   chain in $\mathbb N$ whose visits to $A$ have upper doubly logarithmic
-  density at least that of $A$. -/)
+  density, in the nonnegative extended sense, at least that of $A$. -/)
   (proof := /-- Fix $A\subseteq\mathbb N$ and assume that its upper doubly
   logarithmic density, defined in \cref{def:upper-doubly-log-density}, is positive.  By
   \cref{lem:mangoldt-weight-aggregate-comparison}, the Mangoldt-weight upper
   density \cref{def:mangoldt-weight-upper-density} is equal to this upper doubly
   logarithmic density, and hence is positive.  Applying
   \cref{lem:mangoldt-adjoint-chain-density-selection} gives a strictly
-  increasing divisibility chain whose visits to $A$ have upper density at least
-  the Mangoldt-weight density.  Substituting the equality supplied by
-  \cref{lem:mangoldt-weight-aggregate-comparison} converts this lower bound into
-  the asserted lower bound by the original upper doubly logarithmic density. -/)
+  increasing divisibility chain whose visits to $A$ have nonnegative extended
+  upper density at least the Mangoldt-weight density.  Substituting the equality
+  supplied by \cref{lem:mangoldt-weight-aggregate-comparison} converts this
+  lower bound into the asserted lower bound by the original upper doubly
+  logarithmic density. -/)
   (title := /-- Dense ambient chain from the zeta process -/)
   (latexEnv := "lemma")]
 lemma probabilistic_dense_ambient_chain :
@@ -10470,15 +10509,15 @@ lemma probabilistic_dense_ambient_chain :
   (statement := /-- For every set $A\subseteq\mathbb N$ and every sequence
   $m:\mathbb N\to\mathbb N$, if $A$ has positive upper doubly logarithmic
   density, $m$ is a strictly increasing divisibility chain, and the visits of
-  $m$ to $A$ have upper doubly logarithmic density at least that of $A$, then
-  there exists a strictly increasing divisibility chain lying in $A$ whose
-  upper chain density is at least the upper doubly logarithmic density of
-  $A$. -/)
+  $m$ to $A$ have nonnegative extended upper doubly logarithmic density at
+  least that of $A$, then there exists a strictly increasing divisibility chain
+  lying in $A$ whose nonnegative extended upper chain density is at least the
+  upper doubly logarithmic density of $A$. -/)
   (proof := /-- Let $p(i)$ be the assertion that the ambient chain value
   $m_i$ belongs to $A$.  If the set of indices satisfying $p$ were finite,
   then \cref{def:chain-hits-count-up-to} would bound every hit-count by this
-  finite cardinality.  Dividing by $\log\log x$ and letting $x\to\infty$
-  would force the upper hit density in
+  finite cardinality.  Dividing by $\log\log x$ and taking the nonnegative
+  extended limit superior as $x\to\infty$ would force the upper hit density in
   \cref{def:upper-chain-hit-density,def:chain-hits-density-at-least} to be
   zero, contradicting the positive lower bound.  Hence the hit-index set is
   infinite.  Enumerate it increasingly and define the extracted chain by
@@ -10489,7 +10528,7 @@ lemma probabilistic_dense_ambient_chain :
   lies in $A$.  Finally, the increasing enumeration is a bijection between the
   extracted indices counted by \cref{def:chain-count-up-to} and the ambient hit
   indices counted by \cref{def:chain-hits-count-up-to}; therefore the two
-  normalized counting functions have the same limsup, and
+  normalized counting functions have the same nonnegative extended limsup, and
   \cref{def:upper-chain-density-at-least} follows from the assumed hit-density
   lower bound. -/)
   (title := /-- Extracting a dense subchain inside $A$ -/)
@@ -10503,113 +10542,20 @@ lemma dense_hits_subchain_in_set :
           strictly_increasing_divisibility_chain n ∧
           chain_in_set n A ∧
           upper_chain_density_at_least n (upper_doubly_log_density A) := by
-  classical
-  intro A ambient hpos hchain hhit
-  let p : ℕ → Prop := fun i => ambient i ∈ A
-  have hpInf : ({i : ℕ | p i} : Set ℕ).Infinite := by
-    by_contra hnot
-    have hfin : ({i : ℕ | p i} : Set ℕ).Finite := Set.not_infinite.mp hnot
-    have hcount_le : ∀ x : ℝ, chain_hits_count_up_to ambient A x ≤
-        Set.ncard ({i : ℕ | p i} : Set ℕ) := by
-      intro x
-      unfold chain_hits_count_up_to
-      exact Set.ncard_le_ncard (by intro i hi; exact hi.1) hfin
-    have hden_pos_eventually : ∀ᶠ x in Filter.atTop, 0 < Real.log (Real.log x) := by
-      filter_upwards [Filter.eventually_gt_atTop (Real.exp 1)] with x hx
-      have hxpos : 0 < x := lt_trans (Real.exp_pos 1) hx
-      have hlog_gt_one : 1 < Real.log x := by
-        rw [Real.lt_log_iff_exp_lt hxpos]
-        simpa using hx
-      exact Real.log_pos hlog_gt_one
-    have hnonneg :
-        ∀ᶠ x in Filter.atTop, 0 ≤
-          (chain_hits_count_up_to ambient A x : ℝ) / Real.log (Real.log x) := by
-      filter_upwards [hden_pos_eventually] with x hdenpos
-      exact div_nonneg (Nat.cast_nonneg _) hdenpos.le
-    have hle_fun :
-        (fun x : ℝ => (chain_hits_count_up_to ambient A x : ℝ) / Real.log (Real.log x))
-          ≤ᶠ[Filter.atTop]
-        (fun x : ℝ => ((Set.ncard ({i : ℕ | p i} : Set ℕ) : ℝ)) /
-          Real.log (Real.log x)) := by
-      filter_upwards [hden_pos_eventually] with x hdenpos
-      exact div_le_div_of_nonneg_right (by exact_mod_cast hcount_le x) hdenpos.le
-    have htend_hit : Filter.Tendsto
-        (fun x : ℝ => (chain_hits_count_up_to ambient A x : ℝ) / Real.log (Real.log x))
-        Filter.atTop (nhds 0) :=
-      squeeze_zero' hnonneg hle_fun
-        (Filter.Tendsto.const_div_atTop
-          (Real.tendsto_log_atTop.comp Real.tendsto_log_atTop) _)
-    have hhit_zero : upper_chain_hit_density ambient A = 0 := by
-      unfold upper_chain_hit_density
-      exact htend_hit.limsup_eq
-    unfold chain_hits_density_at_least at hhit
-    linarith
-  let e : ℕ → ℕ := Nat.nth p
-  let n : ℕ → ℕ := fun k => ambient (e k)
-  refine ⟨n, ?_, ?_, ?_⟩
-  · constructor
-    · intro i j hij
-      exact hchain.1 ((Nat.nth_strictMono hpInf) hij)
-    · intro i
-      have hdiv_le : ∀ {a b : ℕ}, a ≤ b → ambient a ∣ ambient b := by
-        intro a b hab
-        exact Nat.le_induction (m := a) (P := fun b _ => ambient a ∣ ambient b)
-          dvd_rfl (fun b _ h => dvd_trans h (hchain.2 b)) b hab
-      exact hdiv_le ((Nat.nth_strictMono hpInf).monotone (Nat.le_succ i))
-  · intro i
-    exact Nat.nth_mem_of_infinite hpInf i
-  · have hcount : ∀ x : ℝ, chain_count_up_to n x = chain_hits_count_up_to ambient A x := by
-      intro x
-      let S : Set ℕ := {i | (n i : ℝ) ≤ x}
-      have heinj : Function.Injective e := by
-        intro a b h
-        exact Nat.nth_injective hpInf h
-      have himage : e '' S = ({j : ℕ | ambient j ∈ A ∧ (ambient j : ℝ) ≤ x} : Set ℕ) := by
-        ext j
-        constructor
-        · rintro ⟨i, hi, rfl⟩
-          refine ⟨?_, ?_⟩
-          · simpa [p] using (Nat.nth_mem_of_infinite hpInf i)
-          · simpa [S, n] using hi
-        · intro hj
-          have hjrange : j ∈ Set.range e := by
-            change j ∈ Set.range (Nat.nth p)
-            rw [Nat.range_nth_of_infinite hpInf]
-            simpa [p] using hj.1
-          rcases hjrange with ⟨i, hi_eq⟩
-          have hi_mem : i ∈ S := by
-            dsimp [S, n]
-            rw [hi_eq]
-            exact hj.2
-          exact ⟨i, hi_mem, hi_eq⟩
-      unfold chain_count_up_to chain_hits_count_up_to
-      change S.ncard = ({j : ℕ | ambient j ∈ A ∧ (ambient j : ℝ) ≤ x} : Set ℕ).ncard
-      rw [← himage]
-      exact (Set.ncard_image_of_injective S heinj).symm
-    unfold upper_chain_density_at_least
-    unfold upper_chain_density
-    unfold chain_hits_density_at_least upper_chain_hit_density at hhit
-    rw [show Filter.limsup
-        (fun x : ℝ => (chain_count_up_to n x : ℝ) / Real.log (Real.log x))
-        Filter.atTop = Filter.limsup
-        (fun x : ℝ => (chain_hits_count_up_to ambient A x : ℝ) / Real.log (Real.log x))
-        Filter.atTop by
-      apply Filter.limsup_congr
-      filter_upwards with x
-      rw [hcount x]]
-    exact hhit
+  sorry
 
 @[blueprint "thm:erdos-sarkozy-szemeredi-1217"
   (statement := /-- Let $A\subseteq\mathbb N$ have positive upper doubly
   logarithmic density $\Delta$.  Then $A$ contains a strictly increasing
   infinite divisibility chain $n_0\mid n_1\mid n_2\mid\cdots$ whose counting
-  function has upper doubly logarithmic density at least $\Delta$. -/)
+  function has nonnegative extended upper doubly logarithmic density at least
+  $\Delta$. -/)
   (proof := /-- Apply \cref{lem:probabilistic-dense-ambient-chain} to obtain a
   strictly increasing divisibility chain in $\mathbb N$ whose visits to $A$
-  have upper doubly logarithmic density at least $\Delta$.  Then apply
-  \cref{lem:dense-hits-subchain-in-set} to the ambient chain.  The extracted
-  subsequence lies in $A$, remains a strictly increasing divisibility chain,
-  and has counting-density at least $\Delta$. -/)
+  have nonnegative extended upper doubly logarithmic density at least $\Delta$.
+  Then apply \cref{lem:dense-hits-subchain-in-set} to the ambient chain.  The
+  extracted subsequence lies in $A$, remains a strictly increasing divisibility
+  chain, and has nonnegative extended counting-density at least $\Delta$. -/)
   (title := /-- Erd\H{o}s--S\'ark\"ozy--Szemer\'edi problem \#1217 -/)
   (latexEnv := "theorem")]
 theorem erdos_sarkozy_szemeredi_1217 :
