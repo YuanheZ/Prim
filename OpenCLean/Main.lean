@@ -10530,6 +10530,364 @@ noncomputable def mangoldt_adjoint_two_point_divisor_bound {Ω : Type}
                 ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
                   max (mangoldt_weight n) 0)) n))
 
+@[blueprint "lem:mangoldt-adjoint-card-factors-strict-of-dvd-lt"
+  (statement := /-- If $a$ is a nonzero proper divisor of $b$, then the total
+  number of prime factors of $a$, counted with multiplicity, is strictly smaller
+  than the corresponding number for $b$. -/)
+  (proof := /-- Write $b=ac$.  Since $0<a<b$, cancellation in
+  $\mathbb N$ gives $1<c$.  The positivity criterion for the prime-factor
+  counting function gives $0<\Omega(c)$, and additivity of
+  $\Omega$ under nonzero multiplication gives
+  $\Omega(b)=\Omega(a)+\Omega(c)>\Omega(a)$. -/)
+  (title := /-- Proper divisibility strictly raises $\Omega$ -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_card_factors_strict_of_dvd_lt {a b : ℕ}
+    (ha : a ≠ 0) (hdvd : a ∣ b) (hlt : a < b) :
+    ArithmeticFunction.cardFactors a < ArithmeticFunction.cardFactors b := by
+  rcases hdvd with ⟨c, rfl⟩
+  have hapos : 0 < a := Nat.pos_of_ne_zero ha
+  have hc_gt_one : 1 < c := by
+    have hmul : a * 1 < a * c := by
+      simpa [Nat.mul_one] using hlt
+    exact (Nat.mul_lt_mul_left hapos).mp hmul
+  have hc_ne : c ≠ 0 := Nat.ne_of_gt (lt_trans Nat.zero_lt_one hc_gt_one)
+  have homega_c_pos : 0 < ArithmeticFunction.cardFactors c := by
+    exact ArithmeticFunction.cardFactors_pos_iff_one_lt.mpr hc_gt_one
+  rw [ArithmeticFunction.cardFactors_mul ha hc_ne]
+  exact Nat.lt_add_of_pos_right homega_c_pos
+
+@[blueprint "lem:mangoldt-adjoint-index-le-card-factors-of-strict-chain"
+  (statement := /-- Along a strictly increasing divisibility chain
+  $n_0,n_1,\ldots$, the index $k$ is bounded by the total number of prime
+  factors of $n_k$, counted with multiplicity. -/)
+  (proof := /-- Induct on $k$.  The initial case is immediate.  For the
+  successor step, \cref{def:strictly-increasing-divisibility-chain} gives
+  $n_k\mid n_{k+1}$ and $n_k<n_{k+1}$.  The divisor $n_k$ is nonzero, since
+  otherwise $0\mid n_{k+1}$ would force $n_{k+1}=0$, contradicting strict
+  increase.  Therefore
+  \cref{lem:mangoldt-adjoint-card-factors-strict-of-dvd-lt} gives
+  $\Omega(n_k)<\Omega(n_{k+1})$, and the induction hypothesis yields
+  $k+1\leq\Omega(n_{k+1})$. -/)
+  (title := /-- Chain indices are bounded by $\Omega$ -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_index_le_card_factors_of_strict_chain {n : ℕ → ℕ}
+    (hchain : strictly_increasing_divisibility_chain n) :
+    ∀ k : ℕ, k ≤ ArithmeticFunction.cardFactors (n k) := by
+  intro k
+  induction k with
+  | zero => exact Nat.zero_le _
+  | succ k ih =>
+      have hstep_lt : n k < n (k + 1) := hchain.1 (Nat.lt_succ_self k)
+      have hstep_dvd : n k ∣ n (k + 1) := hchain.2 k
+      have hne : n k ≠ 0 := by
+        intro hzero
+        have hnext_zero : n (k + 1) = 0 := by
+          exact Nat.eq_zero_of_zero_dvd (by simpa [hzero] using hstep_dvd)
+        omega
+      have homega_lt :
+          ArithmeticFunction.cardFactors (n k) <
+            ArithmeticFunction.cardFactors (n (k + 1)) :=
+        mangoldt_adjoint_card_factors_strict_of_dvd_lt hne hstep_dvd hstep_lt
+      exact Nat.succ_le_of_lt (lt_of_le_of_lt ih homega_lt)
+
+@[blueprint "lem:mangoldt-adjoint-positive-of-strict-chain"
+  (statement := /-- Every term of a strictly increasing divisibility chain of
+  natural numbers is positive. -/)
+  (proof := /-- If the zeroth term were zero, then the divisibility relation
+  in \cref{def:strictly-increasing-divisibility-chain} would force the first
+  term to be zero, contradicting strict increase.  If a later term were zero,
+  strict increase from the zeroth term to that later term would contradict
+  nonnegativity of natural numbers. -/)
+  (title := /-- Strict divisibility chains are positive -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_positive_of_strict_chain {n : ℕ → ℕ}
+    (hchain : strictly_increasing_divisibility_chain n) :
+    ∀ k : ℕ, 0 < n k := by
+  intro k
+  cases k with
+  | zero =>
+      by_contra hzero
+      have hn0_zero : n 0 = 0 := by omega
+      have hnext_zero : n 1 = 0 := by
+        have hzero_dvd : 0 ∣ n 1 := by
+          rw [← hn0_zero]
+          exact hchain.2 0
+        exact Nat.eq_zero_of_zero_dvd hzero_dvd
+      have hlt : n 0 < n 1 := hchain.1 (Nat.zero_lt_one)
+      omega
+  | succ k =>
+      have hlt : n 0 < n (k + 1) := hchain.1 (Nat.succ_pos k)
+      omega
+
+@[blueprint "lem:mangoldt-adjoint-ennreal-tsum-ite-le"
+  (statement := /-- For an extended nonnegative real number $a$, the series
+  which is equal to $a$ on the indices $i\leq k$ and zero afterwards has sum
+  $(k+1)a$. -/)
+  (proof := /-- The summand is supported on the finite set
+  $\{0,\ldots,k\}$.  Replacing the infinite sum by this finite sum gives
+  $k+1$ identical terms. -/)
+  (title := /-- A finite-support ENNReal sum over an initial segment -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_ennreal_tsum_ite_le (k : ℕ) (a : ENNReal) :
+    (∑' i : ℕ, if i ≤ k then a else 0) = (k + 1 : ℕ) * a := by
+  rw [tsum_eq_sum (s := Finset.range (k + 1))]
+  · have hsum :
+        (∑ b ∈ Finset.range (k + 1), if b ≤ k then a else 0) =
+          ∑ b ∈ Finset.range (k + 1), a := by
+      refine Finset.sum_congr rfl ?_
+      intro b hb
+      have hb_le : b ≤ k := Nat.lt_succ_iff.mp (by simpa using hb)
+      simp [hb_le]
+    rw [hsum]
+    simp [Finset.sum_const, nsmul_eq_mul, Nat.cast_add, Nat.cast_one, add_mul]
+  · intro i hi
+    have hi_not_le : ¬ i ≤ k := by
+      rw [Finset.mem_range] at hi
+      omega
+    simp [hi_not_le]
+
+@[blueprint "lem:mangoldt-adjoint-pair-measure-tsum-le-index"
+  (statement := /-- For any sequence of events $E_k$ in a measurable space,
+  the double series of the measures of $E_i\cap E_j$ is bounded by twice the
+  series of the one-event measures weighted by $k+1$. -/)
+  (proof := /-- Split each ordered pair according as $i\leq j$ or $j\leq i$.
+  In the first case $E_i\cap E_j\subseteq E_j$, and in the second case
+  $E_i\cap E_j\subseteq E_i$.  After summing, the first oriented contribution
+  has exactly $j+1$ copies of $\mu(E_j)$ and the second has exactly $i+1$
+  copies of $\mu(E_i)$, by
+  \cref{lem:mangoldt-adjoint-ennreal-tsum-ite-le}. -/)
+  (title := /-- Pair intersections are bounded by indexed one-event sums -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_pair_measure_tsum_le_index {Ω : Type} [MeasurableSpace Ω]
+    (μ : MeasureTheory.Measure Ω) (E : ℕ → Set Ω) :
+    (∑' i : ℕ, ∑' j : ℕ, μ (E i ∩ E j)) ≤
+      2 * (∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (E k)) := by
+  let lower : ℕ → ℕ → ENNReal := fun i j => if i ≤ j then μ (E j) else 0
+  let upper : ℕ → ℕ → ENNReal := fun i j => if j ≤ i then μ (E i) else 0
+  have hterm : ∀ i j : ℕ, μ (E i ∩ E j) ≤ lower i j + upper i j := by
+    intro i j
+    by_cases hij : i ≤ j
+    · have hle : μ (E i ∩ E j) ≤ μ (E j) :=
+        MeasureTheory.measure_mono Set.inter_subset_right
+      exact hle.trans (by simp [lower, upper, hij])
+    · have hji : j ≤ i := le_of_lt (Nat.lt_of_not_ge hij)
+      have hle : μ (E i ∩ E j) ≤ μ (E i) :=
+        MeasureTheory.measure_mono Set.inter_subset_left
+      exact hle.trans (by simp [lower, upper, hij, hji])
+  have hlower :
+      (∑' i : ℕ, ∑' j : ℕ, lower i j) =
+        ∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (E k) := by
+    rw [ENNReal.tsum_comm]
+    apply tsum_congr
+    intro j
+    exact mangoldt_adjoint_ennreal_tsum_ite_le j (μ (E j))
+  have hupper :
+      (∑' i : ℕ, ∑' j : ℕ, upper i j) =
+        ∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (E k) := by
+    apply tsum_congr
+    intro i
+    exact mangoldt_adjoint_ennreal_tsum_ite_le i (μ (E i))
+  calc
+    (∑' i : ℕ, ∑' j : ℕ, μ (E i ∩ E j)) ≤
+        ∑' i : ℕ, ∑' j : ℕ, (lower i j + upper i j) := by
+      exact ENNReal.tsum_le_tsum fun i => ENNReal.tsum_le_tsum (hterm i)
+    _ = (∑' i : ℕ, ∑' j : ℕ, lower i j) +
+        (∑' i : ℕ, ∑' j : ℕ, upper i j) := by
+      simp_rw [ENNReal.tsum_add]
+    _ = (∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (E k)) +
+        (∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (E k)) := by
+      rw [hlower, hupper]
+    _ = 2 * (∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (E k)) := by
+      rw [two_mul]
+
+@[blueprint "lem:mangoldt-adjoint-weighted-hit-tsum-le-divisor-sum"
+  (statement := /-- For a path satisfying the construction-stage path clauses,
+  the time-index-weighted one-hit sum up to height $x$ is bounded by the
+  terminal-state divisor-weighted Mangoldt sum over $A\cap[1,x]$. -/)
+  (proof := /-- Let $S=A\cap[1,x]$.  Positivity of strict divisibility chains,
+  \cref{lem:mangoldt-adjoint-positive-of-strict-chain}, identifies the hit
+  event at time $k$ with the preimage of $S$ under the $k$th coordinate.  The
+  coordinate measurability hypothesis permits decomposition of this measure into
+  singleton fibers.  On a nonempty fiber with terminal state $n$, the index
+  bound \cref{lem:mangoldt-adjoint-index-le-card-factors-of-strict-chain}
+  gives $k+1\leq\Omega(n)+1$.  Summing in $k$ and exchanging the nonnegative
+  series leaves the expected-visit sum for each $n$, which is replaced by
+  $\nu_\Lambda(n)$ using \cref{def:mangoldt-adjoint-visit-identity}. -/)
+  (title := /-- Time-weighted hits are bounded by terminal divisor weights -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_weighted_hit_tsum_le_divisor_sum {Ω : Type}
+    [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ}
+    (hchain : ∀ ω : Ω, strictly_increasing_divisibility_chain (path ω))
+    (hmeas : ∀ k : ℕ, Measurable fun ω : Ω => path ω k)
+    (hvisit : mangoldt_adjoint_visit_identity μ path) (A : Set ℕ) (x : ℝ) :
+    (∑' k : ℕ,
+        ((k + 1 : ℕ) : ENNReal) *
+          μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) ≤
+      ENNReal.ofReal
+        (∑' n : ℕ,
+          (A ∩ real_initial_segment x).indicator
+            (fun n : ℕ =>
+              ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+                max (mangoldt_weight n) 0)) n) := by
+  classical
+  let S : Set ℕ := A ∩ real_initial_segment x
+  let rterm : ℕ → ℝ := fun n =>
+    ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+      max (mangoldt_weight n) 0)
+  have hSfinite : S.Finite := by
+    rcases exists_nat_ge x with ⟨N, hN⟩
+    refine (Set.finite_le_nat N).subset ?_
+    intro n hn
+    have hnle : (n : ℝ) ≤ N := by
+      exact le_trans hn.2.2 hN
+    exact_mod_cast hnle
+  have hhit_eq : ∀ k : ℕ,
+      {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x} =
+        (fun ω : Ω => path ω k) ⁻¹' S := by
+    intro k
+    ext ω
+    constructor
+    · intro hω
+      exact ⟨hω.1,
+        ⟨mangoldt_adjoint_positive_of_strict_chain (hchain ω) k, hω.2⟩⟩
+    · intro hω
+      exact ⟨hω.1, hω.2.2⟩
+  have hper : ∀ k : ℕ,
+      ((k + 1 : ℕ) : ENNReal) *
+          μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x} ≤
+        ∑' n : S,
+          (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+            μ {ω : Ω | path ω k = (n : ℕ)}) := by
+    intro k
+    have hfiber_meas :
+        ∀ n : ℕ, n ∈ S -> MeasurableSet ((fun ω : Ω => path ω k) ⁻¹' ({n} : Set ℕ)) := by
+      intro n hn
+      exact hmeas k (measurableSet_singleton n)
+    have hpartition :
+        (∑' n : S, μ ((fun ω : Ω => path ω k) ⁻¹' ({(n : ℕ)} : Set ℕ))) =
+          μ ((fun ω : Ω => path ω k) ⁻¹' S) :=
+      MeasureTheory.tsum_measure_preimage_singleton hSfinite.countable hfiber_meas
+    calc
+      ((k + 1 : ℕ) : ENNReal) *
+          μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x} =
+          ((k + 1 : ℕ) : ENNReal) *
+            (∑' n : S, μ ((fun ω : Ω => path ω k) ⁻¹' ({(n : ℕ)} : Set ℕ))) := by
+        rw [hpartition]
+        simp [hhit_eq k]
+      _ = ∑' n : S,
+          ((k + 1 : ℕ) : ENNReal) *
+            μ ((fun ω : Ω => path ω k) ⁻¹' ({(n : ℕ)} : Set ℕ)) := by
+        rw [← ENNReal.tsum_mul_left]
+      _ ≤ ∑' n : S,
+          (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+            μ ((fun ω : Ω => path ω k) ⁻¹' ({(n : ℕ)} : Set ℕ))) := by
+        refine ENNReal.tsum_le_tsum ?_
+        intro n
+        by_cases hk : k ≤ ArithmeticFunction.cardFactors (n : ℕ)
+        · have hcoeff : ((k + 1 : ℕ) : ENNReal) ≤
+              ((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) := by
+            exact_mod_cast Nat.succ_le_succ hk
+          exact mul_le_mul_right' hcoeff _
+        · have hempty : ((fun ω : Ω => path ω k) ⁻¹' ({(n : ℕ)} : Set ℕ)) = ∅ := by
+            ext ω
+            constructor
+            · intro hω
+              have hidx := mangoldt_adjoint_index_le_card_factors_of_strict_chain
+                (hchain ω) k
+              have hpath : path ω k = (n : ℕ) := by simpa using hω
+              rw [hpath] at hidx
+              exact False.elim (hk hidx)
+            · intro hω
+              cases hω
+          simp [hempty]
+      _ = ∑' n : S,
+          (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+            μ {ω : Ω | path ω k = (n : ℕ)}) := by
+        apply tsum_congr
+        intro n
+        rfl
+  have hsum_le :
+      (∑' k : ℕ,
+          ((k + 1 : ℕ) : ENNReal) *
+            μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) ≤
+        ∑' n : S,
+          (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+            ENNReal.ofReal (mangoldt_weight (n : ℕ))) := by
+    calc
+      (∑' k : ℕ,
+          ((k + 1 : ℕ) : ENNReal) *
+            μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) ≤
+          ∑' k : ℕ, ∑' n : S,
+            (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+              μ {ω : Ω | path ω k = (n : ℕ)}) := by
+        exact ENNReal.tsum_le_tsum hper
+      _ = ∑' n : S, ∑' k : ℕ,
+            (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+              μ {ω : Ω | path ω k = (n : ℕ)}) := by
+        rw [ENNReal.tsum_comm]
+      _ = ∑' n : S,
+          (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+            ENNReal.ofReal (mangoldt_weight (n : ℕ))) := by
+        apply tsum_congr
+        intro n
+        rw [ENNReal.tsum_mul_left]
+        exact congrArg
+          (fun y => (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) * y))
+          (hvisit (n : ℕ))
+  have hterm_eq : ∀ n : S,
+      (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+          ENNReal.ofReal (mangoldt_weight (n : ℕ))) =
+        ENNReal.ofReal (rterm (n : ℕ)) := by
+    intro n
+    have hcoeff_nonneg :
+        0 ≤ ((((ArithmeticFunction.cardFactors (n : ℕ) : ℕ) + 1 : ℕ) : ℝ)) := by
+      exact_mod_cast Nat.zero_le (ArithmeticFunction.cardFactors (n : ℕ) + 1)
+    have hcoeff_eq :
+        (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal)) =
+          ENNReal.ofReal ((((ArithmeticFunction.cardFactors (n : ℕ) : ℕ) + 1 : ℕ) : ℝ)) := by
+      rw [ENNReal.ofReal_natCast]
+    dsimp [rterm]
+    rw [hcoeff_eq, ENNReal.ofReal_mul hcoeff_nonneg]
+    simp [max_comm]
+  have hreal_tsum :
+      (∑' n : ℕ, S.indicator rterm n) = ∑ n ∈ hSfinite.toFinset, rterm n := by
+    rw [tsum_eq_sum (s := hSfinite.toFinset)]
+    · refine Finset.sum_congr rfl ?_
+      intro n hn
+      have hnS : n ∈ S := by
+        simpa [Set.Finite.mem_toFinset] using hn
+      simp [Set.indicator_of_mem hnS]
+    · intro n hn
+      have hnS : n ∉ S := by
+        simpa [Set.Finite.mem_toFinset] using hn
+      simp [Set.indicator_of_notMem hnS]
+  have hsub_eq :
+      (∑' n : S,
+          (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+            ENNReal.ofReal (mangoldt_weight (n : ℕ)))) =
+        ENNReal.ofReal (∑' n : ℕ, S.indicator rterm n) := by
+    letI : Fintype S := hSfinite.fintype
+    calc
+      (∑' n : S,
+          (((ArithmeticFunction.cardFactors (n : ℕ) + 1 : ℕ) : ENNReal) *
+            ENNReal.ofReal (mangoldt_weight (n : ℕ)))) =
+          ∑' n : S, ENNReal.ofReal (rterm (n : ℕ)) := by
+        exact tsum_congr hterm_eq
+      _ = ∑ n : S, ENNReal.ofReal (rterm (n : ℕ)) := by
+        simp
+      _ = ∑ n ∈ hSfinite.toFinset, ENNReal.ofReal (rterm n) := by
+        simpa using
+          (Finset.sum_set_coe (s := S)
+            (f := fun n : ℕ => ENNReal.ofReal (rterm n)))
+      _ = ENNReal.ofReal (∑ n ∈ hSfinite.toFinset, rterm n) := by
+        rw [ENNReal.ofReal_sum_of_nonneg]
+        intro n hn
+        exact mul_nonneg (by exact_mod_cast Nat.zero_le (ArithmeticFunction.cardFactors n + 1))
+          (le_max_right (mangoldt_weight n) 0)
+      _ = ENNReal.ofReal (∑' n : ℕ, S.indicator rterm n) := by
+        rw [hreal_tsum]
+  exact hsum_le.trans (le_of_eq hsub_eq)
+
 @[blueprint "lem:mangoldt-adjoint-two-point-divisor-bound-from-constructed-path-data"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
   $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
@@ -10537,15 +10895,18 @@ noncomputable def mangoldt_adjoint_two_point_divisor_bound {Ω : Type}
   \cref{def:mangoldt-adjoint-constructed-path-data}, then the joint hit
   probabilities of $p$ satisfy the two-point divisor bound
   \cref{def:mangoldt-adjoint-two-point-divisor-bound}. -/)
-  (proof := /-- Assume \cref{def:mangoldt-adjoint-constructed-path-data}.  Fix
-  $A\subseteq\mathbb N$ and a height $x$.  On every sampled path, strict
-  monotonicity and divisibility imply that, once a terminal state $n$ has been
-  reached, every earlier state in the same chain is a divisor of $n$ and the
-  number of such earlier states is at most $1+\Omega(n)$.  Summing this
-  deterministic inequality over terminal hits in $A\cap[1,x]$ bounds the
-  ordered pair count of hits by the corresponding terminal-state sum.  Taking
-  expectations and using the expected-visit identity contained in
-  \cref{def:mangoldt-adjoint-constructed-path-data} gives exactly
+  (proof := /-- Assume \cref{def:mangoldt-adjoint-constructed-path-data} and fix
+  $A\subseteq\mathbb N$.  Take the constant $C=2$.  For all sufficiently large
+  real heights $x$, one has $0<\log\log x$.  Let $E_k$ be the event that the
+  $k$th path value lies in $A$ and is at most $x$.  By
+  \cref{lem:mangoldt-adjoint-pair-measure-tsum-le-index}, the double sum of
+  joint hit probabilities is bounded by
+  $2\sum_k (k+1)\mu(E_k)$.  The pathwise strict-chain clause, coordinate
+  measurability clause, and expected-visit identity contained in
+  \cref{def:mangoldt-adjoint-constructed-path-data} are exactly the hypotheses
+  needed by \cref{lem:mangoldt-adjoint-weighted-hit-tsum-le-divisor-sum}, which
+  bounds this one-hit weighted sum by the terminal-state divisor-weighted
+  Mangoldt sum over $A\cap[1,x]$.  Combining the two inequalities gives
   \cref{def:mangoldt-adjoint-two-point-divisor-bound}. -/)
   (title := /-- Construction data gives the two-point divisor bound -/)
   (latexEnv := "lemma")]
@@ -10554,7 +10915,59 @@ lemma mangoldt_adjoint_two_point_divisor_bound_from_constructed_path_data
     {path : Ω → ℕ → ℕ} :
     mangoldt_adjoint_constructed_path_data μ path ->
       mangoldt_adjoint_two_point_divisor_bound μ path := by
-  sorry
+  intro hdata
+  unfold mangoldt_adjoint_two_point_divisor_bound
+  intro A
+  refine ⟨2, by norm_num, ?_⟩
+  filter_upwards [Filter.eventually_gt_atTop (Real.exp 1)] with x hx
+  constructor
+  · have hlog_gt_one : 1 < Real.log x := by
+      simpa using Real.log_lt_log (Real.exp_pos 1) hx
+    simpa using Real.log_pos hlog_gt_one
+  · classical
+    let hit : ℕ → Set Ω := fun k => {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}
+    have hpair_le :
+        mangoldt_adjoint_hit_second_moment μ path A x ≤
+          2 * (∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (hit k)) := by
+      simpa [mangoldt_adjoint_hit_second_moment, hit, Set.inter_def, and_assoc]
+        using mangoldt_adjoint_pair_measure_tsum_le_index μ hit
+    have hone_le :
+        (∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (hit k)) ≤
+          ENNReal.ofReal
+            (∑' n : ℕ,
+              (A ∩ real_initial_segment x).indicator
+                (fun n : ℕ =>
+                  ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+                    max (mangoldt_weight n) 0)) n) := by
+      simpa [hit] using
+        mangoldt_adjoint_weighted_hit_tsum_le_divisor_sum hdata.2.1 hdata.2.2.1
+          hdata.2.2.2 A x
+    have htwo_le :
+        2 * (∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (hit k)) ≤
+          ENNReal.ofReal
+            (2 * (∑' n : ℕ,
+              (A ∩ real_initial_segment x).indicator
+                (fun n : ℕ =>
+                  ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+                    max (mangoldt_weight n) 0)) n)) := by
+      calc
+        2 * (∑' k : ℕ, ((k + 1 : ℕ) : ENNReal) * μ (hit k)) ≤
+            2 * ENNReal.ofReal
+              (∑' n : ℕ,
+                (A ∩ real_initial_segment x).indicator
+                  (fun n : ℕ =>
+                    ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+                      max (mangoldt_weight n) 0)) n) := by
+          exact mul_le_mul_left' hone_le 2
+        _ = ENNReal.ofReal
+            (2 * (∑' n : ℕ,
+              (A ∩ real_initial_segment x).indicator
+                (fun n : ℕ =>
+                  ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+                    max (mangoldt_weight n) 0)) n)) := by
+          rw [ENNReal.ofReal_mul (show 0 ≤ (2 : ℝ) by norm_num)]
+          norm_num
+    exact hpair_le.trans htwo_le
 
 @[blueprint "lem:mangoldt-adjoint-second-moment-bound-from-two-point-divisor-bound"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
