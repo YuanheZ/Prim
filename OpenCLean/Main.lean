@@ -12802,23 +12802,30 @@ noncomputable def mangoldt_adjoint_reverse_fatou_uniform_integrability_bridge
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-bridge-from-uniform-integrability"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
-  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, coordinate
-  measurability and the count-variable moment bridge imply the reverse-Fatou
-  pathwise extraction principle through
-  \cref{def:mangoldt-adjoint-reverse-fatou-uniform-integrability-bridge}. -/)
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, the bridge
+  predicate \cref{def:mangoldt-adjoint-reverse-fatou-uniform-integrability-bridge}
+  holds: if $\mu(\Omega)=1$, every coordinate map
+  $\omega\mapsto p(\omega)_k$ is measurable, and the count-variable moment
+  bridge \cref{def:mangoldt-adjoint-hit-count-moment-bridge} holds, then the
+  reverse-Fatou pathwise extraction principle
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle} holds. -/)
   (proof := /-- Fix $A\subseteq\mathbb N$ with positive
   \cref{def:mangoldt-weight-upper-density}.  The count-variable bridge
   \cref{def:mangoldt-adjoint-hit-count-moment-bridge} supplies heights
-  $x_j\to\infty$ for which the normalized hit counts from
+  $x_j\to\infty$ for which the nonnegative normalized hit counts from
   \cref{def:mangoldt-adjoint-normalized-hit-count} are almost everywhere
   measurable, have first-moment limsup equal to the density of $A$, and have
-  uniformly bounded second moments.  The almost-sure finiteness clause ensures
-  that these random variables are the same hit counts that define
-  \cref{def:chain-hits-density-at-least}.  Applying the reverse-Fatou
-  inequality to this uniformly integrable sequence shows that the expectation
-  of the pathwise nonnegative extended limsup is at least the density of $A$.
-  Since $\mu$ has total mass one, some sample path attains this lower bound,
-  which is exactly
+  uniformly bounded second moments.  The pointwise estimate
+  $X\leq \min(X,R)+X^2/R$ bounds the expectations by bounded truncations plus a
+  tail term controlled by the second moments.  Applying reverse Fatou to
+  measurable representatives of the bounded truncations and then letting
+  $R\to\infty$ gives that the integral of the pathwise extended limsup is at
+  least the density of $A$.  Because $\mu(\Omega)=1$, either the integral is
+  finite and some sample point has limsup at least this lower bound, or the
+  integral is infinite and the contrary pointwise bound would make it finite.
+  For the resulting sample point, $x_j\to\infty$ makes the subsequential limsup
+  no larger than the full upper chain-hit density, so
+  \cref{def:chain-hits-density-at-least} holds.  This is exactly
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (title := /-- Reverse-Fatou bridge from uniform integrability -/)
   (latexEnv := "lemma")]
@@ -12826,7 +12833,300 @@ lemma mangoldt_adjoint_reverse_fatou_bridge_from_uniform_integrability
     {Ω : Type} [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω}
     {path : Ω → ℕ → ℕ} :
     mangoldt_adjoint_reverse_fatou_uniform_integrability_bridge μ path := by
-  sorry
+  intro hμ hmeas hbridge A hA
+  classical
+  haveI : MeasureTheory.IsProbabilityMeasure μ := ⟨hμ⟩
+  rcases hbridge A hA with
+    ⟨xseq, hxseq_tendsto, hxseq_pos, hfinite, hf_meas, hlim, C, hC_nonneg, hC⟩
+  let U : ℕ → ENNReal := fun j : ℕ =>
+    ∫⁻ ω,
+      ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω) ∂μ
+  let F : Ω → ENNReal := fun ω : Ω =>
+    Filter.limsup
+      (fun j : ℕ => ENNReal.ofReal
+        (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+      Filter.atTop
+  let Y : ENNReal := ∫⁻ ω, F ω ∂μ
+  have hnonneg : ∀ j : ℕ, ∀ ω : Ω,
+      0 ≤ mangoldt_adjoint_normalized_hit_count path A (xseq j) ω := by
+    intro j ω
+    rw [mangoldt_adjoint_normalized_hit_count]
+    exact div_nonneg (Nat.cast_nonneg _) (le_of_lt (hxseq_pos j).2)
+  have htail_real : ∀ R y : ℝ, 0 < R -> 0 ≤ y ->
+      y ≤ min y R + y ^ 2 / R := by
+    intro R y hR hy
+    by_cases hyR : y ≤ R
+    · rw [min_eq_left hyR]
+      exact le_add_of_nonneg_right (div_nonneg (sq_nonneg y) (le_of_lt hR))
+    · have hRy : R ≤ y := le_of_not_ge hyR
+      rw [min_eq_right hRy]
+      have hdiv : y ≤ y ^ 2 / R := by
+        rw [le_div_iff₀ hR]
+        nlinarith
+      exact hdiv.trans (le_add_of_nonneg_left (le_of_lt hR))
+  have htail_enn : ∀ R y : ℝ, 0 < R -> 0 ≤ y ->
+      ENNReal.ofReal y ≤
+        min (ENNReal.ofReal y) (ENNReal.ofReal R) +
+          (ENNReal.ofReal R)⁻¹ * (ENNReal.ofReal y) ^ (2 : ℕ) := by
+    intro R y hR hy
+    calc
+      ENNReal.ofReal y ≤ ENNReal.ofReal (min y R + y ^ 2 / R) :=
+        ENNReal.ofReal_le_ofReal (htail_real R y hR hy)
+      _ = min (ENNReal.ofReal y) (ENNReal.ofReal R) +
+            (ENNReal.ofReal R)⁻¹ * (ENNReal.ofReal y) ^ (2 : ℕ) := by
+        rw [ENNReal.ofReal_add (le_min hy (le_of_lt hR))
+          (div_nonneg (sq_nonneg y) (le_of_lt hR))]
+        rw [ENNReal.ofReal_min, ENNReal.ofReal_div_of_pos hR, ENNReal.ofReal_pow hy]
+        rw [div_eq_mul_inv, mul_comm]
+  have h_integral_tail : ∀ (N j : ℕ),
+      U j ≤
+        ∫⁻ (ω : Ω),
+          min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+            (ENNReal.ofReal ((N + 1 : ℕ) : ℝ)) ∂μ +
+          (ENNReal.ofReal ((N + 1 : ℕ) : ℝ))⁻¹ *
+            ∫⁻ (ω : Ω),
+              (ENNReal.ofReal
+                (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) ^ (2 : ℕ) ∂μ := by
+    intro N j
+    have hRpos : 0 < ((N + 1 : ℕ) : ℝ) := by positivity
+    calc
+      U j =
+          ∫⁻ (ω : Ω),
+            ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω) ∂μ := rfl
+      _ ≤ ∫⁻ (ω : Ω),
+            min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+              (ENNReal.ofReal ((N + 1 : ℕ) : ℝ)) +
+            (ENNReal.ofReal ((N + 1 : ℕ) : ℝ))⁻¹ *
+              (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) ^ (2 : ℕ) ∂μ := by
+        refine MeasureTheory.lintegral_mono fun ω => ?_
+        exact htail_enn _ _ hRpos (hnonneg j ω)
+      _ = ∫⁻ (ω : Ω),
+            min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+              (ENNReal.ofReal ((N + 1 : ℕ) : ℝ)) ∂μ +
+          ∫⁻ (ω : Ω),
+            (ENNReal.ofReal ((N + 1 : ℕ) : ℝ))⁻¹ *
+              (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) ^ (2 : ℕ) ∂μ := by
+        rw [MeasureTheory.lintegral_add_left']
+        exact (hf_meas j).min aemeasurable_const
+      _ = ∫⁻ (ω : Ω),
+            min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+              (ENNReal.ofReal ((N + 1 : ℕ) : ℝ)) ∂μ +
+          (ENNReal.ofReal ((N + 1 : ℕ) : ℝ))⁻¹ *
+            ∫⁻ (ω : Ω),
+              (ENNReal.ofReal
+                (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) ^ (2 : ℕ) ∂μ := by
+        rw [MeasureTheory.lintegral_const_mul'']
+        exact (hf_meas j).pow_const (2 : ℕ)
+  have htrunc_rev : ∀ N : ℕ,
+      Filter.limsup
+        (fun j : ℕ => ∫⁻ (ω : Ω),
+          min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+            (ENNReal.ofReal ((N + 1 : ℕ) : ℝ)) ∂μ)
+        Filter.atTop ≤ Y := by
+    intro N
+    let R : ENNReal := ENNReal.ofReal ((N + 1 : ℕ) : ℝ)
+    let fmin : ℕ → Ω → ENNReal := fun j ω =>
+      min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) R
+    have hfmin : ∀ j : ℕ, AEMeasurable (fmin j) μ := by
+      intro j
+      exact (hf_meas j).min aemeasurable_const
+    let fmk : ℕ → Ω → ENNReal := fun j => (hfmin j).mk (fmin j)
+    have hfmk_meas : ∀ j : ℕ, Measurable (fmk j) := by
+      intro j
+      exact (hfmin j).measurable_mk
+    have hbound : ∀ j : ℕ, fmk j ≤ᵐ[μ] fun _ : Ω => R := by
+      intro j
+      filter_upwards [(hfmin j).ae_eq_mk] with ω hω
+      change (hfmin j).mk (fmin j) ω ≤ R
+      rw [← hω]
+      exact min_le_right _ _
+    have hfin : (∫⁻ _ : Ω, R ∂μ) ≠ (⊤ : ENNReal) := by
+      simp [R]
+    have hrev := MeasureTheory.limsup_lintegral_le (μ := μ) (f := fmk)
+      (g := fun _ : Ω => R) hfmk_meas hbound hfin
+    have hleft :
+        Filter.limsup (fun j : ℕ => ∫⁻ (ω : Ω), fmin j ω ∂μ) Filter.atTop =
+          Filter.limsup (fun j : ℕ => ∫⁻ (ω : Ω), fmk j ω ∂μ) Filter.atTop := by
+      refine Filter.limsup_congr ?_
+      exact Filter.Eventually.of_forall fun j =>
+        MeasureTheory.lintegral_congr_ae ((hfmin j).ae_eq_mk)
+    have hlim_eq :
+        (fun ω : Ω => Filter.limsup (fun j : ℕ => fmk j ω) Filter.atTop) =ᵐ[μ]
+          fun ω : Ω => Filter.limsup (fun j : ℕ => fmin j ω) Filter.atTop := by
+      filter_upwards [MeasureTheory.ae_all_iff.2 (fun j => (hfmin j).ae_eq_mk)] with ω hω
+      exact Filter.limsup_congr (Filter.Eventually.of_forall fun j => (hω j).symm)
+    calc
+      Filter.limsup (fun j : ℕ => ∫⁻ (ω : Ω),
+          min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+            (ENNReal.ofReal ((N + 1 : ℕ) : ℝ)) ∂μ)
+          Filter.atTop =
+          Filter.limsup (fun j : ℕ => ∫⁻ (ω : Ω), fmin j ω ∂μ) Filter.atTop := rfl
+      _ = Filter.limsup (fun j : ℕ => ∫⁻ (ω : Ω), fmk j ω ∂μ) Filter.atTop := hleft
+      _ ≤ ∫⁻ (ω : Ω), Filter.limsup (fun j : ℕ => fmk j ω) Filter.atTop ∂μ := hrev
+      _ = ∫⁻ (ω : Ω), Filter.limsup (fun j : ℕ => fmin j ω) Filter.atTop ∂μ :=
+        MeasureTheory.lintegral_congr_ae hlim_eq
+      _ ≤ Y := by
+        refine MeasureTheory.lintegral_mono fun ω => ?_
+        dsimp [Y, F, fmin]
+        refine Filter.limsup_le_limsup (Filter.Eventually.of_forall ?_)
+        intro j
+        exact min_le_left _ _
+  have hinv_cast : Filter.Tendsto
+      (fun N : ℕ => (((N + 1 : ℕ) : ENNReal))⁻¹) Filter.atTop (nhds 0) := by
+    exact ENNReal.tendsto_inv_nat_nhds_zero.comp (Filter.tendsto_add_atTop_nat 1)
+  have hinv : Filter.Tendsto
+      (fun N : ℕ => (ENNReal.ofReal (((N + 1 : ℕ) : ℝ)))⁻¹) Filter.atTop (nhds 0) := by
+    convert hinv_cast with N
+    rw [ENNReal.ofReal_natCast]
+  have htail_left : Filter.Tendsto
+      (fun N : ℕ => ENNReal.ofReal C *
+        (ENNReal.ofReal (((N + 1 : ℕ) : ℝ)))⁻¹) Filter.atTop (nhds 0) := by
+    simpa using ENNReal.Tendsto.const_mul hinv (a := ENNReal.ofReal C) (Or.inr (by simp))
+  have htail_tendsto : Filter.Tendsto
+      (fun N : ℕ => (ENNReal.ofReal (((N + 1 : ℕ) : ℝ)))⁻¹ * ENNReal.ofReal C)
+      Filter.atTop (nhds 0) := by
+    simpa [mul_comm] using htail_left
+  have hL_le_Y : Filter.limsup U Filter.atTop ≤ Y := by
+    refine ENNReal.le_of_forall_pos_le_add ?_
+    intro ε hε hYfin
+    let η : NNReal := ε / 2
+    have hηpos : 0 < η := by
+      exact half_pos hε
+    have hηsum : (η : ENNReal) + (η : ENNReal) = (ε : ENNReal) := by
+      rw [← ENNReal.coe_add]
+      congr
+      exact add_halves ε
+    have hηenn : (0 : ENNReal) < (η : ENNReal) := by
+      exact_mod_cast hηpos
+    have htail_event := (ENNReal.tendsto_nhds_zero.mp htail_tendsto) (η : ENNReal) hηenn
+    rcases Filter.Eventually.exists htail_event with ⟨N, htailN⟩
+    let V : ℕ → ENNReal := fun j : ℕ =>
+      ∫⁻ (ω : Ω),
+        min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+          (ENNReal.ofReal ((N + 1 : ℕ) : ℝ)) ∂μ
+    have hV_bdd : Filter.IsBoundedUnder LE.le Filter.atTop V := by
+      simpa [Filter.IsBoundedUnder] using
+        (Filter.isBounded_le_of_top (f := Filter.map V Filter.atTop))
+    have hV_limsup : Filter.limsup V Filter.atTop ≤ Y := by
+      simpa [V] using htrunc_rev N
+    have hY_lt_add : Y < Y + (η : ENNReal) := by
+      exact ENNReal.lt_add_right (ne_of_lt hYfin) (ne_of_gt hηenn)
+    have hV_event_lt : ∀ᶠ j : ℕ in Filter.atTop, V j < Y + (η : ENNReal) :=
+      Filter.eventually_lt_of_limsup_lt (f := Filter.atTop) (u := V)
+        (hV_limsup.trans_lt hY_lt_add) hV_bdd
+    have hU_event : ∀ᶠ j : ℕ in Filter.atTop, U j ≤ Y + (ε : ENNReal) := by
+      filter_upwards [hV_event_lt] with j hVj
+      have hmain : U j ≤ V j +
+          (ENNReal.ofReal (((N + 1 : ℕ) : ℝ)))⁻¹ * ENNReal.ofReal C := by
+        calc
+          U j ≤ V j +
+              (ENNReal.ofReal (((N + 1 : ℕ) : ℝ)))⁻¹ *
+                ∫⁻ (ω : Ω),
+                  (ENNReal.ofReal
+                    (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) ^ (2 : ℕ) ∂μ := by
+            simpa [V] using h_integral_tail N j
+          _ ≤ V j +
+              (ENNReal.ofReal (((N + 1 : ℕ) : ℝ)))⁻¹ * ENNReal.ofReal C := by
+            exact add_le_add (le_refl (V j))
+              (mul_le_mul_left' (hC j)
+                ((ENNReal.ofReal (((N + 1 : ℕ) : ℝ)))⁻¹))
+      calc
+        U j ≤ V j + (ENNReal.ofReal (((N + 1 : ℕ) : ℝ)))⁻¹ * ENNReal.ofReal C := hmain
+        _ ≤ V j + (η : ENNReal) := add_le_add (le_refl (V j)) htailN
+        _ ≤ (Y + (η : ENNReal)) + (η : ENNReal) :=
+          add_le_add (le_of_lt hVj) (le_refl (η : ENNReal))
+        _ = Y + (ε : ENNReal) := by
+          rw [add_assoc, hηsum]
+    exact Filter.limsup_le_of_le (f := Filter.atTop) (u := U)
+      (a := Y + (ε : ENNReal)) (h := hU_event)
+  let B : NNReal := ⟨C + 2, by linarith⟩
+  have hU_bound : ∀ j : ℕ, U j ≤ (B : ENNReal) := by
+    intro j
+    have hmin_le_one :
+        (∫⁻ (ω : Ω),
+          min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+            (ENNReal.ofReal (((0 + 1 : ℕ) : ℝ))) ∂μ) ≤ (1 : ENNReal) := by
+      calc
+        (∫⁻ (ω : Ω),
+          min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+            (ENNReal.ofReal (((0 + 1 : ℕ) : ℝ))) ∂μ) ≤
+            ∫⁻ (_ : Ω), (1 : ENNReal) ∂μ := by
+          refine MeasureTheory.lintegral_mono fun ω => ?_
+          simpa using min_le_right
+            (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+            (1 : ENNReal)
+        _ = (1 : ENNReal) := by
+          simp
+    have htailmul :
+        (ENNReal.ofReal (((0 + 1 : ℕ) : ℝ)))⁻¹ *
+          ∫⁻ (ω : Ω),
+            (ENNReal.ofReal
+              (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) ^ (2 : ℕ) ∂μ ≤
+          ENNReal.ofReal C := by
+      simpa using hC j
+    have hBbound : (1 : ENNReal) + ENNReal.ofReal C ≤ (B : ENNReal) := by
+      calc
+        (1 : ENNReal) + ENNReal.ofReal C = ENNReal.ofReal (1 + C) := by
+          rw [ENNReal.ofReal_add zero_le_one hC_nonneg]
+          norm_num
+        _ ≤ ENNReal.ofReal (C + 2) := ENNReal.ofReal_le_ofReal (by linarith)
+        _ = (B : ENNReal) := by
+          simpa [B] using
+            (ENNReal.ofReal_eq_coe_nnreal (x := C + 2) (by linarith : 0 ≤ C + 2))
+    calc
+      U j ≤
+          (∫⁻ (ω : Ω),
+            min (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω))
+              (ENNReal.ofReal (((0 + 1 : ℕ) : ℝ))) ∂μ) +
+            (ENNReal.ofReal (((0 + 1 : ℕ) : ℝ)))⁻¹ *
+              ∫⁻ (ω : Ω),
+                (ENNReal.ofReal
+                  (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) ^ (2 : ℕ) ∂μ := by
+        simpa using h_integral_tail 0 j
+      _ ≤ (1 : ENNReal) + ENNReal.ofReal C := add_le_add hmin_le_one htailmul
+      _ ≤ (B : ENNReal) := hBbound
+  have hL_eq :
+      ENNReal.ofReal (mangoldt_weight_upper_density A) = Filter.limsup U Filter.atTop := by
+    have htmp := ENNReal.ofReal_limsup_toReal (f := Filter.atTop) (u := U) (C := B)
+      (Filter.Eventually.of_forall hU_bound)
+    simpa [U, hlim] using htmp
+  have hY_lower : ENNReal.ofReal (mangoldt_weight_upper_density A) ≤ Y := by
+    rw [hL_eq]
+    exact hL_le_Y
+  have hpath_limsup : ∃ ω : Ω, ENNReal.ofReal (mangoldt_weight_upper_density A) ≤ F ω := by
+    by_cases hYtop : Y = (⊤ : ENNReal)
+    · by_contra hnone
+      have hle_point : ∀ ω : Ω, F ω ≤ ENNReal.ofReal (mangoldt_weight_upper_density A) := by
+        intro ω
+        by_contra hle
+        have hge : ENNReal.ofReal (mangoldt_weight_upper_density A) ≤ F ω :=
+          le_of_lt (not_le.mp hle)
+        exact hnone ⟨ω, hge⟩
+      have hYle : Y ≤ ENNReal.ofReal (mangoldt_weight_upper_density A) := by
+        dsimp [Y]
+        calc
+          ∫⁻ (ω : Ω), F ω ∂μ ≤
+              ∫⁻ (_ : Ω), ENNReal.ofReal (mangoldt_weight_upper_density A) ∂μ := by
+            exact MeasureTheory.lintegral_mono fun ω => hle_point ω
+          _ = ENNReal.ofReal (mangoldt_weight_upper_density A) := by
+            simp
+      have htop_le : (⊤ : ENNReal) ≤ ENNReal.ofReal (mangoldt_weight_upper_density A) := by
+        simpa [Y, hYtop] using hYle
+      have hfinite_top : ENNReal.ofReal (mangoldt_weight_upper_density A) < (⊤ : ENNReal) := by
+        simp
+      exact (not_lt_of_ge htop_le) hfinite_top
+    · have hYne : (∫⁻ (ω : Ω), F ω ∂μ) ≠ (⊤ : ENNReal) := by
+        simpa [Y] using hYtop
+      rcases MeasureTheory.exists_lintegral_le (μ := μ) (f := F) hYne with ⟨ω, hωY⟩
+      exact ⟨ω, hY_lower.trans hωY⟩
+  rcases hpath_limsup with ⟨ω, hω⟩
+  refine ⟨ω, ?_⟩
+  unfold chain_hits_density_at_least upper_chain_hit_density at *
+  exact hω.trans (by
+    simpa [F, Function.comp_def, mangoldt_adjoint_normalized_hit_count] using
+      hxseq_tendsto.limsup_comp_le_limsup
+        (u := fun x : ℝ => ENNReal.ofReal
+          ((chain_hits_count_up_to (path ω) A x : ℝ) / Real.log (Real.log x))))
 
 @[blueprint "lem:mangoldt-adjoint-second-moment-bound-from-constructed-path-data"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
