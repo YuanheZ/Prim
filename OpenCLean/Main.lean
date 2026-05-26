@@ -9216,8 +9216,8 @@ lemma reciprocal_zeta_ibp_regularity :
       simpa using hmul
 
 @[blueprint "lem:reciprocal-zeta-derivative-integral-one"
-  (statement := /-- The improper integral of the derivative of the real
-  reciprocal zeta factor over $(1,\infty)$ is $1$. -/)
+  (statement := /-- The Lebesgue integral over $(1,\infty)$ of the derivative of
+  the real function $s\mapsto (\operatorname{Re}\zeta(s))^{-1}$ is $1$. -/)
   (proof := /-- Apply the improper fundamental theorem of calculus on
   $(1,\infty)$ to the real reciprocal zeta factor.  The differentiability and
   integrability hypotheses are supplied by
@@ -9230,8 +9230,50 @@ lemma reciprocal_zeta_ibp_regularity :
 lemma reciprocal_zeta_derivative_integral_one :
     (∫ s : ℝ in Set.Ioi (1 : ℝ),
       deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s) = 1 := by
-  sorry_using [reciprocal_zeta_ibp_regularity, reciprocal_zeta_tendsto_one_right,
-    reciprocal_zeta_tendsto_at_top]
+  let f : ℝ → ℝ := fun s : ℝ => 1 / ((riemannZeta (s : ℂ)).re)
+  let f' : ℝ → ℝ := fun s : ℝ => deriv f s
+  rcases reciprocal_zeta_ibp_regularity with ⟨hderiv, hint, _⟩
+  have hf_deriv : ∀ s : ℝ, s ∈ Set.Ioi (1 : ℝ) -> HasDerivAt f (f' s) s := by
+    intro s hs
+    simpa [f, f'] using hderiv s hs
+  have hconst_deriv : ∀ s : ℝ, s ∈ Set.Ioi (1 : ℝ) ->
+      HasDerivAt (fun _ : ℝ => (1 : ℝ)) 0 s := by
+    intro s _
+    exact hasDerivAt_const s (1 : ℝ)
+  have hint_prod : MeasureTheory.IntegrableOn
+      (f' * (fun _ : ℝ => (1 : ℝ)) + f * (fun _ : ℝ => (0 : ℝ)))
+      (Set.Ioi (1 : ℝ)) := by
+    refine hint.congr_fun ?_ measurableSet_Ioi
+    intro s hs
+    simp [Pi.mul_apply, Pi.add_apply, f, f']
+  have hzero_f : Filter.Tendsto f
+      (nhdsWithin (1 : ℝ) (Set.Ioi (1 : ℝ))) (nhds (0 : ℝ)) := by
+    simpa [f] using reciprocal_zeta_tendsto_one_right
+  have hzero : Filter.Tendsto (f * (fun _ : ℝ => (1 : ℝ)))
+      (nhdsWithin (1 : ℝ) (Set.Ioi (1 : ℝ))) (nhds (0 : ℝ)) := by
+    have hzero_lam : Filter.Tendsto (fun s : ℝ => f s * (1 : ℝ))
+        (nhdsWithin (1 : ℝ) (Set.Ioi (1 : ℝ))) (nhds (0 : ℝ)) := by
+      simpa using
+        hzero_f.mul
+          (tendsto_const_nhds : Filter.Tendsto (fun _ : ℝ => (1 : ℝ))
+            (nhdsWithin (1 : ℝ) (Set.Ioi (1 : ℝ))) (nhds (1 : ℝ)))
+    exact Filter.Tendsto.congr' (by filter_upwards with s; simp [Pi.mul_apply]) hzero_lam
+  have hinfty_f : Filter.Tendsto f Filter.atTop (nhds (1 : ℝ)) := by
+    simpa [f] using reciprocal_zeta_tendsto_at_top
+  have hinfty : Filter.Tendsto (f * (fun _ : ℝ => (1 : ℝ)))
+      Filter.atTop (nhds (1 : ℝ)) := by
+    have hinfty_lam : Filter.Tendsto (fun s : ℝ => f s * (1 : ℝ))
+        Filter.atTop (nhds (1 : ℝ)) := by
+      simpa using
+        hinfty_f.mul
+          (tendsto_const_nhds : Filter.Tendsto (fun _ : ℝ => (1 : ℝ))
+            Filter.atTop (nhds (1 : ℝ)))
+    exact Filter.Tendsto.congr' (by filter_upwards with s; simp [Pi.mul_apply]) hinfty_lam
+  have hftc := MeasureTheory.integral_Ioi_deriv_mul_eq_sub
+    (a := (1 : ℝ)) (u := f) (u' := f') (v := fun _ : ℝ => (1 : ℝ))
+    (v' := fun _ : ℝ => (0 : ℝ)) (a' := (0 : ℝ)) (b' := (1 : ℝ))
+    hf_deriv hconst_deriv hint_prod hzero hinfty
+  simpa [f, f'] using hftc
 
 @[blueprint "lem:mangoldt-weight-reciprocal-zeta-integration-by-parts"
   (statement := /-- For every integer $n\geq2$, improper integration by parts
