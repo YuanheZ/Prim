@@ -9899,14 +9899,27 @@ noncomputable def mangoldt_adjoint_constructed_path_data {Ω : Type} [Measurable
   \cref{def:mangoldt-adjoint-visit-identity}. -/)
   (proof := /-- Assume the kernel package
   \cref{def:mangoldt-adjoint-kernel-package} and the Markov path-data predicate
-  \cref{def:mangoldt-adjoint-kernel-path-data}.  The path-data hypothesis gives
-  a probability law started at $1$ whose one-step cylinder probabilities obey
-  \cref{def:mangoldt-adjoint-kernel-markov-law}; the kernel package gives the
-  adjoint recurrence for the invariant von Mangoldt weight.  Summing the
-  one-step law over all incoming predecessor states and over all times yields
-  the same recursion for the expected occupation masses of the path.  The
-  deterministic initial state $p_0=1$ supplies the initial mass, so uniqueness
-  of the recursively determined occupation measure gives
+  \cref{def:mangoldt-adjoint-kernel-path-data}.  The path-data clauses give
+  $p_0=1$, pathwise strict monotonicity through
+  \cref{def:strictly-increasing-divisibility-chain}, coordinate measurability,
+  and the one-step law \cref{def:mangoldt-adjoint-kernel-markov-law}.  Strict
+  monotonicity implies $k+1\le p_k$ on every sample path, so state $0$ is never
+  visited and state $1$ is visited only at time $0$.  For a state $N\ge2$, argue
+  by strong induction on $N$.  For each time $k$, the event $p_{k+1}=N$ is the
+  disjoint finite union over predecessors $p<N$ of the events
+  $p_k=p$ and $p_{k+1}=N$; finite additivity and the one-step law therefore
+  express its measure as the corresponding finite sum of
+  $U(p,N)$ times the measure of $p_k=p$.  Since visits to every fixed predecessor
+  vanish after finitely many times, summing over $k$ and applying the induction
+  hypothesis gives the occupation mass of $N$ as
+  $\sum_{p<N}U(p,N)\nu_\Lambda(p)$.  The support clauses in
+  \cref{def:mangoldt-adjoint-kernel-package} and
+  \cref{def:mangoldt-von-mangoldt-downward-kernel-invariant} remove the
+  $p=0$ term, while the adjoint formula and
+  \cref{lem:mangoldt-weight-positive} rewrite each remaining term as
+  $\nu_\Lambda(N)P(N,p)$.  The downward row-mass clause in
+  \cref{def:mangoldt-von-mangoldt-downward-kernel-invariant} then makes the
+  finite sum equal to $\nu_\Lambda(N)$, which is exactly
   \cref{def:mangoldt-adjoint-visit-identity}. -/)
   (title := /-- Expected visits from adjoint kernel path data -/)
   (latexEnv := "lemma")]
@@ -9916,7 +9929,277 @@ lemma mangoldt_adjoint_visit_identity_from_kernel_path_data {Ω : Type}
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_visit_identity μ path := by
-  sorry
+  classical
+  intro hpack hdata
+  rcases hpack with
+    ⟨hPpkg, hU_nonneg, hU_row, hU_diag, hU_formula, hU_support⟩
+  rcases hPpkg with
+    ⟨hP_nonneg, hP_row, hP_one, hP_one_zero, hP_support, hP_rule, hP_incoming⟩
+  rcases hdata with ⟨hμ, hstart, hchain, hmeas, hsupp_path, hmarkov⟩
+  have hpath_ge : ∀ ω k, k + 1 ≤ path ω k := by
+    intro ω k
+    have h := StrictMono.add_le_nat (hchain ω).1 k 0
+    simpa [hstart ω] using h
+  unfold mangoldt_adjoint_visit_identity
+  intro n
+  refine Nat.strong_induction_on n ?_
+  intro n ih
+  have hno_zero : ∀ k : ℕ, {ω : Ω | path ω k = 0} = ∅ := by
+    intro k
+    ext ω
+    simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false]
+    intro h
+    have hk := hpath_ge ω k
+    omega
+  cases n with
+  | zero =>
+      simp [hno_zero, mangoldt_weight]
+  | succ n =>
+      cases n with
+      | zero =>
+          have htail_zero : ∀ k ∉ ({0} : Finset ℕ), μ {ω : Ω | path ω k = 1} = 0 := by
+            intro k hk
+            have hkpos : 1 ≤ k := by
+              simp at hk
+              omega
+            have hset : {ω : Ω | path ω k = 1} = ∅ := by
+              ext ω
+              simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false]
+              intro h
+              have hge := hpath_ge ω k
+              omega
+            simp [hset]
+          have hzero_event : {ω : Ω | path ω 0 = 1} = Set.univ := by
+            ext ω
+            simp [hstart ω]
+          calc
+            (∑' k : ℕ, μ {ω : Ω | path ω k = 1}) =
+                ∑ k ∈ ({0} : Finset ℕ), μ {ω : Ω | path ω k = 1} := by
+              exact tsum_eq_sum htail_zero
+            _ = μ {ω : Ω | path ω 0 = 1} := by simp
+            _ = ENNReal.ofReal (mangoldt_weight 1) := by
+              simp [hzero_event, hμ, mangoldt_weight]
+      | succ n =>
+          have hstep_cover : ∀ k : ℕ,
+              {ω : Ω | path ω (k + 1) = n + 1 + 1} =
+                ⋃ p ∈ Finset.range (n + 1 + 1),
+                  {ω : Ω | path ω k = p ∧ path ω (k + 1) = n + 1 + 1} := by
+            intro k
+            ext ω
+            constructor
+            · intro hω
+              refine Set.mem_iUnion.mpr ⟨path ω k, ?_⟩
+              refine Set.mem_iUnion.mpr ⟨?_, ?_⟩
+              · simp
+                have hmono : path ω k < path ω (k + 1) := by
+                  simpa [Nat.succ_eq_add_one] using (hchain ω).1 (Nat.lt_succ_self k)
+                have hlt : path ω k ≤ n + 1 := by
+                  rw [hω] at hmono
+                  omega
+                exact hlt
+              · exact ⟨rfl, hω⟩
+            · intro hω
+              rcases Set.mem_iUnion.mp hω with ⟨p, hp⟩
+              rcases Set.mem_iUnion.mp hp with ⟨hp_range, hp_event⟩
+              exact hp_event.2
+          have hstep_measure : ∀ k : ℕ,
+              μ {ω : Ω | path ω (k + 1) = n + 1 + 1} =
+                ∑ p ∈ Finset.range (n + 1 + 1),
+                  ENNReal.ofReal (U p (n + 1 + 1)) * μ {ω : Ω | path ω k = p} := by
+            intro k
+            have hdisj : Set.PairwiseDisjoint (↑(Finset.range (n + 1 + 1)))
+                (fun p : ℕ => {ω : Ω | path ω k = p ∧ path ω (k + 1) = n + 1 + 1}) := by
+              intro p hp q hq hpq
+              change Disjoint
+                {ω : Ω | path ω k = p ∧ path ω (k + 1) = n + 1 + 1}
+                {ω : Ω | path ω k = q ∧ path ω (k + 1) = n + 1 + 1}
+              exact Set.disjoint_left.mpr (by
+                intro ω hpω hqω
+                exact hpq (by rw [← hpω.1, hqω.1]))
+            have hmeas_step : ∀ p ∈ Finset.range (n + 1 + 1),
+                MeasurableSet {ω : Ω | path ω k = p ∧ path ω (k + 1) = n + 1 + 1} := by
+              intro p hp
+              exact (measurableSet_eq_fun (hmeas k) measurable_const).inter
+                (measurableSet_eq_fun (hmeas (k + 1)) measurable_const)
+            calc
+              μ {ω : Ω | path ω (k + 1) = n + 1 + 1} =
+                  μ (⋃ p ∈ Finset.range (n + 1 + 1),
+                    {ω : Ω | path ω k = p ∧ path ω (k + 1) = n + 1 + 1}) := by
+                rw [hstep_cover k]
+              _ = ∑ p ∈ Finset.range (n + 1 + 1),
+                    μ {ω : Ω | path ω k = p ∧ path ω (k + 1) = n + 1 + 1} := by
+                exact MeasureTheory.measure_biUnion_finset hdisj hmeas_step
+              _ = ∑ p ∈ Finset.range (n + 1 + 1),
+                    ENNReal.ofReal (U p (n + 1 + 1)) * μ {ω : Ω | path ω k = p} := by
+                apply Finset.sum_congr rfl
+                intro p hp
+                exact hmarkov k p (n + 1 + 1)
+          have htail_zero : ∀ k ∉ Finset.range (n + 1 + 1),
+              μ {ω : Ω | path ω k = n + 1 + 1} = 0 := by
+            intro k hk
+            have hkge : n + 1 + 1 ≤ k := by
+              simpa using hk
+            have hset : {ω : Ω | path ω k = n + 1 + 1} = ∅ := by
+              ext ω
+              simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false]
+              intro hω
+              have hge := hpath_ge ω k
+              rw [hω] at hge
+              omega
+            rw [hset]
+            simp
+          have hzero_time : μ {ω : Ω | path ω 0 = n + 1 + 1} = 0 := by
+            have hset : {ω : Ω | path ω 0 = n + 1 + 1} = ∅ := by
+              ext ω
+              simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false]
+              intro hω
+              have h0 := hstart ω
+              omega
+            rw [hset]
+            simp
+          have hshift :
+              (∑ k ∈ Finset.range (n + 1 + 1), μ {ω : Ω | path ω k = n + 1 + 1}) =
+                ∑ k ∈ Finset.range (n + 1), μ {ω : Ω | path ω (k + 1) = n + 1 + 1} := by
+            calc
+              (∑ k ∈ Finset.range (n + 1 + 1), μ {ω : Ω | path ω k = n + 1 + 1}) =
+                  (∑ k ∈ Finset.range (n + 1), μ {ω : Ω | path ω (k + 1) = n + 1 + 1}) +
+                    μ {ω : Ω | path ω 0 = n + 1 + 1} := by
+                rw [Finset.sum_range_succ']
+              _ = ∑ k ∈ Finset.range (n + 1), μ {ω : Ω | path ω (k + 1) = n + 1 + 1} := by
+                rw [hzero_time, add_zero]
+          have hprev_full : ∀ p ∈ Finset.range (n + 1 + 1),
+              (∑ k ∈ Finset.range (n + 1), μ {ω : Ω | path ω k = p}) =
+                ∑' k : ℕ, μ {ω : Ω | path ω k = p} := by
+            intro p hp
+            symm
+            refine tsum_eq_sum ?_
+            intro k hk
+            have hkge : n + 1 ≤ k := by
+              simpa using hk
+            have hp_le : p ≤ n + 1 := by
+              simpa using hp
+            have hset : {ω : Ω | path ω k = p} = ∅ := by
+              ext ω
+              simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false]
+              intro hω
+              have hge := hpath_ge ω k
+              rw [hω] at hge
+              omega
+            rw [hset]
+            simp
+          have hrec :
+              (∑' k : ℕ, μ {ω : Ω | path ω k = n + 1 + 1}) =
+                ∑ p ∈ Finset.range (n + 1 + 1),
+                  ENNReal.ofReal (U p (n + 1 + 1)) * ENNReal.ofReal (mangoldt_weight p) := by
+            calc
+              (∑' k : ℕ, μ {ω : Ω | path ω k = n + 1 + 1}) =
+                  ∑ k ∈ Finset.range (n + 1 + 1), μ {ω : Ω | path ω k = n + 1 + 1} := by
+                exact tsum_eq_sum htail_zero
+              _ = ∑ k ∈ Finset.range (n + 1), μ {ω : Ω | path ω (k + 1) = n + 1 + 1} := hshift
+              _ = ∑ k ∈ Finset.range (n + 1),
+                    ∑ p ∈ Finset.range (n + 1 + 1),
+                      ENNReal.ofReal (U p (n + 1 + 1)) * μ {ω : Ω | path ω k = p} := by
+                apply Finset.sum_congr rfl
+                intro k hk
+                exact hstep_measure k
+              _ = ∑ p ∈ Finset.range (n + 1 + 1),
+                    ∑ k ∈ Finset.range (n + 1),
+                      ENNReal.ofReal (U p (n + 1 + 1)) * μ {ω : Ω | path ω k = p} := by
+                rw [Finset.sum_comm]
+              _ = ∑ p ∈ Finset.range (n + 1 + 1),
+                    ENNReal.ofReal (U p (n + 1 + 1)) *
+                      (∑ k ∈ Finset.range (n + 1), μ {ω : Ω | path ω k = p}) := by
+                apply Finset.sum_congr rfl
+                intro p hp
+                rw [Finset.mul_sum]
+              _ = ∑ p ∈ Finset.range (n + 1 + 1),
+                    ENNReal.ofReal (U p (n + 1 + 1)) * ENNReal.ofReal (mangoldt_weight p) := by
+                apply Finset.sum_congr rfl
+                intro p hp
+                rw [hprev_full p hp]
+                exact congrArg (fun x => ENNReal.ofReal (U p (n + 1 + 1)) * x)
+                  (ih p (by simpa using hp))
+          have hN_pos : 1 ≤ n + 1 + 1 := by omega
+          have hN_two : 2 ≤ n + 1 + 1 := by omega
+          have hweightN_nonneg : 0 ≤ mangoldt_weight (n + 1 + 1) :=
+            (mangoldt_weight_positive (n + 1 + 1) hN_pos).le
+          have hterm_real : ∀ p ∈ Finset.range (n + 1 + 1),
+              U p (n + 1 + 1) * mangoldt_weight p =
+                mangoldt_weight (n + 1 + 1) * P (n + 1 + 1) p := by
+            intro p hp
+            by_cases hp0 : p = 0
+            · subst p
+              have hU0 : U 0 (n + 1 + 1) = 0 := by
+                by_contra hne
+                have hs := hU_support 0 (n + 1 + 1) hne
+                rcases hs.2 with ⟨c, hc⟩
+                omega
+              have hP0 : P (n + 1 + 1) 0 = 0 := by
+                by_contra hne
+                have hs := hP_support (n + 1 + 1) 0 hN_two hne
+                rcases hs.1 with ⟨c, hc⟩
+                omega
+              simp [hU0, hP0]
+            · have hp_pos : 1 ≤ p := by omega
+              have hp_ne : n + 1 + 1 ≠ p := by
+                have hp_lt : p < n + 1 + 1 := by simpa using hp
+                omega
+              have hUf := hU_formula p (n + 1 + 1) hp_pos hN_pos hp_ne
+              calc
+                U p (n + 1 + 1) * mangoldt_weight p =
+                    (mangoldt_weight (n + 1 + 1) / mangoldt_weight p * P (n + 1 + 1) p) *
+                      mangoldt_weight p := by
+                  rw [hUf]
+                _ = mangoldt_weight (n + 1 + 1) * P (n + 1 + 1) p := by
+                  field_simp [(mangoldt_weight_positive p hp_pos).ne']
+          have hsum_terms :
+              (∑ p ∈ Finset.range (n + 1 + 1),
+                  ENNReal.ofReal (U p (n + 1 + 1)) * ENNReal.ofReal (mangoldt_weight p)) =
+                ∑ p ∈ Finset.range (n + 1 + 1),
+                  ENNReal.ofReal (mangoldt_weight (n + 1 + 1) * P (n + 1 + 1) p) := by
+            apply Finset.sum_congr rfl
+            intro p hp
+            rw [← ENNReal.ofReal_mul (hU_nonneg p (n + 1 + 1)), hterm_real p hp]
+          have hP_tail_zero : ∀ m ∉ Finset.range (n + 1 + 1), P (n + 1 + 1) m = 0 := by
+            intro m hm
+            by_contra hne
+            have hmge : n + 1 + 1 ≤ m := by
+              simpa using hm
+            have hs := hP_support (n + 1 + 1) m hN_two hne
+            omega
+          have hP_sum_range : (∑ m ∈ Finset.range (n + 1 + 1), P (n + 1 + 1) m) = 1 := by
+            have htsum : (∑' m : ℕ, P (n + 1 + 1) m) =
+                ∑ m ∈ Finset.range (n + 1 + 1), P (n + 1 + 1) m := by
+              exact tsum_eq_sum hP_tail_zero
+            have hrow := hP_row (n + 1 + 1) hN_pos
+            rw [htsum] at hrow
+            exact hrow
+          have hsum_weightP :
+              (∑ p ∈ Finset.range (n + 1 + 1),
+                  ENNReal.ofReal (mangoldt_weight (n + 1 + 1) * P (n + 1 + 1) p)) =
+                ENNReal.ofReal (mangoldt_weight (n + 1 + 1)) := by
+            calc
+              (∑ p ∈ Finset.range (n + 1 + 1),
+                  ENNReal.ofReal (mangoldt_weight (n + 1 + 1) * P (n + 1 + 1) p)) =
+                  ENNReal.ofReal
+                    (∑ p ∈ Finset.range (n + 1 + 1),
+                      mangoldt_weight (n + 1 + 1) * P (n + 1 + 1) p) := by
+                rw [ENNReal.ofReal_sum_of_nonneg]
+                intro p hp
+                exact mul_nonneg hweightN_nonneg (hP_nonneg (n + 1 + 1) p)
+              _ = ENNReal.ofReal
+                    (mangoldt_weight (n + 1 + 1) *
+                      ∑ p ∈ Finset.range (n + 1 + 1), P (n + 1 + 1) p) := by
+                rw [Finset.mul_sum]
+              _ = ENNReal.ofReal (mangoldt_weight (n + 1 + 1)) := by
+                rw [hP_sum_range, mul_one]
+          calc
+            (∑' k : ℕ, μ {ω : Ω | path ω k = n + 1 + 1}) =
+                ∑ p ∈ Finset.range (n + 1 + 1),
+                  ENNReal.ofReal (U p (n + 1 + 1)) * ENNReal.ofReal (mangoldt_weight p) := hrec
+            _ = ∑ p ∈ Finset.range (n + 1 + 1),
+                  ENNReal.ofReal (mangoldt_weight (n + 1 + 1) * P (n + 1 + 1) p) := hsum_terms
+            _ = ENNReal.ofReal (mangoldt_weight (n + 1 + 1)) := hsum_weightP
 
 @[blueprint "lem:mangoldt-adjoint-second-moment-bound-from-kernel-path-data"
   (statement := /-- For every measurable space $\Omega$, kernels
