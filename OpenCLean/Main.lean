@@ -10772,8 +10772,8 @@ lemma mangoldt_adjoint_constructed_path_data_from_kernel_path_data {Ω : Type}
   and $U$ satisfying \cref{def:mangoldt-adjoint-kernel-package}.  Applying
   \cref{lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data} to
   these witnesses discards the explicit kernels, keeps the total-mass,
-  strict-chain, and coordinate-measurability clauses, and supplies the
-  expected-visit identity required by
+  strict divisibility-chain, and coordinate-measurability clauses, and supplies
+  the expected-visit identity required by
   \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
   (title := /-- Existence of adjoint von Mangoldt construction data -/)
   (latexEnv := "lemma")]
