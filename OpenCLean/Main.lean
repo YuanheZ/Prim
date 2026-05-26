@@ -11599,9 +11599,9 @@ lemma mangoldt_log_reciprocal_floor_loglog_bound (t : ℝ) (ht : 2 ≤ t) :
   $\log\log t$ by at most $C$. -/)
   (proof := /-- First prove the natural-cutoff estimate
   \cref{lem:mangoldt-log-reciprocal-partial-summation-nat}.  For a real
-  $t\ge2$, put $n=\lfloor t\rfloor$.  The finite-support identity
-  \cref{lem:mangoldt-log-reciprocal-partial-sum-floor} identifies the real
-  cutoff sum with the natural cutoff sum at $n$, and
+  $t\ge2$, put $n=\lfloor t\rfloor$.  The finite-support identities
+  \cref{lem:mangoldt-log-reciprocal-partial-sum-floor,lem:mangoldt-log-reciprocal-partial-sum-nat}
+  identify the real cutoff sum with the natural cutoff sum at $n$, and
   \cref{lem:mangoldt-log-reciprocal-floor-loglog-bound} shows that replacing
   $t$ by $n$ changes $\log\log$ by at most $\log2$.  The triangle inequality,
   with the natural-cutoff constant enlarged by this extra amount, gives the
