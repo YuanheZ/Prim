@@ -10609,16 +10609,24 @@ noncomputable def mangoldt_adjoint_normalized_hit_expectation_limsup {Ω : Type}
   \cref{def:mangoldt-adjoint-constructed-path-data}, then the normalized
   first moments of its hit counts satisfy
   \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup}. -/)
-  (proof := /-- Assume \cref{def:mangoldt-adjoint-constructed-path-data}.  For a
-  set $A\subseteq\mathbb N$ and height $x$, Tonelli's theorem identifies the
-  expected number of visits to $A\cap[1,x]$ with the sum over
-  $n\in A\cap[1,x]$ of the total probability of ever visiting $n$.  The
-  expected-visit identity in
-  \cref{def:mangoldt-adjoint-constructed-path-data} makes this total
-  probability equal to $\nu_\Lambda(n)$.  Dividing by $\log\log x$ and taking
-  the upper limit in $x$ gives
-  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup} by the
-  definition of \cref{def:mangoldt-weight-upper-density}. -/)
+  (proof := /-- Assume \cref{def:mangoldt-adjoint-constructed-path-data}.  The
+  strict divisibility-chain clause \cref{def:strictly-increasing-divisibility-chain}
+  implies that every state on every sampled path is positive.  Hence, for a
+  fixed set $A\subseteq\mathbb N$ and height $x$, the event that the $k$th state
+  lies in $A$ and is at most $x$ is the disjoint finite union, over
+  $n\in A\cap[1,x]$ as defined by \cref{def:real-initial-segment}, of the
+  events $p_k=n$.  Finite additivity rewrites each one-time hit probability as
+  this finite sum, and commutativity of nonnegative extended-real series then
+  interchanges the sum over times with the sum over states.  The expected-visit
+  identity \cref{def:mangoldt-adjoint-visit-identity}, contained in
+  \cref{def:mangoldt-adjoint-constructed-path-data}, changes the total
+  occupation mass of each state to $\nu_\Lambda(n)$.  Since
+  \cref{lem:mangoldt-weight-positive} makes these weights nonnegative on
+  $A\cap[1,x]$, the extended-real finite sum converts back to the real truncated
+  sum \cref{def:mangoldt-weight-sum-up-to}.  Therefore the two normalized
+  functions of $x$ agree pointwise, and taking their limit superior gives
+  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup} by
+  \cref{def:mangoldt-weight-upper-density}. -/)
   (title := /-- Visit identity gives normalized first moments -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_normalized_hit_expectation_limsup_from_visit_identity
@@ -10626,7 +10634,166 @@ lemma mangoldt_adjoint_normalized_hit_expectation_limsup_from_visit_identity
     {path : Ω → ℕ → ℕ} :
     mangoldt_adjoint_constructed_path_data μ path ->
       mangoldt_adjoint_normalized_hit_expectation_limsup μ path := by
-  sorry
+  intro hdata
+  rcases hdata with ⟨hprob, hchain, hmeas, hvisit⟩
+  unfold mangoldt_adjoint_visit_identity at hvisit
+  intro A
+  apply congrArg (fun f : ℝ → ℝ => Filter.limsup f Filter.atTop)
+  funext x
+  congr 1
+  let S : Set ℕ := A ∩ real_initial_segment x
+  have hpath_pos : ∀ (ω : Ω) (k : ℕ), 1 ≤ path ω k := by
+    intro ω k
+    have hzero_pos : 0 < path ω 0 := by
+      by_contra hnot
+      have hzero : path ω 0 = 0 := by omega
+      rcases (hchain ω).2 0 with ⟨c, hc⟩
+      have hnext_zero : path ω 1 = 0 := by
+        simpa [hzero] using hc
+      have hlt : path ω 0 < path ω 1 := (hchain ω).1 (Nat.zero_lt_succ 0)
+      omega
+    have hbase : 1 ≤ path ω 0 := hzero_pos
+    have hle : path ω 0 + k ≤ path ω k := by
+      simpa [Nat.add_comm] using StrictMono.add_le_nat (hchain ω).1 k 0
+    exact le_trans hbase (le_trans (Nat.le_add_right (path ω 0) k) hle)
+  have hfin : S.Finite := by
+    dsimp [S]
+    exact (((Set.finite_le_nat ⌊x⌋₊).subset (by
+      intro n hn
+      exact Nat.le_floor hn.2)).inter_of_right A)
+  have hmeasure_k : ∀ k : ℕ,
+      μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x} =
+        ∑ n ∈ hfin.toFinset, μ {ω : Ω | path ω k = n} := by
+    intro k
+    have hcover : {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x} =
+        ⋃ n ∈ hfin.toFinset, {ω : Ω | path ω k = n} := by
+      ext ω
+      constructor
+      · intro hω
+        refine Set.mem_iUnion.mpr ⟨path ω k, ?_⟩
+        refine Set.mem_iUnion.mpr ⟨?_, rfl⟩
+        exact hfin.mem_toFinset.mpr ⟨hω.1, ⟨hpath_pos ω k, hω.2⟩⟩
+      · intro hω
+        rcases Set.mem_iUnion.mp hω with ⟨n, hn⟩
+        rcases Set.mem_iUnion.mp hn with ⟨hnF, hnω⟩
+        have hnS : n ∈ S := hfin.mem_toFinset.mp hnF
+        have hnS' : n ∈ A ∩ real_initial_segment x := by simpa [S] using hnS
+        have hpath_eq : path ω k = n := hnω
+        exact ⟨by simpa [hpath_eq] using hnS'.1, by
+          have hnle : (n : ℝ) ≤ x := hnS'.2.2
+          simpa [hpath_eq] using hnle⟩
+    have hdisj : Set.PairwiseDisjoint (↑(hfin.toFinset))
+        (fun n : ℕ => {ω : Ω | path ω k = n}) := by
+      intro m hm n hn hmn
+      change Disjoint {ω : Ω | path ω k = m} {ω : Ω | path ω k = n}
+      exact Set.disjoint_left.mpr (by
+        intro ω hmω hnω
+        exact hmn (by rw [← hmω, hnω]))
+    have hmeas_exact : ∀ n ∈ hfin.toFinset,
+        MeasurableSet {ω : Ω | path ω k = n} := by
+      intro n hn
+      exact measurableSet_eq_fun (hmeas k) measurable_const
+    calc
+      μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x} =
+          μ (⋃ n ∈ hfin.toFinset, {ω : Ω | path ω k = n}) := by
+        rw [hcover]
+      _ = ∑ n ∈ hfin.toFinset, μ {ω : Ω | path ω k = n} := by
+        exact MeasureTheory.measure_biUnion_finset hdisj hmeas_exact
+  have hmeasure_k_tsum : ∀ k : ℕ,
+      μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x} =
+        ∑' n : ℕ, if n ∈ hfin.toFinset then μ {ω : Ω | path ω k = n} else 0 := by
+    intro k
+    rw [hmeasure_k k]
+    symm
+    calc
+      (∑' n : ℕ, if n ∈ hfin.toFinset then μ {ω : Ω | path ω k = n} else 0) =
+          ∑ n ∈ hfin.toFinset,
+            (if n ∈ hfin.toFinset then μ {ω : Ω | path ω k = n} else 0) := by
+        refine tsum_eq_sum (s := hfin.toFinset) ?_
+        intro n hn
+        simp [hn]
+      _ = ∑ n ∈ hfin.toFinset, μ {ω : Ω | path ω k = n} := by
+        apply Finset.sum_congr rfl
+        intro n hn
+        simp [hn]
+  have hleft_enn :
+      (∑' k : ℕ, μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) =
+        ∑' n : ℕ, if n ∈ hfin.toFinset then ENNReal.ofReal (mangoldt_weight n) else 0 := by
+    calc
+      (∑' k : ℕ, μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) =
+          ∑' k : ℕ, ∑' n : ℕ,
+            if n ∈ hfin.toFinset then μ {ω : Ω | path ω k = n} else 0 := by
+        apply tsum_congr
+        intro k
+        exact hmeasure_k_tsum k
+      _ = ∑' n : ℕ, ∑' k : ℕ,
+            if n ∈ hfin.toFinset then μ {ω : Ω | path ω k = n} else 0 := by
+        rw [ENNReal.tsum_comm]
+      _ = ∑' n : ℕ, if n ∈ hfin.toFinset then
+            (∑' k : ℕ, μ {ω : Ω | path ω k = n}) else 0 := by
+        apply tsum_congr
+        intro n
+        by_cases hn : n ∈ hfin.toFinset <;> simp [hn]
+      _ = ∑' n : ℕ, if n ∈ hfin.toFinset then ENNReal.ofReal (mangoldt_weight n) else 0 := by
+        apply tsum_congr
+        intro n
+        by_cases hn : n ∈ hfin.toFinset <;> simp [hn, hvisit n]
+  have hright_real :
+      mangoldt_weight_sum_up_to A x =
+        ∑' n : ℕ, if n ∈ hfin.toFinset then mangoldt_weight n else 0 := by
+    unfold mangoldt_weight_sum_up_to
+    change (∑' n : ℕ, S.indicator mangoldt_weight n) =
+      ∑' n : ℕ, if n ∈ hfin.toFinset then mangoldt_weight n else 0
+    apply tsum_congr
+    intro n
+    by_cases hn : n ∈ hfin.toFinset
+    · have hnS : n ∈ S := hfin.mem_toFinset.mp hn
+      simp [hn, Set.indicator_of_mem hnS]
+    · have hnS : n ∉ S := fun h => hn (hfin.mem_toFinset.mpr h)
+      simp [hn, Set.indicator_of_notMem hnS]
+  rw [hleft_enn, hright_real]
+  have hleft_fin :
+      (∑' n : ℕ, if n ∈ hfin.toFinset then ENNReal.ofReal (mangoldt_weight n) else 0) =
+        ∑ n ∈ hfin.toFinset, ENNReal.ofReal (mangoldt_weight n) := by
+    calc
+      (∑' n : ℕ, if n ∈ hfin.toFinset then ENNReal.ofReal (mangoldt_weight n) else 0) =
+          ∑ n ∈ hfin.toFinset,
+            (if n ∈ hfin.toFinset then ENNReal.ofReal (mangoldt_weight n) else 0) := by
+        refine tsum_eq_sum (s := hfin.toFinset) ?_
+        intro n hn
+        simp [hn]
+      _ = ∑ n ∈ hfin.toFinset, ENNReal.ofReal (mangoldt_weight n) := by
+        apply Finset.sum_congr rfl
+        intro n hn
+        simp [hn]
+  have hright_fin :
+      (∑' n : ℕ, if n ∈ hfin.toFinset then mangoldt_weight n else 0) =
+        ∑ n ∈ hfin.toFinset, mangoldt_weight n := by
+    calc
+      (∑' n : ℕ, if n ∈ hfin.toFinset then mangoldt_weight n else 0) =
+          ∑ n ∈ hfin.toFinset,
+            (if n ∈ hfin.toFinset then mangoldt_weight n else 0) := by
+        refine tsum_eq_sum (s := hfin.toFinset) ?_
+        intro n hn
+        simp [hn]
+      _ = ∑ n ∈ hfin.toFinset, mangoldt_weight n := by
+        apply Finset.sum_congr rfl
+        intro n hn
+        simp [hn]
+  rw [hleft_fin, hright_fin]
+  have hweight_nonneg : ∀ n ∈ hfin.toFinset, 0 ≤ mangoldt_weight n := by
+    intro n hn
+    have hnS : n ∈ S := hfin.mem_toFinset.mp hn
+    have hnS' : n ∈ A ∩ real_initial_segment x := by simpa [S] using hnS
+    exact (mangoldt_weight_positive n hnS'.2.1).le
+  have hsum_enn :
+      (∑ n ∈ hfin.toFinset, ENNReal.ofReal (mangoldt_weight n)) =
+        ENNReal.ofReal (∑ n ∈ hfin.toFinset, mangoldt_weight n) := by
+    rw [ENNReal.ofReal_sum_of_nonneg]
+    intro n hn
+    exact hweight_nonneg n hn
+  rw [hsum_enn]
+  exact ENNReal.toReal_ofReal (Finset.sum_nonneg hweight_nonneg)
 
 @[blueprint "def:mangoldt-adjoint-reverse-fatou-uniform-integrability-bridge"
   (statement := /-- This is the explicit analytic bridge used in the
