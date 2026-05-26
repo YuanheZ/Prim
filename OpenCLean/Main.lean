@@ -10278,7 +10278,8 @@ lemma mangoldt_adjoint_second_moment_bound_from_kernel_path_data {Ω : Type}
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_kernel_analytic_path_data μ path ->
           mangoldt_adjoint_second_moment_bound μ path := by
-  sorry
+  intro _ _ hanalytic
+  exact hanalytic.1
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data"
   (statement := /-- For every type $\Omega$ equipped with a measurable-space
