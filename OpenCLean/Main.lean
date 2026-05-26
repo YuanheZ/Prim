@@ -10542,7 +10542,102 @@ lemma dense_hits_subchain_in_set :
           strictly_increasing_divisibility_chain n ∧
           chain_in_set n A ∧
           upper_chain_density_at_least n (upper_doubly_log_density A) := by
-  sorry
+  classical
+  intro A ambient hApos hambient hhit
+  let p : ℕ → Prop := fun i => ambient i ∈ A
+  have hpinf : (setOf p).Infinite := by
+    by_contra hpinf
+    have hpfin : (setOf p).Finite := Set.not_infinite.mp hpinf
+    have hbound : ∀ x : ℝ,
+        chain_hits_count_up_to ambient A x ≤ (setOf p).ncard := by
+      intro x
+      have hsubset : {i : ℕ | ambient i ∈ A ∧ (ambient i : ℝ) ≤ x} ⊆ setOf p := by
+        intro i hi
+        exact hi.1
+      simpa [chain_hits_count_up_to, p] using Set.ncard_le_ncard hsubset hpfin
+    have hloglog_tendsto :
+        Filter.Tendsto (fun x : ℝ => Real.log (Real.log x)) Filter.atTop Filter.atTop :=
+      Real.tendsto_log_atTop.comp Real.tendsto_log_atTop
+    have htend_real :
+        Filter.Tendsto
+          (fun x : ℝ => ((setOf p).ncard : ℝ) / Real.log (Real.log x))
+          Filter.atTop (nhds 0) :=
+      Filter.Tendsto.const_div_atTop hloglog_tendsto ((setOf p).ncard : ℝ)
+    have htend_bound :
+        Filter.Tendsto
+          (fun x : ℝ => ENNReal.ofReal
+            (((setOf p).ncard : ℝ) / Real.log (Real.log x)))
+          Filter.atTop (nhds 0) := by
+      simpa using (ENNReal.continuous_ofReal.tendsto (0 : ℝ)).comp htend_real
+    have hlim_bound :
+        Filter.limsup
+            (fun x : ℝ => ENNReal.ofReal
+              (((setOf p).ncard : ℝ) / Real.log (Real.log x)))
+            Filter.atTop = 0 :=
+      htend_bound.limsup_eq
+    have heventually_le :
+        ∀ᶠ x : ℝ in Filter.atTop,
+          ENNReal.ofReal
+              ((chain_hits_count_up_to ambient A x : ℝ) / Real.log (Real.log x)) ≤
+            ENNReal.ofReal
+              (((setOf p).ncard : ℝ) / Real.log (Real.log x)) := by
+      filter_upwards [Filter.eventually_gt_atTop (Real.exp 1)] with x hx
+      apply ENNReal.ofReal_mono
+      have hlog_gt_one : 1 < Real.log x := by
+        simpa using Real.log_lt_log (Real.exp_pos 1) hx
+      have hden_pos : 0 < Real.log (Real.log x) := by
+        simpa using Real.log_lt_log (show (0 : ℝ) < 1 by norm_num) hlog_gt_one
+      exact div_le_div_of_nonneg_right (by exact_mod_cast hbound x) (le_of_lt hden_pos)
+    have hhit_zero : upper_chain_hit_density ambient A = 0 := by
+      unfold upper_chain_hit_density
+      exact le_antisymm
+        ((Filter.limsup_le_limsup heventually_le).trans (le_of_eq hlim_bound)) bot_le
+    have hpos_enn : 0 < ENNReal.ofReal (upper_doubly_log_density A) := by
+      exact ENNReal.ofReal_pos.mpr hApos
+    have hle_zero : ENNReal.ofReal (upper_doubly_log_density A) ≤ 0 := by
+      simpa [chain_hits_density_at_least, hhit_zero] using hhit
+    exact (not_lt_of_ge hle_zero) hpos_enn
+  let e : ℕ → ℕ := Nat.nth p
+  let n : ℕ → ℕ := fun k => ambient (e k)
+  have he_strict : StrictMono e := by
+    simpa [e] using Nat.nth_strictMono hpinf
+  have hdvd_le : ∀ {i j : ℕ}, i ≤ j -> ambient i ∣ ambient j := by
+    intro i j hij
+    exact Nat.le_induction (m := i) (P := fun j _ => ambient i ∣ ambient j)
+      dvd_rfl (fun j _ ih => dvd_trans ih (hambient.2 j)) j hij
+  refine ⟨n, ?_, ?_, ?_⟩
+  · constructor
+    · simpa [n, Function.comp_def] using hambient.1.comp he_strict
+    · intro i
+      exact hdvd_le (le_of_lt (he_strict (Nat.lt_succ_self i)))
+  · intro i
+    simpa [n, e, p] using Nat.nth_mem_of_infinite hpinf i
+  · have hcount : ∀ x : ℝ, chain_count_up_to n x = chain_hits_count_up_to ambient A x := by
+      intro x
+      have himage :
+          e '' {k : ℕ | (ambient (e k) : ℝ) ≤ x} =
+            {i : ℕ | p i ∧ (ambient i : ℝ) ≤ x} := by
+        ext i
+        constructor
+        · rintro ⟨k, hk, rfl⟩
+          exact ⟨by simpa [e, p] using Nat.nth_mem_of_infinite hpinf k, hk⟩
+        · intro hi
+          have hi_range : i ∈ Set.range e := by
+            change i ∈ Set.range (Nat.nth p)
+            rw [Nat.range_nth_of_infinite hpinf]
+            exact hi.1
+          rcases hi_range with ⟨k, rfl⟩
+          exact ⟨k, hi.2, rfl⟩
+      have hinj : Function.Injective e := by
+        simpa [e] using Nat.nth_injective hpinf
+      have hncard :
+          Set.ncard {k : ℕ | (ambient (e k) : ℝ) ≤ x} =
+            Set.ncard {i : ℕ | p i ∧ (ambient i : ℝ) ≤ x} := by
+        rw [← himage, Set.ncard_image_of_injective _ hinj]
+      simpa [chain_count_up_to, chain_hits_count_up_to, n, p] using hncard
+    have hdensity : upper_chain_density n = upper_chain_hit_density ambient A := by
+      simp [upper_chain_density, upper_chain_hit_density, hcount]
+    simpa [upper_chain_density_at_least, chain_hits_density_at_least, hdensity] using hhit
 
 @[blueprint "thm:erdos-sarkozy-szemeredi-1217"
   (statement := /-- Let $A\subseteq\mathbb N$ have positive upper doubly
