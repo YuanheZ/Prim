@@ -11818,10 +11818,9 @@ lemma prime_reciprocal_mangoldt_log_bridge :
   $\log\log t$ uniformly for $t\ge2$.  The bridge
   \cref{lem:prime-reciprocal-mangoldt-log-bridge} bounds, uniformly in the
   same range, the difference between that weighted von Mangoldt sum and the
-  prime reciprocal sum appearing in the statement.  The triangle inequality,
-  with the two constants added and then replaced by a non-negative larger
-  constant, gives the claimed bounded-error Mertens estimate for reciprocal
-  prime sums. -/)
+  prime reciprocal sum appearing in the statement.  Taking the sum of the two
+  non-negative constants and applying the triangle inequality gives the claimed
+  bounded-error Mertens estimate for reciprocal prime sums. -/)
   (title := /-- Mertens estimate for reciprocal prime sums -/)
   (latexEnv := "lemma")]
 lemma mertens_prime_reciprocal :
@@ -11830,8 +11829,31 @@ lemma mertens_prime_reciprocal :
           (prime_layer ∩ real_initial_segment t).indicator
             (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) -
         Real.log (Real.log t)| ≤ C := by
-  sorry_using [mangoldt_log_reciprocal_partial_summation,
-    prime_reciprocal_mangoldt_log_bridge]
+  obtain ⟨C₁, hC₁_nonneg, hC₁⟩ := mangoldt_log_reciprocal_partial_summation
+  obtain ⟨C₂, hC₂_nonneg, hC₂⟩ := prime_reciprocal_mangoldt_log_bridge
+  refine ⟨C₂ + C₁, add_nonneg hC₂_nonneg hC₁_nonneg, ?_⟩
+  intro t ht
+  have hbridge := hC₂ t ht
+  have hmangoldt := hC₁ t ht
+  calc
+    |(∑' p : ℕ,
+        (prime_layer ∩ real_initial_segment t).indicator
+          (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) -
+      Real.log (Real.log t)| =
+        |((∑' p : ℕ,
+            (prime_layer ∩ real_initial_segment t).indicator
+              (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) -
+          mangoldt_log_reciprocal_partial_sum t) +
+          (mangoldt_log_reciprocal_partial_sum t - Real.log (Real.log t))| := by
+          congr 1
+          ring
+    _ ≤ |(∑' p : ℕ,
+          (prime_layer ∩ real_initial_segment t).indicator
+            (fun p : ℕ => (1 : ℝ) / (p : ℝ)) p) -
+        mangoldt_log_reciprocal_partial_sum t| +
+        |mangoldt_log_reciprocal_partial_sum t - Real.log (Real.log t)| :=
+      abs_add_le _ _
+    _ ≤ C₂ + C₁ := add_le_add hbridge hmangoldt
 
 @[blueprint "lem:mangoldt-adjoint-card-factors-weighted-terminal-sum-bound"
   (statement := /-- For every set $A\subseteq\mathbb N$, the terminal sum over
