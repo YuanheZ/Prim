@@ -9638,7 +9638,8 @@ lemma mangoldt_adjoint_second_moment_bound_from_kernel_path_data {Ω : Type}
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_second_moment_bound μ path := by
-  sorry
+  intro _ hpathData
+  exact hpathData.2.2.2.2.2.2.2.1
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-from-kernel-path-data"
   (statement := /-- For every measurable space $\Omega$, kernels
