@@ -11392,7 +11392,7 @@ noncomputable def mangoldt_adjoint_hit_count_moment_bridge {Ω : Type}
   $(\operatorname{ofReal} L)^{-1}$ gives the formula. -/)
   (title := /-- Extended-real normalization of a finite indicator count -/)
   (latexEnv := "lemma")]
-lemma mangoldt_adjoint_ofReal_normalized_finset_count
+lemma mangoldt_adjoint_of_real_normalized_finset_count
     (F : Finset ℕ) (p : ℕ → Prop) [DecidablePred p] {L : ℝ} (hL : 0 < L) :
     ENNReal.ofReal (((∑ i ∈ F, if p i then (1 : ℕ) else 0 : ℕ) : ℝ) / L) =
       ∑ i ∈ F, if p i then (ENNReal.ofReal L)⁻¹ else 0 := by
@@ -11626,7 +11626,7 @@ lemma mangoldt_adjoint_normalized_hit_first_integral_from_chain
         (((∑ i ∈ F, if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then (1 : ℕ) else 0 : ℕ) : ℝ) /
           Real.log (Real.log x)) =
       ∑ i ∈ F, if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then c else 0
-    simpa [c] using mangoldt_adjoint_ofReal_normalized_finset_count F
+    simpa [c] using mangoldt_adjoint_of_real_normalized_finset_count F
       (fun i => path ω i ∈ A ∧ (path ω i : ℝ) ≤ x) hx
   have htsum :
       (∑' k : ℕ, μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) =
@@ -11737,7 +11737,7 @@ lemma mangoldt_adjoint_normalized_hit_second_integral_bound_from_chain
         (((∑ i ∈ F, if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then (1 : ℕ) else 0 : ℕ) : ℝ) /
           Real.log (Real.log x)) =
       ∑ i ∈ F, if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then c else 0
-    simpa [c] using mangoldt_adjoint_ofReal_normalized_finset_count F
+    simpa [c] using mangoldt_adjoint_of_real_normalized_finset_count F
       (fun i => path ω i ∈ A ∧ (path ω i : ℝ) ≤ x) hx
   have hsqfun :
       (fun ω : Ω =>
