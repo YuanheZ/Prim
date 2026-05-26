@@ -9874,15 +9874,27 @@ noncomputable def mangoldt_adjoint_kernel_analytic_path_data {Ω : Type}
   \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
   (proof := /-- By \cref{lem:mangoldt-adjoint-kernel-package-exists}, choose a
   von Mangoldt downward kernel $P$ and its adjoint upward kernel $U$ satisfying
-  \cref{def:mangoldt-adjoint-kernel-package}.  Apply the standard
-  countable-state trajectory construction to $U$, started at $1$, and take its
-  canonical coordinate process $p$.  The row-mass and non-negativity clauses of
-  \cref{def:mangoldt-adjoint-kernel-package} give a probability trajectory law;
-  the support clause gives the pointwise strict divisibility and nonzero-support
-  transition clauses, and the construction gives measurable coordinates and the
-  one-step cylinder identity
-  \cref{def:mangoldt-adjoint-kernel-markov-law}.  Thus $(U,\mu,p)$ satisfies
-  \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
+  \cref{def:mangoldt-adjoint-kernel-package}.  The non-negativity and row-mass
+  clauses of \cref{def:mangoldt-adjoint-kernel-package} turn each positive row
+  of $U$ into a probability mass function, and an arbitrary Dirac row is used at
+  state $0$.  These rows define a countable-state Markov kernel.  Apply the
+  Ionescu--Tulcea trajectory construction to the prefix kernel that reads the
+  current coordinate, started from the initial state $1$.  The resulting full
+  trajectory measure has total mass one, starts at $1$ almost surely, and its
+  two-coordinate cylinder probabilities satisfy the one-step identity of
+  \cref{def:mangoldt-adjoint-kernel-markov-law} for every positive current
+  state.  Since the bad positive-state transitions have zero cylinder measure,
+  and the process is almost surely in a positive state at every time, the set of
+  trajectories that start at $1$ and make only nonzero $U$-transitions has full
+  measure.  Restrict the full trajectory law to this measurable subtype and take
+  the coordinate process.  On the subtype the start and nonzero-support clauses
+  hold pointwise; the support clause in
+  \cref{def:mangoldt-adjoint-kernel-package} gives the strict increase and
+  divisibility clauses of \cref{def:strictly-increasing-divisibility-chain};
+  coordinate measurability is inherited from the product space; and the
+  one-step cylinder identity is transported from the full trajectory law, with
+  state $0$ contributing only empty events.  Therefore the restricted law and
+  coordinate process satisfy \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
   (title := /-- Existence of adjoint von Mangoldt kernel path data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_kernel_path_data_exists :
@@ -9890,7 +9902,260 @@ lemma mangoldt_adjoint_kernel_path_data_exists :
       (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ),
         mangoldt_adjoint_kernel_package P U ∧
           @mangoldt_adjoint_kernel_path_data Ω mΩ U μ path := by
-  sorry_using [mangoldt_adjoint_kernel_package_exists]
+  classical
+  rcases mangoldt_adjoint_kernel_package_exists with ⟨P, U, hpack⟩
+  rcases hpack with ⟨hPpkg, hU_nonneg, hU_row, hU_diag, hU_formula, hU_support⟩
+  let rowPMF : ℕ → PMF ℕ := fun n =>
+    if hn : 1 ≤ n then
+      ⟨fun m => ENNReal.ofReal (U n m), by
+        have hsumm : Summable fun m : ℕ => U n m := by
+          by_contra hns
+          have hzero : (∑' m : ℕ, U n m) = 0 := tsum_eq_zero_of_not_summable hns
+          have hone : (∑' m : ℕ, U n m) = 1 := hU_row n hn
+          linarith
+        have htsum : (∑' m : ℕ, ENNReal.ofReal (U n m)) = 1 := by
+          rw [← ENNReal.ofReal_tsum_of_nonneg (fun m => hU_nonneg n m) hsumm,
+            hU_row n hn]
+          norm_num
+        exact (ENNReal.summable.hasSum_iff).2 htsum⟩
+    else
+      PMF.pure 1
+  let K : ProbabilityTheory.Kernel ℕ ℕ :=
+    ProbabilityTheory.Kernel.ofFunOfCountable fun n => (rowPMF n).toMeasure
+  have hK_markov : ProbabilityTheory.IsMarkovKernel K := by
+    refine ⟨?_⟩
+    intro n
+    change MeasureTheory.IsProbabilityMeasure ((rowPMF n).toMeasure)
+    infer_instance
+  have hK_singleton : ∀ n m : ℕ, 1 ≤ n -> K n ({m} : Set ℕ) = ENNReal.ofReal (U n m) := by
+    intro n m hn
+    change (rowPMF n).toMeasure ({m} : Set ℕ) = ENNReal.ofReal (U n m)
+    simp [rowPMF, hn, PMF.toMeasure_apply_singleton]
+    rfl
+  have hpack : mangoldt_adjoint_kernel_package P U :=
+    ⟨hPpkg, hU_nonneg, hU_row, hU_diag, hU_formula, hU_support⟩
+  haveI : ProbabilityTheory.IsMarkovKernel K := hK_markov
+  let X : ℕ → Type := fun _ => ℕ
+  let step : (n : ℕ) → ProbabilityTheory.Kernel ((i : Finset.Iic n) → X i) (X (n + 1)) := fun n =>
+    ProbabilityTheory.Kernel.comap K (fun x => x ⟨n, by simp⟩) (by fun_prop)
+  have hstep_markov : ∀ n : ℕ, ProbabilityTheory.IsMarkovKernel (step n) := by
+    intro n
+    dsimp [step]
+    infer_instance
+  haveI : ∀ n : ℕ, ProbabilityTheory.IsMarkovKernel (step n) := hstep_markov
+  let μFull : MeasureTheory.Measure ((n : ℕ) → X n) :=
+    ProbabilityTheory.Kernel.trajMeasure (MeasureTheory.Measure.dirac 1) step
+  let pathFull : ((n : ℕ) → X n) → ℕ → ℕ := fun ω k => ω k
+  have hfull_markov_pos : ∀ k n m : ℕ, 1 ≤ n ->
+      μFull {ω : (n : ℕ) → X n | pathFull ω k = n ∧ pathFull ω (k + 1) = m} =
+        ENNReal.ofReal (U n m) * μFull {ω : (n : ℕ) → X n | pathFull ω k = n} := by
+    intro k n m hn
+    let s : Set ((i : Finset.Iic k) → X i) := {x | x ⟨k, by simp⟩ = n}
+    let t : Set (X (k + 1)) := {m}
+    have hs : MeasurableSet s := by
+      dsimp [s]
+      measurability
+    have ht : MeasurableSet t := by
+      dsimp [t]
+      measurability
+    have hcomp :
+        MeasureTheory.Measure.compProd (μFull.map (Preorder.frestrictLe (π := X) k)) (step k) =
+          μFull.map (fun x : (n : ℕ) → X n =>
+            (Preorder.frestrictLe (π := X) k x, x (k + 1))) := by
+      simpa [μFull] using
+        (ProbabilityTheory.Kernel.map_frestrictLe_trajMeasure_compProd_eq_map_trajMeasure
+          (μ₀ := MeasureTheory.Measure.dirac 1) (κ := step) (a := k))
+    have hpair := congrArg (fun μ : MeasureTheory.Measure (((i : Finset.Iic k) → X i) × X (k + 1)) =>
+      μ (s ×ˢ t)) hcomp
+    have hright :
+        μFull.map (fun x : (n : ℕ) → X n =>
+          (Preorder.frestrictLe (π := X) k x, x (k + 1))) (s ×ˢ t) =
+          μFull {ω : (n : ℕ) → X n | pathFull ω k = n ∧ pathFull ω (k + 1) = m} := by
+      rw [MeasureTheory.Measure.map_apply]
+      · congr 1
+      · fun_prop
+      · exact hs.prod ht
+    have hleft :
+        MeasureTheory.Measure.compProd (μFull.map (Preorder.frestrictLe (π := X) k)) (step k) (s ×ˢ t) =
+          ∫⁻ x in s, step k x t ∂(μFull.map (Preorder.frestrictLe (π := X) k)) := by
+      rw [MeasureTheory.Measure.compProd_apply_prod hs ht]
+    have hbase :
+        μFull.map (Preorder.frestrictLe (π := X) k) s =
+          μFull {ω : (n : ℕ) → X n | pathFull ω k = n} := by
+      rw [MeasureTheory.Measure.map_apply]
+      · simp [s, pathFull]
+      · fun_prop
+      · exact hs
+    have hintegral :
+        ∫⁻ x in s, step k x t ∂(μFull.map (Preorder.frestrictLe (π := X) k)) =
+          ENNReal.ofReal (U n m) * μFull.map (Preorder.frestrictLe (π := X) k) s := by
+      rw [MeasureTheory.setLIntegral_congr_fun hs]
+      · rw [MeasureTheory.setLIntegral_const]
+      · intro x hx
+        have hx' : x ⟨k, by simp⟩ = n := by simpa [s] using hx
+        calc
+          step k x t = K (x ⟨k, by simp⟩) t := rfl
+          _ = K n ({m} : Set ℕ) := by simp [t, hx']
+          _ = ENNReal.ofReal (U n m) := hK_singleton n m hn
+    calc
+      μFull {ω : (n : ℕ) → X n | pathFull ω k = n ∧ pathFull ω (k + 1) = m}
+          = μFull.map (fun x : (n : ℕ) → X n =>
+              (Preorder.frestrictLe (π := X) k x, x (k + 1))) (s ×ˢ t) :=
+            hright.symm
+      _ = MeasureTheory.Measure.compProd (μFull.map (Preorder.frestrictLe (π := X) k)) (step k) (s ×ˢ t) := hpair.symm
+      _ = ∫⁻ x in s, step k x t ∂(μFull.map (Preorder.frestrictLe (π := X) k)) := hleft
+      _ = ENNReal.ofReal (U n m) * μFull.map (Preorder.frestrictLe (π := X) k) s := hintegral
+      _ = ENNReal.ofReal (U n m) * μFull {ω : (n : ℕ) → X n | pathFull ω k = n} := by rw [hbase]
+  have hstart_full : μFull {ω : (n : ℕ) → X n | pathFull ω 0 = 1} = 1 := by
+    dsimp [μFull, ProbabilityTheory.Kernel.trajMeasure, pathFull]
+    rw [MeasureTheory.Measure.map_dirac']
+    rw [MeasureTheory.Measure.dirac_bind]
+    · let x0 : (i : Finset.Iic 0) → X i :=
+        (MeasurableEquiv.piUnique (fun i : Finset.Iic 0 => X i)).symm 1
+      change (ProbabilityTheory.Kernel.traj step 0 x0) {ω : (n : ℕ) → X n | ω 0 = 1} = 1
+      have hmap := ProbabilityTheory.Kernel.traj_map_updateFinset (κ := step) (n := 0) (x := x0)
+      rw [← hmap]
+      rw [MeasureTheory.Measure.map_apply]
+      · simp [Function.updateFinset, x0]
+      · fun_prop
+      · measurability
+    · exact (ProbabilityTheory.Kernel.traj step 0).measurable
+    · fun_prop
+  let good : Set ((n : ℕ) → X n) :=
+    {ω | pathFull ω 0 = 1 ∧ ∀ k : ℕ, U (pathFull ω k) (pathFull ω (k + 1)) ≠ 0}
+  have hstart_ae : ∀ᵐ ω ∂μFull, pathFull ω 0 = 1 := by
+    exact (MeasureTheory.ae_iff_prob_eq_one (by measurability)).2 hstart_full
+  have htrans_cond_ae : ∀ k : ℕ,
+      ∀ᵐ ω ∂μFull,
+        1 ≤ pathFull ω k -> U (pathFull ω k) (pathFull ω (k + 1)) ≠ 0 := by
+    intro k
+    let pair : ((n : ℕ) → X n) → ℕ × ℕ := fun ω => (pathFull ω k, pathFull ω (k + 1))
+    let bad : Set (ℕ × ℕ) := {p | 1 ≤ p.1 ∧ U p.1 p.2 = 0}
+    have hbad_count : bad.Countable := by
+      exact bad.to_countable
+    have hbad_zero : μFull (pair ⁻¹' bad) = 0 := by
+      rw [MeasureTheory.measure_preimage_eq_zero_iff_of_countable hbad_count]
+      intro p hp
+      rcases p with ⟨n, m⟩
+      have hn : 1 ≤ n := hp.1
+      have hzero : U n m = 0 := hp.2
+      have h := hfull_markov_pos k n m hn
+      change μFull {ω : (i : ℕ) → X i | (pathFull ω k, pathFull ω (k + 1)) = (n, m)} = 0
+      simpa [Prod.ext_iff, hzero] using h
+    rw [MeasureTheory.ae_iff]
+    change μFull {ω : (n : ℕ) → X n |
+      ¬(1 ≤ pathFull ω k -> U (pathFull ω k) (pathFull ω (k + 1)) ≠ 0)} = 0
+    simpa [pair, bad, Classical.not_imp, not_not, and_comm] using hbad_zero
+  have hpos_ae : ∀ k : ℕ, ∀ᵐ ω ∂μFull, 1 ≤ pathFull ω k := by
+    intro k
+    induction k with
+    | zero =>
+        filter_upwards [hstart_ae] with ω hω
+        simp [pathFull, hω]
+    | succ k ih =>
+        filter_upwards [ih, htrans_cond_ae k] with ω hpos htrans
+        have hne : U (pathFull ω k) (pathFull ω (k + 1)) ≠ 0 := htrans hpos
+        exact le_trans hpos (le_of_lt (hU_support (pathFull ω k) (pathFull ω (k + 1)) hne).1)
+  have hsupport_ae : ∀ᵐ ω ∂μFull,
+      ∀ k : ℕ, U (pathFull ω k) (pathFull ω (k + 1)) ≠ 0 := by
+    rw [MeasureTheory.ae_all_iff]
+    intro k
+    filter_upwards [hpos_ae k, htrans_cond_ae k] with ω hpos htrans
+    exact htrans hpos
+  have hgood_ae : ∀ᵐ ω ∂μFull, ω ∈ good := by
+    filter_upwards [hstart_ae, hsupport_ae] with ω hstart hsupp
+    exact ⟨hstart, hsupp⟩
+  have hgood_meas : MeasurableSet good := by
+    have hcoord : ∀ k : ℕ, Measurable fun ω : (n : ℕ) → X n => pathFull ω k := by
+      intro k
+      simpa [pathFull] using (measurable_pi_apply k : Measurable fun ω : (n : ℕ) → X n => ω k)
+    have hUfun : Measurable fun p : ℕ × ℕ => U p.1 p.2 := measurable_of_countable _
+    have htrans_meas : ∀ k : ℕ,
+        MeasurableSet {ω : (n : ℕ) → X n | U (pathFull ω k) (pathFull ω (k + 1)) ≠ 0} := by
+      intro k
+      have hp : Measurable fun ω : (n : ℕ) → X n => (pathFull ω k, pathFull ω (k + 1)) :=
+        (hcoord k).prodMk (hcoord (k + 1))
+      exact (measurableSet_singleton (0 : ℝ)).compl.preimage (hUfun.comp hp)
+    have hstart_meas : MeasurableSet {ω : (n : ℕ) → X n | pathFull ω 0 = 1} :=
+      (measurableSet_singleton (1 : ℕ)).preimage (hcoord 0)
+    rw [show good = ({ω : (n : ℕ) → X n | pathFull ω 0 = 1} ∩
+      ⋂ k : ℕ, {ω : (n : ℕ) → X n | U (pathFull ω k) (pathFull ω (k + 1)) ≠ 0}) by
+      ext ω
+      simp [good]]
+    exact hstart_meas.inter (MeasurableSet.iInter htrans_meas)
+  let Ω : Type := good
+  let μ : MeasureTheory.Measure Ω := μFull.comap (Subtype.val : Ω -> ((n : ℕ) → X n))
+  let path : Ω → ℕ → ℕ := fun ω k => pathFull ω.1 k
+  have hmeasEmb : MeasurableEmbedding (Subtype.val : Ω -> ((n : ℕ) → X n)) := by
+    simpa [Ω] using MeasurableEmbedding.subtype_coe hgood_meas
+  have hmp : MeasureTheory.MeasurePreserving (Subtype.val : Ω -> ((n : ℕ) → X n)) μ μFull := by
+    have hmp0 := MeasureTheory.measurePreserving_subtype_coe (μa := μFull) hgood_meas
+    have hres : μFull.restrict good = μFull := MeasureTheory.Measure.restrict_eq_self_of_ae_mem hgood_ae
+    simpa [Ω, μ, hres] using hmp0
+  refine ⟨P, U, Ω, inferInstance, μ, path, hpack, ?_⟩
+  unfold mangoldt_adjoint_kernel_path_data
+  have hpath_pos : ∀ (ω : Ω) (k : ℕ), 1 ≤ path ω k := by
+    intro ω k
+    induction k with
+    | zero =>
+        have hstart : path ω 0 = 1 := ω.property.1
+        simp [path, hstart]
+    | succ k ih =>
+        have hne : U (path ω k) (path ω (k + 1)) ≠ 0 := ω.property.2 k
+        exact le_trans ih (le_of_lt (hU_support (path ω k) (path ω (k + 1)) hne).1)
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
+  · calc
+      μ Set.univ = μFull Set.univ := by
+        simpa using hmp.measure_preimage_emb hmeasEmb Set.univ
+      _ = 1 := by simp
+  · intro ω
+    exact ω.property.1
+  · intro ω
+    refine ⟨?_, ?_⟩
+    · apply strictMono_nat_of_lt_succ
+      intro k
+      exact (hU_support (path ω k) (path ω (k + 1)) (ω.property.2 k)).1
+    · intro k
+      exact (hU_support (path ω k) (path ω (k + 1)) (ω.property.2 k)).2
+  · intro k
+    simpa [path, pathFull, Ω] using
+      ((measurable_pi_apply k : Measurable fun ω : (n : ℕ) → X n => ω k).comp measurable_subtype_coe)
+  · intro ω k
+    exact ω.property.2 k
+  · intro k n m
+    by_cases hn : 1 ≤ n
+    · calc
+        μ {ω : Ω | path ω k = n ∧ path ω (k + 1) = m}
+            = μFull {ω : (i : ℕ) → X i | pathFull ω k = n ∧ pathFull ω (k + 1) = m} := by
+              simpa [path, pathFull] using
+                hmp.measure_preimage_emb hmeasEmb
+                  {ω : (i : ℕ) → X i | pathFull ω k = n ∧ pathFull ω (k + 1) = m}
+        _ = ENNReal.ofReal (U n m) * μFull {ω : (i : ℕ) → X i | pathFull ω k = n} :=
+              hfull_markov_pos k n m hn
+        _ = ENNReal.ofReal (U n m) * μ {ω : Ω | path ω k = n} := by
+              congr 1
+              simpa [path, pathFull] using
+                (hmp.measure_preimage_emb hmeasEmb {ω : (i : ℕ) → X i | pathFull ω k = n}).symm
+    · have hn0 : n = 0 := by omega
+      have hbase_empty : {ω : Ω | path ω k = n} = ∅ := by
+        ext ω
+        constructor
+        · intro hω
+          have hpos := hpath_pos ω k
+          have hzero : path ω k = 0 := by simpa [hn0] using hω
+          omega
+        · intro hω
+          cases hω
+      have hpair_empty : {ω : Ω | path ω k = n ∧ path ω (k + 1) = m} = ∅ := by
+        ext ω
+        constructor
+        · intro hω
+          have hpos := hpath_pos ω k
+          have hzero : path ω k = 0 := by simpa [hn0] using hω.1
+          omega
+        · intro hω
+          cases hω
+      simp [hbase_empty, hpair_empty]
 
 @[blueprint "def:mangoldt-adjoint-random-model"
   (statement := /-- This predicate packages the stochastic adjoint von Mangoldt
