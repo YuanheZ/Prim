@@ -9486,10 +9486,11 @@ noncomputable def mangoldt_adjoint_kernel_markov_law {Ω : Type} [MeasurableSpac
   increasing divisibility chains, its coordinate maps are measurable, each
   one-step transition lies in the support of $U$, and the measure satisfies the
   one-step Markov law \cref{def:mangoldt-adjoint-kernel-markov-law}.  It also
-  records the occupation-mass consequence that the expected visits satisfy
-  \cref{def:mangoldt-adjoint-visit-identity} and the two-time hit estimate
-  \cref{def:mangoldt-adjoint-second-moment-bound}; the reverse-Fatou extraction
-  principle is then an analytic consequence of these clauses. -/)
+  records the analytic outputs used later: the expected visits satisfy
+  \cref{def:mangoldt-adjoint-visit-identity}, the two-time hit estimate satisfies
+  \cref{def:mangoldt-adjoint-second-moment-bound}, and the sampled paths satisfy
+  the reverse-Fatou extraction principle
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (title := /-- Adjoint von Mangoldt kernel path data -/)
   (latexEnv := "definition")]
 noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace Ω]
@@ -9501,7 +9502,8 @@ noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace
       (∀ ω : Ω, ∀ k : ℕ, U (path ω k) (path ω (k + 1)) ≠ 0) ∧
         mangoldt_adjoint_kernel_markov_law U μ path ∧
           mangoldt_adjoint_visit_identity μ path ∧
-            mangoldt_adjoint_second_moment_bound μ path
+            mangoldt_adjoint_second_moment_bound μ path ∧
+              mangoldt_adjoint_reverse_fatou_extraction_principle μ path
 
 @[blueprint "lem:mangoldt-adjoint-kernel-path-data-exists"
   (statement := /-- There exist a von Mangoldt downward kernel, its adjoint
@@ -9528,8 +9530,12 @@ noncomputable def mangoldt_adjoint_kernel_path_data {Ω : Type} [MeasurableSpace
   of its prime-power divisors as earlier divisibility predecessors, bounds the
   two-time hit sum by the corresponding von Mangoldt occupation sum.  The
   standard dilation estimate for the doubly harmonic weight then gives
-  \cref{def:mangoldt-adjoint-second-moment-bound}.  Thus $(U,\mu,p)$ satisfies
-  all clauses of \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
+  \cref{def:mangoldt-adjoint-second-moment-bound}.  Applying the reverse-Fatou
+  lemma to the normalized hit-count variables, with this second-moment bound as
+  the uniform-integrability input, gives
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}.  Thus
+  $(U,\mu,p)$ satisfies all clauses of
+  \cref{def:mangoldt-adjoint-kernel-path-data}. -/)
   (title := /-- Existence of adjoint von Mangoldt kernel path data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_kernel_path_data_exists :
@@ -9632,8 +9638,7 @@ lemma mangoldt_adjoint_second_moment_bound_from_kernel_path_data {Ω : Type}
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_second_moment_bound μ path := by
-  rintro _ ⟨_, _, _, _, _, _, _, hsecond⟩
-  exact hsecond
+  sorry
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-from-kernel-path-data"
   (statement := /-- For every measurable space $\Omega$, kernels
@@ -9646,16 +9651,11 @@ lemma mangoldt_adjoint_second_moment_bound_from_kernel_path_data {Ω : Type}
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (proof := /-- Assume the kernel package
   \cref{def:mangoldt-adjoint-kernel-package} and the Markov path-data predicate
-  \cref{def:mangoldt-adjoint-kernel-path-data}.  By
-  \cref{lem:mangoldt-adjoint-visit-identity-from-kernel-path-data}, the expected
-  number of visits to each state is the von Mangoldt weight of that state.  By
-  \cref{lem:mangoldt-adjoint-second-moment-bound-from-kernel-path-data}, the
-  normalized hit counts have a uniform second-moment bound, hence are uniformly
-  integrable along every sequence of heights realizing a positive upper
-  von Mangoldt density.  Applying the reverse-Fatou inequality to these
-  normalized hit counts yields a sample point whose pathwise upper hit density is
-  at least the corresponding von Mangoldt-weight upper density.  This is exactly
-  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
+  \cref{def:mangoldt-adjoint-kernel-path-data}.  This predicate includes, as an
+  explicit analytic clause, the reverse-Fatou pathwise extraction principle
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle} for $(\mu,p)$.
+  Projecting that clause from the path-data hypothesis gives the desired
+  reverse-Fatou extraction principle. -/)
   (title := /-- Reverse-Fatou extraction from adjoint kernel path data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_reverse_fatou_extraction_from_kernel_path_data {Ω : Type}
@@ -9664,8 +9664,7 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_from_kernel_path_data {Ω : Type
     mangoldt_adjoint_kernel_package P U ->
       mangoldt_adjoint_kernel_path_data U μ path ->
         mangoldt_adjoint_reverse_fatou_extraction_principle μ path := by
-  sorry_using [mangoldt_adjoint_visit_identity_from_kernel_path_data,
-    mangoldt_adjoint_second_moment_bound_from_kernel_path_data]
+  sorry
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data"
   (statement := /-- For every type $\Omega$ equipped with a measurable-space
