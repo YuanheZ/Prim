@@ -10507,6 +10507,168 @@ lemma mangoldt_adjoint_visit_identity_from_kernel_path_data {Ω : Type}
                   ENNReal.ofReal (mangoldt_weight (n + 1 + 1) * P (n + 1 + 1) p) := hsum_terms
             _ = ENNReal.ofReal (mangoldt_weight (n + 1 + 1)) := hsum_weightP
 
+@[blueprint "def:mangoldt-adjoint-two-point-divisor-bound"
+  (statement := /-- For a random natural-valued path, this predicate records
+  the pathwise two-point estimate used in the adjoint von Mangoldt argument.
+  For every set $A\subseteq\mathbb N$, the double sum of joint hit
+  probabilities up to height $x$ is bounded, eventually in $x$, by a constant
+  multiple of the one-point von Mangoldt-weighted sum in which the terminal
+  state $n$ is charged by $1+\Omega(n)$, where
+  $\Omega(n)$ is the number of prime factors of $n$ counted with
+  multiplicity. -/)
+  (title := /-- Two-point divisor bound for adjoint-chain hits -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_two_point_divisor_bound {Ω : Type}
+    [MeasurableSpace Ω] (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  ∀ A : Set ℕ, ∃ C : ℝ, 0 ≤ C ∧ ∀ᶠ x in Filter.atTop,
+    0 < Real.log (Real.log x) ∧
+      mangoldt_adjoint_hit_second_moment μ path A x ≤
+        ENNReal.ofReal
+          (C * (∑' n : ℕ,
+            (A ∩ real_initial_segment x).indicator
+              (fun n : ℕ =>
+                ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+                  max (mangoldt_weight n) 0)) n))
+
+@[blueprint "lem:mangoldt-adjoint-two-point-divisor-bound-from-constructed-path-data"
+  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
+  $(\mu,p)$ satisfies the construction-stage data predicate
+  \cref{def:mangoldt-adjoint-constructed-path-data}, then the joint hit
+  probabilities of $p$ satisfy the two-point divisor bound
+  \cref{def:mangoldt-adjoint-two-point-divisor-bound}. -/)
+  (proof := /-- Assume \cref{def:mangoldt-adjoint-constructed-path-data}.  Fix
+  $A\subseteq\mathbb N$ and a height $x$.  On every sampled path, strict
+  monotonicity and divisibility imply that, once a terminal state $n$ has been
+  reached, every earlier state in the same chain is a divisor of $n$ and the
+  number of such earlier states is at most $1+\Omega(n)$.  Summing this
+  deterministic inequality over terminal hits in $A\cap[1,x]$ bounds the
+  ordered pair count of hits by the corresponding terminal-state sum.  Taking
+  expectations and using the expected-visit identity contained in
+  \cref{def:mangoldt-adjoint-constructed-path-data} gives exactly
+  \cref{def:mangoldt-adjoint-two-point-divisor-bound}. -/)
+  (title := /-- Construction data gives the two-point divisor bound -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_two_point_divisor_bound_from_constructed_path_data
+    {Ω : Type} [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω}
+    {path : Ω → ℕ → ℕ} :
+    mangoldt_adjoint_constructed_path_data μ path ->
+      mangoldt_adjoint_two_point_divisor_bound μ path := by
+  sorry
+
+@[blueprint "lem:mangoldt-adjoint-second-moment-bound-from-two-point-divisor-bound"
+  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if the
+  joint hit probabilities of $p$ satisfy the two-point divisor bound
+  \cref{def:mangoldt-adjoint-two-point-divisor-bound}, then the hit counts of
+  $p$ satisfy the uniform second-moment estimate
+  \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
+  (proof := /-- Assume \cref{def:mangoldt-adjoint-two-point-divisor-bound}.  The
+  divisor weight $1+\Omega(n)$ is the sum of the contributions of prime-power
+  divisors of $n$.  After interchanging the prime-power divisor sum with the
+  terminal-state sum, the comparison between $\nu_\Lambda$ and the Erdos weight
+  supplied by \cref{lem:mangoldt-weight-erdos-summable-error}, together with the
+  reciprocal von Mangoldt Mertens estimate
+  \cref{lem:mertens-von-mangoldt-reciprocal}, bounds the weighted divisor sum
+  by a constant multiple of $(\log\log x)^2$ for all sufficiently large $x$.
+  Combining this analytic estimate with the assumed two-point divisor bound is
+  precisely \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
+  (title := /-- Second moment from the two-point divisor bound -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_second_moment_bound_from_two_point_divisor_bound
+    {Ω : Type} [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω}
+    {path : Ω → ℕ → ℕ} :
+    mangoldt_adjoint_two_point_divisor_bound μ path ->
+      mangoldt_adjoint_second_moment_bound μ path := by
+  sorry_using [mertens_von_mangoldt_reciprocal,
+    mangoldt_weight_erdos_summable_error]
+
+@[blueprint "def:mangoldt-adjoint-normalized-hit-expectation-limsup"
+  (statement := /-- For a random natural-valued path, this predicate records
+  the first-moment identity after normalization by $\log\log x$: for every set
+  $A\subseteq\mathbb N$, the upper limit of the expected number of visits to
+  $A\cap[1,x]$, divided by $\log\log x$, is the von Mangoldt-weight upper
+  density \cref{def:mangoldt-weight-upper-density} of $A$. -/)
+  (title := /-- Normalized first moments of adjoint-chain hit counts -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_normalized_hit_expectation_limsup {Ω : Type}
+    [MeasurableSpace Ω] (μ : MeasureTheory.Measure Ω) (path : Ω → ℕ → ℕ) : Prop :=
+  ∀ A : Set ℕ,
+    Filter.limsup
+      (fun x : ℝ =>
+        ENNReal.toReal
+          (∑' k : ℕ,
+            μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) /
+          Real.log (Real.log x))
+      Filter.atTop = mangoldt_weight_upper_density A
+
+@[blueprint "lem:mangoldt-adjoint-normalized-hit-expectation-limsup-from-visit-identity"
+  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
+  $(\mu,p)$ satisfies the construction-stage data predicate
+  \cref{def:mangoldt-adjoint-constructed-path-data}, then the normalized
+  first moments of its hit counts satisfy
+  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup}. -/)
+  (proof := /-- Assume \cref{def:mangoldt-adjoint-constructed-path-data}.  For a
+  set $A\subseteq\mathbb N$ and height $x$, Tonelli's theorem identifies the
+  expected number of visits to $A\cap[1,x]$ with the sum over
+  $n\in A\cap[1,x]$ of the total probability of ever visiting $n$.  The
+  expected-visit identity in
+  \cref{def:mangoldt-adjoint-constructed-path-data} makes this total
+  probability equal to $\nu_\Lambda(n)$.  Dividing by $\log\log x$ and taking
+  the upper limit in $x$ gives
+  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup} by the
+  definition of \cref{def:mangoldt-weight-upper-density}. -/)
+  (title := /-- Visit identity gives normalized first moments -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_normalized_hit_expectation_limsup_from_visit_identity
+    {Ω : Type} [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω}
+    {path : Ω → ℕ → ℕ} :
+    mangoldt_adjoint_constructed_path_data μ path ->
+      mangoldt_adjoint_normalized_hit_expectation_limsup μ path := by
+  sorry
+
+@[blueprint "def:mangoldt-adjoint-reverse-fatou-uniform-integrability-bridge"
+  (statement := /-- This is the explicit analytic bridge used in the
+  reverse-Fatou extraction step.  If $\mu$ is a probability measure, the
+  normalized first moments of the hit counts have limsup
+  \cref{def:mangoldt-weight-upper-density}, and the normalized hit counts have
+  the second-moment control \cref{def:mangoldt-adjoint-second-moment-bound},
+  then the pathwise extraction conclusion
+  \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle} follows. -/)
+  (title := /-- Reverse-Fatou bridge from uniform integrability -/)
+  (latexEnv := "definition")]
+noncomputable def mangoldt_adjoint_reverse_fatou_uniform_integrability_bridge
+    {Ω : Type} [MeasurableSpace Ω] (μ : MeasureTheory.Measure Ω)
+    (path : Ω → ℕ → ℕ) : Prop :=
+  μ Set.univ = 1 ->
+    mangoldt_adjoint_normalized_hit_expectation_limsup μ path ->
+      mangoldt_adjoint_second_moment_bound μ path ->
+        mangoldt_adjoint_reverse_fatou_extraction_principle μ path
+
+@[blueprint "lem:mangoldt-adjoint-reverse-fatou-bridge-from-uniform-integrability"
+  (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, the
+  normalized first-moment identity and the second-moment estimate imply the
+  reverse-Fatou pathwise extraction principle through the bridge
+  \cref{def:mangoldt-adjoint-reverse-fatou-uniform-integrability-bridge}. -/)
+  (proof := /-- Fix $A\subseteq\mathbb N$ with positive
+  \cref{def:mangoldt-weight-upper-density}.  Choose heights along which the
+  normalized first moments converge to this positive upper limit.  The
+  second-moment estimate gives uniform integrability of the corresponding
+  normalized hit-count random variables.  Applying the reverse-Fatou inequality
+  to this uniformly integrable sequence shows that the expectation of the
+  pathwise nonnegative extended limsup is at least the density of $A$.  Since
+  $\mu$ has total mass one, some sample path attains this lower bound, which is
+  exactly \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
+  (title := /-- Reverse-Fatou bridge from uniform integrability -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_reverse_fatou_bridge_from_uniform_integrability
+    {Ω : Type} [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω}
+    {path : Ω → ℕ → ℕ} :
+    mangoldt_adjoint_reverse_fatou_uniform_integrability_bridge μ path := by
+  sorry
+
 @[blueprint "lem:mangoldt-adjoint-second-moment-bound-from-constructed-path-data"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
   $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
@@ -10515,20 +10677,14 @@ lemma mangoldt_adjoint_visit_identity_from_kernel_path_data {Ω : Type}
   $p$ satisfy the uniform second-moment estimate
   \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
   (proof := /-- Assume the construction-stage data predicate
-  \cref{def:mangoldt-adjoint-constructed-path-data}.  For a set
-  $A\subseteq\mathbb N$ and a height $x$, expand the second moment in
-  \cref{def:mangoldt-adjoint-hit-second-moment} as a double sum over pairs of
-  hits in $A\cap[1,x]$.  If a sampled strictly increasing divisibility chain
-  visits a terminal state $n$, then the number of earlier states in the same
-  chain is bounded by the total number of prime-power divisors of $n$.  After
-  taking expectations and using the visit identity from
-  \cref{def:mangoldt-adjoint-visit-identity}, the second moment is bounded by a
-  weighted divisor sum with weight $\nu_\Lambda(n)$.  The summable comparison
-  between $\nu_\Lambda$ and the Erdos weight supplied by
-  \cref{lem:mangoldt-weight-erdos-summable-error}, together with the reciprocal
-  von Mangoldt Mertens estimate \cref{lem:mertens-von-mangoldt-reciprocal},
-  bounds this divisor sum by a constant multiple of $(\log\log x)^2$ for all
-  sufficiently large $x$.  This is exactly
+  \cref{def:mangoldt-adjoint-constructed-path-data}.  By
+  \cref{lem:mangoldt-adjoint-two-point-divisor-bound-from-constructed-path-data},
+  the pathwise strict divisibility clause and the expected-visit identity give
+  the two-point divisor bound
+  \cref{def:mangoldt-adjoint-two-point-divisor-bound}.  Applying
+  \cref{lem:mangoldt-adjoint-second-moment-bound-from-two-point-divisor-bound}
+  to this bound converts the resulting weighted prime-factor divisor sum into
+  the eventual $(\log\log x)^2$ estimate.  The conclusion is precisely
   \cref{def:mangoldt-adjoint-second-moment-bound}. -/)
   (title := /-- Second moment from constructed adjoint path data -/)
   (latexEnv := "lemma")]
@@ -10536,8 +10692,8 @@ lemma mangoldt_adjoint_second_moment_bound_from_constructed_path_data {Ω : Type
     [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
     mangoldt_adjoint_constructed_path_data μ path ->
       mangoldt_adjoint_second_moment_bound μ path := by
-  sorry_using [mertens_von_mangoldt_reciprocal,
-    mangoldt_weight_erdos_summable_error]
+  sorry_using [mangoldt_adjoint_two_point_divisor_bound_from_constructed_path_data,
+    mangoldt_adjoint_second_moment_bound_from_two_point_divisor_bound]
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-principle-from-constructed-path-data"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
@@ -10548,18 +10704,15 @@ lemma mangoldt_adjoint_second_moment_bound_from_constructed_path_data {Ω : Type
   $(\mu,p)$ satisfies the reverse-Fatou pathwise extraction principle
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (proof := /-- Assume \cref{def:mangoldt-adjoint-constructed-path-data} and
-  \cref{def:mangoldt-adjoint-second-moment-bound}.  Fix a set
-  $A\subseteq\mathbb N$ with positive
-  \cref{def:mangoldt-weight-upper-density}.  Choose heights along which the
-  normalized Mangoldt-weight sums converge to this positive limsup.  The visit
-  identity clause of \cref{def:mangoldt-adjoint-constructed-path-data} identifies
-  these normalized sums with the expectations of the corresponding normalized
-  hit counts along the sampled path.  The assumed second-moment estimate gives
-  uniform integrability on a tail of this sequence.  The reverse-Fatou inequality
-  therefore shows that the expectation of the pathwise nonnegative extended
-  limsup is at least the Mangoldt-weight upper density of $A$, and hence some
-  sample path has hit density at least that value in the sense of
-  \cref{def:chain-hits-density-at-least}.  This is precisely
+  \cref{def:mangoldt-adjoint-second-moment-bound}.  The probability-mass clause
+  of \cref{def:mangoldt-adjoint-constructed-path-data} gives
+  $\mu(\Omega)=1$, and
+  \cref{lem:mangoldt-adjoint-normalized-hit-expectation-limsup-from-visit-identity}
+  converts the expected-visit identity into the normalized first-moment limsup
+  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup}.  The assumed
+  second-moment estimate is the uniform-integrability input required by
+  \cref{lem:mangoldt-adjoint-reverse-fatou-bridge-from-uniform-integrability}.
+  Applying that bridge yields the pathwise extraction conclusion
   \cref{def:mangoldt-adjoint-reverse-fatou-extraction-principle}. -/)
   (title := /-- Reverse-Fatou extraction from constructed adjoint path data -/)
   (latexEnv := "lemma")]
@@ -10569,7 +10722,8 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_principle_from_constructed_path_
     mangoldt_adjoint_constructed_path_data μ path ->
       mangoldt_adjoint_second_moment_bound μ path ->
         mangoldt_adjoint_reverse_fatou_extraction_principle μ path := by
-  sorry
+  sorry_using [mangoldt_adjoint_normalized_hit_expectation_limsup_from_visit_identity,
+    mangoldt_adjoint_reverse_fatou_bridge_from_uniform_integrability]
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data"
   (statement := /-- For every type $\Omega$ equipped with a measurable-space
