@@ -10391,7 +10391,8 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_principle_from_model {Ω : Type}
     [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
     mangoldt_adjoint_random_model μ path ->
       mangoldt_adjoint_reverse_fatou_extraction_principle μ path := by
-  sorry
+  intro hmodel
+  exact hmodel.2.2.2.2.2
 
 @[blueprint "lem:mangoldt-adjoint-random-model-exists"
   (statement := /-- There exists a random path model for the adjoint upward von
