@@ -12155,29 +12155,524 @@ noncomputable def mangoldt_adjoint_hit_count_moment_bridge {Ω : Type}
               (mangoldt_adjoint_normalized_hit_count path A (xseq j) ω)) ^ (2 : ℕ)) ∂μ ≤
             ENNReal.ofReal C
 
+@[blueprint "lem:mangoldt-adjoint-of-real-normalized-finset-count"
+  (statement := /-- Let $F$ be a finite set of indices, let $p$ be a decidable
+  predicate on indices, and let $L>0$.  The extended nonnegative real value of
+  the normalized number of indices in $F$ satisfying $p$ is the finite sum of
+  the indicator of $p$ with weight $(\operatorname{ofReal} L)^{-1}$. -/)
+  (proof := /-- The real normalized count is the cardinality of the filtered
+  finset multiplied by $1/L$.  Rewriting this cardinality as the sum of the real
+  indicator of $p$, using nonnegativity to move $\operatorname{ofReal}$ through
+  the finite sum, and finally using $L>0$ to identify
+  $\operatorname{ofReal}(1/L)$ with
+  $(\operatorname{ofReal} L)^{-1}$ gives the formula. -/)
+  (title := /-- Extended-real normalization of a finite indicator count -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_of_real_normalized_finset_count
+    (F : Finset ℕ) (p : ℕ → Prop) [DecidablePred p] {L : ℝ} (hL : 0 < L) :
+    ENNReal.ofReal (((∑ i ∈ F, if p i then (1 : ℕ) else 0 : ℕ) : ℝ) / L) =
+      ∑ i ∈ F, if p i then (ENNReal.ofReal L)⁻¹ else 0 := by
+  classical
+  have hbase :
+      ENNReal.ofReal (((∑ i ∈ F, if p i then (1 : ℕ) else 0 : ℕ) : ℝ) / L) =
+        ∑ i ∈ F, if p i then ENNReal.ofReal (1 / L) else 0 := by
+    have hreal :
+        ((∑ i ∈ F, if p i then (1 : ℕ) else 0 : ℕ) : ℝ) / L =
+          ∑ i ∈ F, if p i then (1 / L : ℝ) else 0 := by
+      simp only [Finset.sum_boole]
+      change ((F.filter p).card : ℝ) / L =
+        ∑ i ∈ F, if p i then (1 / L : ℝ) else 0
+      calc
+        ((F.filter p).card : ℝ) / L = ((F.filter p).card : ℝ) * (1 / L) := by
+          ring
+        _ = ∑ i ∈ F, if p i then (1 / L : ℝ) else 0 := by
+          calc
+            ((F.filter p).card : ℝ) * (1 / L) =
+                (∑ i ∈ F, if p i then (1 : ℝ) else 0) * (1 / L) := by
+              rw [Finset.sum_boole]
+            _ = ∑ i ∈ F, (if p i then (1 : ℝ) else 0) * (1 / L) := by
+              rw [Finset.sum_mul]
+            _ = ∑ i ∈ F, if p i then (1 / L : ℝ) else 0 := by
+              simp
+    rw [hreal, ENNReal.ofReal_sum_of_nonneg]
+    · exact Finset.sum_congr rfl (by
+        intro i hi
+        by_cases hpi : p i <;> simp [hpi, hL.le])
+    · intro i hi
+      by_cases hpi : p i <;> simp [hpi, hL.le]
+  simpa [one_div, ENNReal.ofReal_inv_of_pos hL] using hbase
+
+@[blueprint "lem:mangoldt-adjoint-finset-indicator-sum-square"
+  (statement := /-- For a finite set of indices $F$, a decidable predicate $p$,
+  and a weight $c\in[0,\infty]$, the square of the weighted indicator sum over
+  $F$ is the double finite sum over pairs of indices satisfying $p$. -/)
+  (proof := /-- Expand the square as a product of the sum with itself, distribute
+  multiplication over the two finite sums, and check the four truth-value cases
+  for the two indicators. -/)
+  (title := /-- Square of a finite weighted indicator sum -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_finset_indicator_sum_square
+    (F : Finset ℕ) (p : ℕ → Prop) [DecidablePred p] (c : ENNReal) :
+    (∑ i ∈ F, if p i then c else 0) ^ (2 : ℕ) =
+      ∑ i ∈ F, ∑ j ∈ F, if p i ∧ p j then c ^ (2 : ℕ) else 0 := by
+  classical
+  rw [pow_two, Finset.sum_mul]
+  apply Finset.sum_congr rfl
+  intro i hi
+  rw [Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro j hj
+  by_cases hpi : p i <;> by_cases hpj : p j <;> simp [hpi, hpj, pow_two]
+
+@[blueprint "lem:mangoldt-adjoint-log-normalization-second-moment-cancel"
+  (statement := /-- If $C\ge0$ and $L>0$, then multiplying the second-moment
+  scale $C L^2$ by the square of $(\operatorname{ofReal} L)^{-1}$ cancels the
+  normalization and leaves $\operatorname{ofReal} C$. -/)
+  (proof := /-- Put $a=\operatorname{ofReal} L$.  Since $L>0$, $a$ is neither
+  zero nor infinity, so $a^{-1}a=1$.  Moving `ofReal' through the nonnegative
+  product $C L^2$ and rewriting `ofReal(L^2)' as $a^2$ reduces the identity to
+  this cancellation. -/)
+  (title := /-- Cancellation of the second-moment log normalization -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_log_normalization_second_moment_cancel
+    {C L : ℝ} (hC : 0 ≤ C) (hL : 0 < L) :
+    ((ENNReal.ofReal L)⁻¹) ^ (2 : ℕ) * ENNReal.ofReal (C * L ^ 2) =
+      ENNReal.ofReal C := by
+  let a : ENNReal := ENNReal.ofReal L
+  have ha0 : a ≠ 0 := by
+    simpa [a] using (ENNReal.ofReal_ne_zero_iff.mpr hL)
+  have hatop : a ≠ ⊤ := by
+    simp [a]
+  have hcancel : a⁻¹ * a = 1 := ENNReal.inv_mul_cancel ha0 hatop
+  have hL2 : ENNReal.ofReal (L ^ 2) = a ^ (2 : ℕ) := by
+    simp [a, pow_two, ENNReal.ofReal_mul hL.le]
+  rw [ENNReal.ofReal_mul hC, hL2]
+  rw [pow_two, pow_two]
+  calc
+    a⁻¹ * a⁻¹ * (ENNReal.ofReal C * (a * a)) =
+        ENNReal.ofReal C * ((a⁻¹ * a) * (a⁻¹ * a)) := by
+      ac_rfl
+    _ = ENNReal.ofReal C := by
+      simp [hcancel]
+
+@[blueprint "lem:mangoldt-adjoint-hit-index-count-finite-sum-from-chain"
+  (statement := /-- For every sampled path that is a strictly increasing
+  divisibility chain, and with the displayed hit predicate regarded as decidable,
+  the number of indices hitting $A$ below height $x$ equals the finite indicator
+  sum over $0\le i\le\lfloor x\rfloor_{+}$. -/)
+  (proof := /-- If $p(\omega)_i\le x$, strict monotonicity of the sampled chain
+  implies $i\le p(\omega)_i\le x$, hence $i\le\lfloor x\rfloor_{+}$.  Therefore
+  all hit indices lie in the finite range up to $\lfloor x\rfloor_{+}$, and the
+  cardinality of the hit set is the cardinality of the corresponding filtered
+  finset, which is the displayed indicator sum. -/)
+  (title := /-- Hit-index count as a finite indicator sum -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_hit_index_count_finite_sum_from_chain
+    {Ω : Type} {path : Ω → ℕ → ℕ}
+    (hchain : ∀ ω : Ω, strictly_increasing_divisibility_chain (path ω))
+    (A : Set ℕ) (x : ℝ) (ω : Ω)
+    [DecidablePred (fun i => path ω i ∈ A ∧ (path ω i : ℝ) ≤ x)] :
+    ({i : ℕ | path ω i ∈ A ∧ (path ω i : ℝ) ≤ x} : Set ℕ).ncard =
+      (∑ i ∈ Finset.range (⌊x⌋₊ + 1),
+        if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then (1 : ℕ) else 0) := by
+  classical
+  let S : Set ℕ := {i : ℕ | path ω i ∈ A ∧ (path ω i : ℝ) ≤ x}
+  let F : Finset ℕ := Finset.range (⌊x⌋₊ + 1)
+  have hindex : ∀ i : ℕ, path ω i ∈ A -> (path ω i : ℝ) ≤ x -> i ≤ ⌊x⌋₊ := by
+    intro i hiA hix
+    apply Nat.le_floor
+    have hi_le_path_nat : i ≤ path ω i := by
+      exact Nat.le_trans (Nat.le_add_right i (path ω 0))
+        (by simpa [Nat.add_comm] using StrictMono.add_le_nat (hchain ω).1 i 0)
+    have hi_le_path_real : (i : ℝ) ≤ (path ω i : ℝ) := by
+      exact_mod_cast hi_le_path_nat
+    exact hi_le_path_real.trans hix
+  have hsubset : S ⊆ (F : Set ℕ) := by
+    intro i hi
+    simpa [F, Finset.mem_range, Nat.lt_succ_iff] using hindex i hi.1 hi.2
+  have hfin : S.Finite := F.finite_toSet.subset hsubset
+  have hto : hfin.toFinset = F.filter (fun i => path ω i ∈ A ∧ (path ω i : ℝ) ≤ x) := by
+    ext i
+    simp [S, F, Finset.mem_range, Nat.lt_succ_iff]
+    exact fun hiA hix => hindex i hiA hix
+  calc
+    S.ncard = hfin.toFinset.card := Set.ncard_eq_toFinset_card S hfin
+    _ = (F.filter (fun i => path ω i ∈ A ∧ (path ω i : ℝ) ≤ x)).card := by
+      rw [hto]
+    _ = ∑ i ∈ F, if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then (1 : ℕ) else 0 := by
+      simp
+
+@[blueprint "lem:mangoldt-adjoint-hit-index-finite-from-chain"
+  (statement := /-- For every sampled path that is a strictly increasing
+  divisibility chain, the set of indices hitting $A$ below any real height $x$
+  is finite. -/)
+  (proof := /-- The chain bound shows that every hit index satisfies
+  $i\le\lfloor x\rfloor_{+}$.  Thus the hit-index set is contained in a finite
+  initial segment of $\mathbb N$. -/)
+  (title := /-- Finiteness of hit indices from the chain condition -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_hit_index_finite_from_chain
+    {Ω : Type} {path : Ω → ℕ → ℕ}
+    (hchain : ∀ ω : Ω, strictly_increasing_divisibility_chain (path ω)) :
+    ∀ (A : Set ℕ) (x : ℝ) (ω : Ω),
+      ({i : ℕ | path ω i ∈ A ∧ (path ω i : ℝ) ≤ x} : Set ℕ).Finite := by
+  intro A x ω
+  refine (Set.finite_le_nat ⌊x⌋₊).subset ?_
+  intro i hi
+  change i ≤ ⌊x⌋₊
+  apply Nat.le_floor
+  have hi_le_path_nat : i ≤ path ω i := by
+    exact Nat.le_trans (Nat.le_add_right i (path ω 0))
+      (by simpa [Nat.add_comm] using StrictMono.add_le_nat (hchain ω).1 i 0)
+  have hi_le_path_real : (i : ℝ) ≤ (path ω i : ℝ) := by
+    exact_mod_cast hi_le_path_nat
+  exact hi_le_path_real.trans hi.2
+
+@[blueprint "lem:mangoldt-adjoint-normalized-hit-count-aemeasurable-from-coordinates"
+  (statement := /-- If every coordinate map of the sampled path is measurable,
+  then each extended nonnegative normalized hit-count random variable is
+  almost everywhere measurable. -/)
+  (proof := /-- After unfolding
+  \cref{def:mangoldt-adjoint-normalized-hit-count} and
+  \cref{def:chain-hits-count-up-to}, the function is built from measurable
+  coordinate maps by finite-set membership tests, real arithmetic, and the
+  extended-real embedding, so the corresponding measurability rules apply. -/)
+  (title := /-- Almost-everywhere measurability of normalized hit counts -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_normalized_hit_count_aemeasurable_from_coordinates
+    {Ω : Type} [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω}
+    {path : Ω → ℕ → ℕ}
+    (hmeas : ∀ k : ℕ, Measurable fun ω : Ω => path ω k) :
+    ∀ (A : Set ℕ) (x : ℝ),
+      AEMeasurable
+        (fun ω : Ω => ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω)) μ := by
+  intro A x
+  unfold mangoldt_adjoint_normalized_hit_count chain_hits_count_up_to
+  fun_prop
+
+@[blueprint "lem:mangoldt-adjoint-normalized-hit-first-integral-from-chain"
+  (statement := /-- Under the chain and coordinate-measurability hypotheses,
+  the first moment of the normalized hit-count random variable is the normalized
+  one-point hit series whenever $\log\log x>0$. -/)
+  (proof := /-- Use
+  \cref{lem:mangoldt-adjoint-hit-index-count-finite-sum-from-chain} to rewrite
+  the hit count as a finite indicator sum and
+  \cref{lem:mangoldt-adjoint-of-real-normalized-finset-count} to move the
+  normalization into extended nonnegative real weights.  Coordinate
+  measurability makes each hit event measurable, so the lintegral of the finite
+  sum is the sum of the event measures.  The chain bound also shows that the
+  infinite one-point series has no terms outside the same finite range, giving
+  the asserted normalized identity. -/)
+  (title := /-- First moment of the normalized hit count -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_normalized_hit_first_integral_from_chain
+    {Ω : Type} [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω}
+    {path : Ω → ℕ → ℕ}
+    (hchain : ∀ ω : Ω, strictly_increasing_divisibility_chain (path ω))
+    (hmeas : ∀ k : ℕ, Measurable fun ω : Ω => path ω k) :
+    ∀ (A : Set ℕ) (x : ℝ), 0 < Real.log (Real.log x) ->
+      (∫⁻ ω, ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω) ∂μ).toReal =
+        ENNReal.toReal (∑' k : ℕ,
+          μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) /
+          Real.log (Real.log x) := by
+  classical
+  intro A x hx
+  let F : Finset ℕ := Finset.range (⌊x⌋₊ + 1)
+  let c : ENNReal := (ENNReal.ofReal (Real.log (Real.log x)))⁻¹
+  have hhit_meas : ∀ i : ℕ,
+      MeasurableSet {ω : Ω | path ω i ∈ A ∧ (path ω i : ℝ) ≤ x} := by
+    intro i
+    exact (MeasurableSet.preimage
+      (by simp : MeasurableSet {n : ℕ | n ∈ A ∧ (n : ℝ) ≤ x}) (hmeas i))
+  have hterm_integral : ∀ (i : ℕ),
+      (∫⁻ ω,
+        (if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then c else 0) ∂μ) =
+        c * μ {ω : Ω | path ω i ∈ A ∧ (path ω i : ℝ) ≤ x} := by
+    intro i
+    simpa [Set.indicator] using
+      MeasureTheory.lintegral_indicator_const (μ := μ) (hhit_meas i) c
+  have hfun :
+      (fun ω : Ω => ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω)) =
+        fun ω : Ω => ∑ i ∈ F,
+          if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then c else 0 := by
+    funext ω
+    unfold mangoldt_adjoint_normalized_hit_count chain_hits_count_up_to
+    rw [mangoldt_adjoint_hit_index_count_finite_sum_from_chain hchain A x ω]
+    change ENNReal.ofReal
+        (((∑ i ∈ F, if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then (1 : ℕ) else 0 : ℕ) : ℝ) /
+          Real.log (Real.log x)) =
+      ∑ i ∈ F, if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then c else 0
+    simpa [c] using mangoldt_adjoint_of_real_normalized_finset_count F
+      (fun i => path ω i ∈ A ∧ (path ω i : ℝ) ≤ x) hx
+  have htsum :
+      (∑' k : ℕ, μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) =
+        ∑ k ∈ F, μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x} := by
+    refine tsum_eq_sum (s := F) ?_
+    intro k hk
+    have hempty : {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x} = ∅ := by
+      ext ω
+      constructor
+      · intro hω
+        have hk_le : k ≤ ⌊x⌋₊ := by
+          apply Nat.le_floor
+          have hk_le_path_nat : k ≤ path ω k := by
+            exact Nat.le_trans (Nat.le_add_right k (path ω 0))
+              (by simpa [Nat.add_comm] using StrictMono.add_le_nat (hchain ω).1 k 0)
+          have hk_le_path_real : (k : ℝ) ≤ (path ω k : ℝ) := by
+            exact_mod_cast hk_le_path_nat
+          exact hk_le_path_real.trans hω.2
+        have hkF : k ∈ F := by
+          simpa [F, Finset.mem_range, Nat.lt_succ_iff] using hk_le
+        exact False.elim (hk hkF)
+      · intro h
+        cases h
+    simp [hempty]
+  calc
+    (∫⁻ ω, ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω) ∂μ).toReal =
+        (∫⁻ ω, (∑ i ∈ F,
+          if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then c else 0) ∂μ).toReal := by
+      rw [hfun]
+    _ = (∑ i ∈ F, c * μ {ω : Ω | path ω i ∈ A ∧ (path ω i : ℝ) ≤ x}).toReal := by
+      rw [MeasureTheory.lintegral_finset_sum']
+      · simp [hterm_integral, c]
+      · intro i hi
+        exact (Measurable.ite (hhit_meas i) measurable_const measurable_const).aemeasurable
+    _ = (c * (∑ i ∈ F, μ {ω : Ω | path ω i ∈ A ∧ (path ω i : ℝ) ≤ x})).toReal := by
+      rw [Finset.mul_sum]
+    _ = (c * (∑' k : ℕ, μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x})).toReal := by
+      rw [htsum]
+    _ = ENNReal.toReal (∑' k : ℕ,
+          μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) /
+          Real.log (Real.log x) := by
+      simp [c, hx.le, div_eq_mul_inv, mul_comm, mul_left_comm, mul_assoc]
+
+@[blueprint "lem:mangoldt-adjoint-normalized-hit-second-integral-bound-from-chain"
+  (statement := /-- Under the chain and coordinate-measurability hypotheses, a
+  two-point second-moment bound at height $x$ implies the corresponding bound
+  for the square of the normalized hit-count random variable whenever
+  $\log\log x>0$. -/)
+  (proof := /-- Rewrite the normalized hit count as a finite weighted indicator
+  sum using \cref{lem:mangoldt-adjoint-hit-index-count-finite-sum-from-chain}
+  and \cref{lem:mangoldt-adjoint-of-real-normalized-finset-count}.  Then expand
+  its square by \cref{lem:mangoldt-adjoint-finset-indicator-sum-square}.  The
+  coordinate measurability hypotheses make the pair-hit events measurable, so
+  the lintegral is the corresponding finite double sum.  The chain bound removes
+  all terms outside the finite range, identifying that double sum with
+  \cref{def:mangoldt-adjoint-hit-second-moment}.  The assumed second-moment
+  estimate and the cancellation identity
+  \cref{lem:mangoldt-adjoint-log-normalization-second-moment-cancel} give the
+  desired bound. -/)
+  (title := /-- Second moment of the normalized hit count -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_adjoint_normalized_hit_second_integral_bound_from_chain
+    {Ω : Type} [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω}
+    {path : Ω → ℕ → ℕ}
+    (hchain : ∀ ω : Ω, strictly_increasing_divisibility_chain (path ω))
+    (hmeas : ∀ k : ℕ, Measurable fun ω : Ω => path ω k) :
+    ∀ (A : Set ℕ) (x C : ℝ), 0 ≤ C ->
+      0 < Real.log (Real.log x) ->
+        mangoldt_adjoint_hit_second_moment μ path A x ≤
+          ENNReal.ofReal (C * (Real.log (Real.log x)) ^ 2) ->
+          ∫⁻ ω,
+            ((ENNReal.ofReal
+              (mangoldt_adjoint_normalized_hit_count path A x ω)) ^ (2 : ℕ)) ∂μ ≤
+            ENNReal.ofReal C := by
+  classical
+  intro A x C hC hx hbound
+  let F : Finset ℕ := Finset.range (⌊x⌋₊ + 1)
+  let c : ENNReal := (ENNReal.ofReal (Real.log (Real.log x)))⁻¹
+  have hhit_meas : ∀ i : ℕ,
+      MeasurableSet {ω : Ω | path ω i ∈ A ∧ (path ω i : ℝ) ≤ x} := by
+    intro i
+    exact (MeasurableSet.preimage
+      (by simp : MeasurableSet {n : ℕ | n ∈ A ∧ (n : ℝ) ≤ x}) (hmeas i))
+  have hpair_meas : ∀ (i j : ℕ),
+      MeasurableSet {ω : Ω |
+        path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+          path ω j ∈ A ∧ (path ω j : ℝ) ≤ x} := by
+    intro i j
+    simpa [Set.inter_def, and_assoc] using (hhit_meas i).inter (hhit_meas j)
+  have hpair_integral : ∀ (i j : ℕ),
+      (∫⁻ ω,
+        (if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+            path ω j ∈ A ∧ (path ω j : ℝ) ≤ x then c ^ (2 : ℕ) else 0) ∂μ) =
+        c ^ (2 : ℕ) * μ {ω : Ω |
+          path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+            path ω j ∈ A ∧ (path ω j : ℝ) ≤ x} := by
+    intro i j
+    simpa [Set.indicator] using
+      MeasureTheory.lintegral_indicator_const (μ := μ) (hpair_meas i j) (c ^ (2 : ℕ))
+  have hfun :
+      (fun ω : Ω => ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω)) =
+        fun ω : Ω => ∑ i ∈ F,
+          if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then c else 0 := by
+    funext ω
+    unfold mangoldt_adjoint_normalized_hit_count chain_hits_count_up_to
+    rw [mangoldt_adjoint_hit_index_count_finite_sum_from_chain hchain A x ω]
+    change ENNReal.ofReal
+        (((∑ i ∈ F, if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then (1 : ℕ) else 0 : ℕ) : ℝ) /
+          Real.log (Real.log x)) =
+      ∑ i ∈ F, if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x then c else 0
+    simpa [c] using mangoldt_adjoint_of_real_normalized_finset_count F
+      (fun i => path ω i ∈ A ∧ (path ω i : ℝ) ≤ x) hx
+  have hsqfun :
+      (fun ω : Ω =>
+        (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω)) ^ (2 : ℕ)) =
+        fun ω : Ω => ∑ i ∈ F, ∑ j ∈ F,
+          if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+              path ω j ∈ A ∧ (path ω j : ℝ) ≤ x then c ^ (2 : ℕ) else 0 := by
+    funext ω
+    rw [congrFun hfun ω]
+    simpa [and_assoc] using
+      mangoldt_adjoint_finset_indicator_sum_square F
+        (fun i => path ω i ∈ A ∧ (path ω i : ℝ) ≤ x) c
+  have hinner_tsum : ∀ i : ℕ,
+      (∑' j : ℕ, μ {ω : Ω |
+        path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+          path ω j ∈ A ∧ (path ω j : ℝ) ≤ x}) =
+        ∑ j ∈ F, μ {ω : Ω |
+          path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+            path ω j ∈ A ∧ (path ω j : ℝ) ≤ x} := by
+    intro i
+    refine tsum_eq_sum (s := F) ?_
+    intro j hj
+    have hempty : {ω : Ω |
+        path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+          path ω j ∈ A ∧ (path ω j : ℝ) ≤ x} = ∅ := by
+      ext ω
+      constructor
+      · intro hω
+        have hj_le : j ≤ ⌊x⌋₊ := by
+          apply Nat.le_floor
+          have hj_le_path_nat : j ≤ path ω j := by
+            exact Nat.le_trans (Nat.le_add_right j (path ω 0))
+              (by simpa [Nat.add_comm] using StrictMono.add_le_nat (hchain ω).1 j 0)
+          have hj_le_path_real : (j : ℝ) ≤ (path ω j : ℝ) := by
+            exact_mod_cast hj_le_path_nat
+          exact hj_le_path_real.trans hω.2.2.2
+        have hjF : j ∈ F := by
+          simpa [F, Finset.mem_range, Nat.lt_succ_iff] using hj_le
+        exact False.elim (hj hjF)
+      · intro h
+        cases h
+    simp [hempty]
+  have houter_tsum :
+      (∑' i : ℕ, ∑' j : ℕ, μ {ω : Ω |
+        path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+          path ω j ∈ A ∧ (path ω j : ℝ) ≤ x}) =
+        ∑ i ∈ F, ∑' j : ℕ, μ {ω : Ω |
+          path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+            path ω j ∈ A ∧ (path ω j : ℝ) ≤ x} := by
+    refine tsum_eq_sum (s := F) ?_
+    intro i hi
+    rw [ENNReal.tsum_eq_zero]
+    intro j
+    have hempty : {ω : Ω |
+        path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+          path ω j ∈ A ∧ (path ω j : ℝ) ≤ x} = ∅ := by
+      ext ω
+      constructor
+      · intro hω
+        have hi_le : i ≤ ⌊x⌋₊ := by
+          apply Nat.le_floor
+          have hi_le_path_nat : i ≤ path ω i := by
+            exact Nat.le_trans (Nat.le_add_right i (path ω 0))
+              (by simpa [Nat.add_comm] using StrictMono.add_le_nat (hchain ω).1 i 0)
+          have hi_le_path_real : (i : ℝ) ≤ (path ω i : ℝ) := by
+            exact_mod_cast hi_le_path_nat
+          exact hi_le_path_real.trans hω.2.1
+        have hiF : i ∈ F := by
+          simpa [F, Finset.mem_range, Nat.lt_succ_iff] using hi_le
+        exact False.elim (hi hiF)
+      · intro h
+        cases h
+    simp [hempty]
+  have hmoment_finite :
+      mangoldt_adjoint_hit_second_moment μ path A x =
+        ∑ i ∈ F, ∑ j ∈ F, μ {ω : Ω |
+          path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+            path ω j ∈ A ∧ (path ω j : ℝ) ≤ x} := by
+    unfold mangoldt_adjoint_hit_second_moment
+    rw [houter_tsum]
+    apply Finset.sum_congr rfl
+    intro i hi
+    rw [hinner_tsum i]
+  have hlin_eq :
+      (∫⁻ ω,
+        ((ENNReal.ofReal
+          (mangoldt_adjoint_normalized_hit_count path A x ω)) ^ (2 : ℕ)) ∂μ) =
+        c ^ (2 : ℕ) *
+          (∑ i ∈ F, ∑ j ∈ F, μ {ω : Ω |
+            path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+              path ω j ∈ A ∧ (path ω j : ℝ) ≤ x}) := by
+    calc
+      (∫⁻ ω,
+        ((ENNReal.ofReal
+          (mangoldt_adjoint_normalized_hit_count path A x ω)) ^ (2 : ℕ)) ∂μ) =
+          ∫⁻ ω, (∑ i ∈ F, ∑ j ∈ F,
+            if path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+                path ω j ∈ A ∧ (path ω j : ℝ) ≤ x then c ^ (2 : ℕ) else 0) ∂μ := by
+        rw [hsqfun]
+      _ = ∑ i ∈ F, ∑ j ∈ F,
+            c ^ (2 : ℕ) * μ {ω : Ω |
+              path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+                path ω j ∈ A ∧ (path ω j : ℝ) ≤ x} := by
+        rw [MeasureTheory.lintegral_finset_sum']
+        · apply Finset.sum_congr rfl
+          intro i hi
+          rw [MeasureTheory.lintegral_finset_sum']
+          · simp [hpair_integral, c]
+          · intro j hj
+            exact (Measurable.ite (hpair_meas i j) measurable_const measurable_const).aemeasurable
+        · intro i hi
+          exact Finset.aemeasurable_fun_sum _ (fun j hj =>
+            (Measurable.ite (hpair_meas i j) measurable_const measurable_const).aemeasurable)
+      _ = c ^ (2 : ℕ) *
+          (∑ i ∈ F, ∑ j ∈ F, μ {ω : Ω |
+            path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+              path ω j ∈ A ∧ (path ω j : ℝ) ≤ x}) := by
+        simp [Finset.mul_sum, mul_assoc]
+  calc
+    (∫⁻ ω,
+      ((ENNReal.ofReal
+        (mangoldt_adjoint_normalized_hit_count path A x ω)) ^ (2 : ℕ)) ∂μ) =
+        c ^ (2 : ℕ) *
+          (∑ i ∈ F, ∑ j ∈ F, μ {ω : Ω |
+            path ω i ∈ A ∧ (path ω i : ℝ) ≤ x ∧
+              path ω j ∈ A ∧ (path ω j : ℝ) ≤ x}) := hlin_eq
+    _ = c ^ (2 : ℕ) * mangoldt_adjoint_hit_second_moment μ path A x := by
+      rw [hmoment_finite]
+    _ ≤ c ^ (2 : ℕ) * ENNReal.ofReal (C * (Real.log (Real.log x)) ^ 2) := by
+      exact mul_le_mul_left' hbound (c ^ (2 : ℕ))
+    _ = ENNReal.ofReal C := by
+      simpa [c] using mangoldt_adjoint_log_normalization_second_moment_cancel hC hx
+
 @[blueprint "lem:mangoldt-adjoint-hit-count-moment-bridge-from-first-second"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
-  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if $\mu$ is a
-  probability measure, every sampled path satisfies the stated strict
-  divisibility-chain hypothesis, the coordinate maps are measurable, and the
-  existing first- and second-moment predicates hold, then the count-variable
-  moment bridge \cref{def:mangoldt-adjoint-hit-count-moment-bridge} holds. -/)
+  $\Omega$, and path process $p:\Omega\to(\mathbb N\to\mathbb N)$, if
+  $\mu(\Omega)=1$, every sampled path $p(\omega)$ is a strictly increasing
+  divisibility chain, every coordinate map $\omega\mapsto p(\omega)_k$ is
+  measurable, the normalized first-moment predicate
+  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup} holds for
+  $(\mu,p)$, and the second-moment predicate
+  \cref{def:mangoldt-adjoint-second-moment-bound} holds for $(\mu,p)$, then
+  the count-variable moment bridge
+  \cref{def:mangoldt-adjoint-hit-count-moment-bridge} holds for $(\mu,p)$. -/)
   (proof := /-- Fix $A\subseteq\mathbb N$ with positive
-  \cref{def:mangoldt-weight-upper-density}.  Choose heights along which the
-  normalized first-moment limsup from
-  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup} is attained.
-  The strict divisibility-chain hypothesis makes the set of hit indices below
-  each fixed height finite on every sampled path, and coordinate measurability
-  makes the corresponding count random variable from
-  \cref{def:mangoldt-adjoint-normalized-hit-count} almost everywhere
-  measurable.  The first-moment identity identifies the lintegral of this
-  count variable with the one-point hit series in
-  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup}.  Expanding the
-  square of the same count variable expresses its second moment through the
-  pair-hit sum \cref{def:mangoldt-adjoint-hit-second-moment}, and the uniform
-  estimate \cref{def:mangoldt-adjoint-second-moment-bound} gives a uniform
-  bound along the selected heights.  These facts are exactly the clauses of
-  \cref{def:mangoldt-adjoint-hit-count-moment-bridge}. -/)
+  \cref{def:mangoldt-weight-upper-density}.  The first-moment hypothesis
+  \cref{def:mangoldt-adjoint-normalized-hit-expectation-limsup}, together with
+  \cref{lem:mangoldt-adjoint-normalized-hit-first-integral-from-chain},
+  identifies the limsup of the expected normalized hit counts with the density
+  of $A$.  The second-moment hypothesis
+  \cref{def:mangoldt-adjoint-second-moment-bound}, together with
+  \cref{lem:mangoldt-adjoint-normalized-hit-second-integral-bound-from-chain},
+  gives a uniform bound for the squared normalized hit counts on the same
+  eventual set of heights.  The finiteness and measurability clauses follow
+  from \cref{lem:mangoldt-adjoint-hit-index-finite-from-chain} and
+  \cref{lem:mangoldt-adjoint-normalized-hit-count-aemeasurable-from-coordinates}.
+  Choosing a sequence realizing the limsup and then discarding finitely many
+  initial terms so that the second-moment and log-log hypotheses hold gives all
+  clauses of \cref{def:mangoldt-adjoint-hit-count-moment-bridge}. -/)
   (title := /-- From first and second moments to count-variable moments -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_hit_count_moment_bridge_from_first_second
@@ -12189,7 +12684,103 @@ lemma mangoldt_adjoint_hit_count_moment_bridge_from_first_second
           mangoldt_adjoint_normalized_hit_expectation_limsup μ path ->
             mangoldt_adjoint_second_moment_bound μ path ->
               mangoldt_adjoint_hit_count_moment_bridge μ path := by
-  sorry
+  classical
+  intro hμ hchain hmeas hfirst hsecond
+  have hfirst_integral : ∀ (A : Set ℕ) (x : ℝ), 0 < Real.log (Real.log x) ->
+      (∫⁻ ω, ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω) ∂μ).toReal =
+        ENNReal.toReal (∑' k : ℕ,
+          μ {ω : Ω | path ω k ∈ A ∧ (path ω k : ℝ) ≤ x}) /
+          Real.log (Real.log x) :=
+    mangoldt_adjoint_normalized_hit_first_integral_from_chain hchain hmeas
+  have hsecond_integral : ∀ (A : Set ℕ) (x C : ℝ), 0 ≤ C ->
+      0 < Real.log (Real.log x) ->
+        mangoldt_adjoint_hit_second_moment μ path A x ≤
+          ENNReal.ofReal (C * (Real.log (Real.log x)) ^ 2) ->
+          ∫⁻ ω,
+            ((ENNReal.ofReal
+              (mangoldt_adjoint_normalized_hit_count path A x ω)) ^ (2 : ℕ)) ∂μ ≤
+            ENNReal.ofReal C :=
+    mangoldt_adjoint_normalized_hit_second_integral_bound_from_chain hchain hmeas
+  unfold mangoldt_adjoint_hit_count_moment_bridge
+  intro A hA
+  rcases hsecond A with ⟨C, hC, hCevent⟩
+  let g : ℝ → ℝ := fun x =>
+    (∫⁻ ω, ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω) ∂μ).toReal
+  have hlimsup_g : Filter.limsup g Filter.atTop = mangoldt_weight_upper_density A := by
+    rw [← hfirst A]
+    apply Filter.limsup_congr
+    filter_upwards [hCevent] with x hx
+    exact hfirst_integral A x hx.1
+  have hcobound : Filter.IsCoboundedUnder (· ≤ ·) Filter.atTop g := by
+    exact Filter.isCoboundedUnder_le_of_le Filter.atTop (fun x => ENNReal.toReal_nonneg)
+  have hpoint_le_square : ∀ y : ℝ, 0 ≤ y -> ENNReal.ofReal y ≤ (ENNReal.ofReal y) ^ (2 : ℕ) + 1 := by
+    intro y hy
+    have hreal : y ≤ y ^ 2 + 1 := by
+      nlinarith [sq_nonneg y, sq_nonneg (y - 1)]
+    simpa [pow_two, ENNReal.ofReal_mul, ENNReal.ofReal_add, hy, mul_nonneg hy hy]
+      using ENNReal.ofReal_le_ofReal hreal
+  have hbdd : Filter.IsBoundedUnder (· ≤ ·) Filter.atTop g := by
+    refine ⟨C + 1, ?_⟩
+    rw [Filter.eventually_map]
+    filter_upwards [hCevent] with x hx
+    have hsq := hsecond_integral A x C hC hx.1 hx.2
+    have hlin : (∫⁻ ω, ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω) ∂μ) ≤
+        ENNReal.ofReal (C + 1) := by
+      calc
+        (∫⁻ ω, ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω) ∂μ) ≤
+            ∫⁻ ω,
+              (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω)) ^ (2 : ℕ) + 1 ∂μ := by
+          apply MeasureTheory.lintegral_mono
+          intro ω
+          apply hpoint_le_square
+          unfold mangoldt_adjoint_normalized_hit_count chain_hits_count_up_to
+          exact div_nonneg (Nat.cast_nonneg _) hx.1.le
+        _ = (∫⁻ ω,
+              (ENNReal.ofReal (mangoldt_adjoint_normalized_hit_count path A x ω)) ^ (2 : ℕ) ∂μ) + μ Set.univ := by
+          rw [MeasureTheory.lintegral_add_left']
+          · simp
+          · exact (mangoldt_adjoint_normalized_hit_count_aemeasurable_from_coordinates hmeas A x).pow_const (2 : ℕ)
+        _ ≤ ENNReal.ofReal C + 1 := by
+          rw [hμ]
+          exact add_le_add hsq le_rfl
+        _ = ENNReal.ofReal (C + 1) := by
+          rw [ENNReal.ofReal_add hC zero_le_one]
+          norm_num
+    exact ENNReal.toReal_le_of_le_ofReal (by linarith) hlin
+  obtain ⟨u, hgu, hu⟩ := exists_seq_tendsto_limsup (f := Filter.atTop) (u := g)
+    (hc := hcobound) (hb := hbdd)
+  have hgu_density : Filter.Tendsto (g ∘ u) Filter.atTop (nhds (mangoldt_weight_upper_density A)) := by
+    simpa [hlimsup_g] using hgu
+  have hgood_event : ∀ᶠ x in Filter.atTop,
+      2 ≤ x ∧ 0 < Real.log (Real.log x) ∧
+        mangoldt_adjoint_hit_second_moment μ path A x ≤
+          ENNReal.ofReal (C * (Real.log (Real.log x)) ^ 2) := by
+    filter_upwards [Filter.eventually_ge_atTop (2 : ℝ), hCevent] with x hx2 hxC
+    exact ⟨hx2, hxC.1, hxC.2⟩
+  have hgood_u : ∀ᶠ n in Filter.atTop,
+      2 ≤ u n ∧ 0 < Real.log (Real.log (u n)) ∧
+        mangoldt_adjoint_hit_second_moment μ path A (u n) ≤
+          ENNReal.ofReal (C * (Real.log (Real.log (u n))) ^ 2) := hu hgood_event
+  rcases (Filter.eventually_atTop.1 hgood_u) with ⟨N, hN⟩
+  let xseq : ℕ → ℝ := fun j => u (j + N)
+  refine ⟨xseq, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  · exact hu.comp (Filter.tendsto_add_atTop_nat N)
+  · intro j
+    have hgood := hN (j + N) (by simpa [Nat.add_comm] using Nat.le_add_left N j)
+    exact ⟨hgood.1, hgood.2.1⟩
+  · intro j
+    exact Filter.Eventually.of_forall (fun ω =>
+      mangoldt_adjoint_hit_index_finite_from_chain hchain A (xseq j) ω)
+  · intro j
+    exact mangoldt_adjoint_normalized_hit_count_aemeasurable_from_coordinates hmeas A (xseq j)
+  · have hseq_tendsto : Filter.Tendsto (fun j => g (u (j + N))) Filter.atTop
+        (nhds (mangoldt_weight_upper_density A)) := by
+      exact hgu_density.comp (Filter.tendsto_add_atTop_nat N)
+    simpa [g, xseq] using hseq_tendsto.limsup_eq
+  · refine ⟨C, hC, ?_⟩
+    intro j
+    have hgood := hN (j + N) (by simpa [Nat.add_comm] using Nat.le_add_left N j)
+    exact hsecond_integral A (xseq j) C hC hgood.2.1 hgood.2.2
 
 @[blueprint "def:mangoldt-adjoint-reverse-fatou-uniform-integrability-bridge"
   (statement := /-- This is the explicit analytic bridge used in the
