@@ -13185,9 +13185,11 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_principle_from_constructed_path_
     mangoldt_adjoint_constructed_path_data μ path ->
       mangoldt_adjoint_second_moment_bound μ path ->
         mangoldt_adjoint_reverse_fatou_extraction_principle μ path := by
-  sorry_using [mangoldt_adjoint_normalized_hit_expectation_limsup_from_visit_identity,
-    mangoldt_adjoint_hit_count_moment_bridge_from_first_second,
-    mangoldt_adjoint_reverse_fatou_bridge_from_uniform_integrability]
+  exact fun hdata hsecond =>
+    (mangoldt_adjoint_reverse_fatou_bridge_from_uniform_integrability (μ := μ) (path := path))
+      hdata.1 hdata.2.2.1
+      (mangoldt_adjoint_hit_count_moment_bridge_from_first_second hdata.1 hdata.2.1 hdata.2.2.1
+        (mangoldt_adjoint_normalized_hit_expectation_limsup_from_visit_identity hdata) hsecond)
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data"
   (statement := /-- For every type $\Omega$ equipped with a measurable-space
