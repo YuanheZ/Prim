@@ -11342,25 +11342,28 @@ lemma mangoldt_adjoint_constructed_path_data_from_kernel_path_data {Ω : Type}
 
 @[blueprint "lem:mangoldt-adjoint-constructed-path-data-exists"
   (statement := /-- There are a measurable sample space, a probability measure,
-  and a natural-valued path process satisfying the explicit construction data
-  \cref{def:mangoldt-adjoint-constructed-path-data} for the adjoint upward von
-  Mangoldt chain started at $1$. -/)
+  and a natural-valued path process satisfying the explicit construction-stage
+  data predicate \cref{def:mangoldt-adjoint-constructed-path-data} for the
+  adjoint upward von Mangoldt chain. -/)
   (proof := /-- By \cref{lem:mangoldt-adjoint-kernel-path-data-exists}, choose
   a von Mangoldt downward kernel $P$, its adjoint upward kernel $U$, a
   measurable trajectory sample space, a probability measure $\mu$, and a path
   process $p$ satisfying \cref{def:mangoldt-adjoint-kernel-path-data}, with $P$
   and $U$ satisfying \cref{def:mangoldt-adjoint-kernel-package}.  Applying
   \cref{lem:mangoldt-adjoint-constructed-path-data-from-kernel-path-data} to
-  these witnesses discards the explicit kernels, keeps the pointwise Markov
-  path clauses, and supplies the expected-visit identity required by
+  these witnesses discards the explicit kernels, keeps the total-mass,
+  strict divisibility-chain, and coordinate-measurability clauses, and supplies
+  the expected-visit identity required by
   \cref{def:mangoldt-adjoint-constructed-path-data}. -/)
   (title := /-- Existence of adjoint von Mangoldt construction data -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_constructed_path_data_exists :
     ∃ (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
       (path : Ω → ℕ → ℕ), @mangoldt_adjoint_constructed_path_data Ω mΩ μ path := by
-  sorry_using [mangoldt_adjoint_kernel_path_data_exists,
-    mangoldt_adjoint_constructed_path_data_from_kernel_path_data]
+  rcases mangoldt_adjoint_kernel_path_data_exists with
+    ⟨P, U, Ω, mΩ, μ, path, hpack, hdata⟩
+  exact ⟨Ω, mΩ, μ, path,
+    mangoldt_adjoint_constructed_path_data_from_kernel_path_data hpack hdata⟩
 
 @[blueprint "lem:mangoldt-adjoint-random-model-from-constructed-path-data"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
