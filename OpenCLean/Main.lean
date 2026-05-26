@@ -14307,8 +14307,10 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_principle_from_model {Ω : Type}
   exact hmodel.2.2.2.2.2
 
 @[blueprint "lem:mangoldt-adjoint-random-model-exists"
-  (statement := /-- There exists a random path model for the adjoint upward von
-  Mangoldt chain, started at $1$, satisfying
+  (statement := /-- There exist a type $\Omega$ equipped with a measurable-space
+  structure, a measure $\mu$ on $\Omega$, and a path process
+  $p:\Omega\to(\mathbb N\to\mathbb N)$ such that $(\mu,p)$ satisfies the
+  adjoint von Mangoldt random-model predicate
   \cref{def:mangoldt-adjoint-random-model}. -/)
   (proof := /-- By
   \cref{lem:mangoldt-adjoint-constructed-path-data-exists}, there are a
@@ -14326,10 +14328,13 @@ lemma mangoldt_adjoint_reverse_fatou_extraction_principle_from_model {Ω : Type}
 lemma mangoldt_adjoint_random_model_exists :
     ∃ (Ω : Type) (mΩ : MeasurableSpace Ω) (μ : MeasureTheory.Measure Ω)
       (path : Ω → ℕ → ℕ), @mangoldt_adjoint_random_model Ω mΩ μ path := by
-  sorry_using [mangoldt_adjoint_constructed_path_data_exists,
-    mangoldt_adjoint_second_moment_bound_from_constructed_path_data,
-    mangoldt_adjoint_reverse_fatou_extraction_principle_from_constructed_path_data,
-    mangoldt_adjoint_random_model_from_constructed_path_data]
+  rcases mangoldt_adjoint_constructed_path_data_exists with ⟨Ω, mΩ, μ, path, hdata⟩
+  let hsecond := @mangoldt_adjoint_second_moment_bound_from_constructed_path_data
+    Ω mΩ μ path hdata
+  let hfatou := @mangoldt_adjoint_reverse_fatou_extraction_principle_from_constructed_path_data
+    Ω mΩ μ path hdata hsecond
+  exact ⟨Ω, mΩ, μ, path,
+    @mangoldt_adjoint_random_model_from_constructed_path_data Ω mΩ μ path hdata hsecond hfatou⟩
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-path-extraction"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
