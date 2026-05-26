@@ -9445,30 +9445,352 @@ noncomputable def mangoldt_adjoint_kernel_package (P U : ℕ → ℕ → ℝ) : 
       U n m = mangoldt_weight m / mangoldt_weight n * P m n) ∧
     (∀ n m : ℕ, U n m ≠ 0 -> n < m ∧ n ∣ m)
 
+@[blueprint "lem:mangoldt-weight-positive"
+  (statement := /-- For every positive natural number $n$, the invariant weight
+  $\nu_\Lambda(n)=\texttt{mangoldt\_weight}\,n$ is strictly positive. -/)
+  (proof := /-- For $n=1$ this follows from the definition of
+  \cref{def:mangoldt-weight}.  For $n\geq2$, rewrite the weight by
+  \cref{lem:mangoldt-weight-integral-change-of-variables-mangoldt-laplace}.  The
+  reciprocal-zeta Laplace kernel is integrable by
+  \cref{lem:mangoldt-weight-integral-change-of-variables-zeta-kernel-integrable},
+  is non-negative on $(0,\infty)$, and is strictly positive on $(0,1)$.  Since
+  $(0,1)$ has positive Lebesgue measure, the set integral is positive, and the
+  positive factor $1/n$ preserves strict positivity. -/)
+  (title := /-- Positivity of the invariant Mangoldt weight -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_weight_positive :
+    ∀ n : ℕ, 1 ≤ n -> 0 < mangoldt_weight n := by
+  intro n hn
+  by_cases h1 : n = 1
+  · subst n
+    norm_num [mangoldt_weight]
+  · have hn2 : 2 ≤ n := by omega
+    let f : ℝ → ℝ := fun u => Real.log (n : ℝ) * Real.rpow (n : ℝ) (-u) *
+      (1 / ((riemannZeta ((1 + u : ℝ) : ℂ)).re))
+    have hn_pos : 0 < (n : ℝ) := by exact_mod_cast (lt_of_lt_of_le Nat.zero_lt_two hn2)
+    have hlog_pos : 0 < Real.log (n : ℝ) := by
+      exact Real.log_pos (by exact_mod_cast (lt_of_lt_of_le Nat.one_lt_two hn2) : (1 : ℝ) < n)
+    have hf_int : MeasureTheory.IntegrableOn f (Set.Ioi (0 : ℝ)) := by
+      simpa [f] using mangoldt_weight_integral_change_of_variables_zeta_kernel_integrable n hn2
+    have hf_pos : ∀ u : ℝ, 0 < u -> 0 < f u := by
+      intro u hu
+      have hz_pos : 0 < (riemannZeta ((1 + u : ℝ) : ℂ)).re := by
+        exact riemannZeta_re_pos_of_one_lt (by linarith : 1 < 1 + u)
+      exact mul_pos (mul_pos hlog_pos (Real.rpow_pos_of_pos hn_pos (-u)))
+        (one_div_pos.mpr hz_pos)
+    have hf_nonneg_ae : 0 ≤ᵐ[MeasureTheory.volume.restrict (Set.Ioi (0 : ℝ))] f := by
+      filter_upwards [MeasureTheory.ae_restrict_mem
+        (μ := MeasureTheory.volume) (measurableSet_Ioi : MeasurableSet (Set.Ioi (0 : ℝ)))] with u hu
+      exact (hf_pos u (by simpa [Set.mem_Ioi] using hu)).le
+    have hmeasure : 0 < MeasureTheory.volume (Function.support f ∩ Set.Ioi (0 : ℝ)) := by
+      have hsub : Set.Ioo (0 : ℝ) 1 ⊆ Function.support f ∩ Set.Ioi (0 : ℝ) := by
+        intro u hu
+        constructor
+        · exact (hf_pos u hu.1).ne'
+        · exact hu.1
+      exact lt_of_lt_of_le
+        ((MeasureTheory.Measure.measure_Ioo_pos (μ := MeasureTheory.volume)).2 (by norm_num : (0 : ℝ) < 1))
+        (MeasureTheory.measure_mono hsub)
+    have hint_pos : 0 < ∫ u : ℝ in Set.Ioi (0 : ℝ), f u := by
+      exact (MeasureTheory.setIntegral_pos_iff_support_of_nonneg_ae hf_nonneg_ae hf_int).2 hmeasure
+    rw [mangoldt_weight_integral_change_of_variables_mangoldt_laplace n hn2]
+    exact mul_pos (one_div_pos.mpr hn_pos) hint_pos
+
+@[blueprint "lem:mangoldt-von-mangoldt-downward-kernel-invariant-exists"
+  (statement := /-- There exists a kernel $P:\mathbb N\times\mathbb N\to\mathbb R$
+  satisfying the invariant von Mangoldt downward-kernel interface
+  \cref{def:mangoldt-von-mangoldt-downward-kernel-invariant}. -/)
+  (proof := /-- Define $P(1,1)=1$, set $P(1,m)=0$ for $m\ne1$, and for
+  $n\geq2$ set $P(n,m)=\Lambda(n/m)/\log n$ when $m\mid n$ and $m<n$, with all
+  other transitions zero.  Non-negativity and support follow directly from this
+  definition.  The row-mass identity for $n\geq2$ is
+  \cref{lem:von-mangoldt-divisor-sum} after reindexing divisors by
+  $m\mapsto n/m$.  Finally, the incoming
+  invariant recurrence is exactly
+  \cref{lem:mangoldt-weight-von-mangoldt-invariant-recurrence}, because for
+  $q>1$ the transition from $nq$ to $n$ has weight $\Lambda(q)/\log(nq)$. -/)
+  (title := /-- Existence of the invariant von Mangoldt downward kernel -/)
+  (latexEnv := "lemma")]
+lemma mangoldt_von_mangoldt_downward_kernel_invariant_exists :
+    ∃ P : ℕ → ℕ → ℝ, mangoldt_von_mangoldt_downward_kernel_invariant P := by
+  classical
+  let P : ℕ → ℕ → ℝ := fun n m =>
+    if n = 1 then
+      if m = 1 then 1 else 0
+    else if m ∣ n ∧ m < n then
+      ArithmeticFunction.vonMangoldt (n / m) / Real.log (n : ℝ)
+    else 0
+  have htransition : ∀ n q : ℕ, 2 ≤ n -> 1 < q -> q ∣ n ->
+      P n (n / q) = ArithmeticFunction.vonMangoldt q / Real.log (n : ℝ) := by
+    intro n q hn hq hqdiv
+    have hn_ne_one : n ≠ 1 := by omega
+    have hdiv : n / q ∣ n ∧ n / q < n := by
+      constructor
+      · exact Nat.div_dvd_of_dvd hqdiv
+      · have hqpos : 0 < q := by omega
+        rw [Nat.div_lt_iff_lt_mul hqpos]
+        have hnpos : 0 < n := by omega
+        simpa using Nat.mul_lt_mul_of_pos_left hq hnpos
+    have hq_eq : n / (n / q) = q := by
+      exact Nat.div_div_self hqdiv (by omega)
+    simp [P, hn_ne_one, hdiv, hq_eq]
+  have hincoming : ∀ n : ℕ, 1 ≤ n ->
+      (∑' q : ℕ, if 1 < q then mangoldt_weight (n * q) * P (n * q) n else 0) =
+        mangoldt_weight n := by
+    intro n hn
+    trans (∑' q : ℕ,
+      if 1 < q then
+        mangoldt_weight (n * q) *
+          (ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ))
+      else 0)
+    · apply tsum_congr
+      intro q
+      by_cases hq : 1 < q
+      · rw [if_pos hq, if_pos hq]
+        have hnq_two : 2 ≤ n * q := by
+          have hq_two : 2 ≤ q := by omega
+          simpa using Nat.mul_le_mul hn hq_two
+        have hq_dvd : q ∣ n * q := ⟨n, by rw [mul_comm]⟩
+        have hdiv_eq : (n * q) / q = n := by
+          rw [mul_comm]
+          exact Nat.mul_div_right n (by omega : 0 < q)
+        have hp : P (n * q) n =
+            ArithmeticFunction.vonMangoldt q / Real.log ((n * q : ℕ) : ℝ) := by
+          simpa [hdiv_eq] using htransition (n * q) q hnq_two hq hq_dvd
+        rw [hp]
+      · rw [if_neg hq, if_neg hq]
+    · exact mangoldt_weight_von_mangoldt_invariant_recurrence n hn
+  refine ⟨P, ?_⟩
+  unfold mangoldt_von_mangoldt_downward_kernel_invariant
+  refine ⟨?_, ?_, ?_, ?_, ?_, htransition, hincoming⟩
+  · intro n m
+    dsimp [P]
+    split_ifs with hn hm hmdiv
+    · positivity
+    · positivity
+    · have hn_gt_one : 1 < n := by omega
+      have hlog_pos : 0 < Real.log (n : ℝ) := by
+        exact Real.log_pos (by exact_mod_cast hn_gt_one : (1 : ℝ) < n)
+      exact div_nonneg ArithmeticFunction.vonMangoldt_nonneg hlog_pos.le
+    · positivity
+  · intro n hnpos
+    by_cases hn_one : n = 1
+    · subst n
+      calc
+        (∑' m : ℕ, P 1 m) = ∑ m ∈ ({1} : Finset ℕ), P 1 m := by
+          refine tsum_eq_sum (s := ({1} : Finset ℕ)) ?_
+          intro m hm
+          have hm_ne : m ≠ 1 := by simpa using hm
+          simp [P, hm_ne]
+        _ = 1 := by simp [P]
+    · have hn_ne_zero : n ≠ 0 := by omega
+      have hlog_pos : 0 < Real.log (n : ℝ) := by
+        have hn_gt_one : 1 < n := by omega
+        exact Real.log_pos (by exact_mod_cast hn_gt_one : (1 : ℝ) < n)
+      have hdiv_compl :
+          (∑ m ∈ n.divisors, ArithmeticFunction.vonMangoldt (n / m)) =
+            ∑ q ∈ n.divisors, ArithmeticFunction.vonMangoldt q := by
+        refine Finset.sum_bij' (fun m _ => n / m) (fun q _ => n / q) ?_ ?_ ?_ ?_ ?_
+        · intro m hm
+          have hmdvd : m ∣ n := (Nat.mem_divisors.mp hm).1
+          exact Nat.mem_divisors.mpr ⟨Nat.div_dvd_of_dvd hmdvd, hn_ne_zero⟩
+        · intro q hq
+          have hqdvd : q ∣ n := (Nat.mem_divisors.mp hq).1
+          exact Nat.mem_divisors.mpr ⟨Nat.div_dvd_of_dvd hqdvd, hn_ne_zero⟩
+        · intro m hm
+          have hmdvd : m ∣ n := (Nat.mem_divisors.mp hm).1
+          exact Nat.div_div_self hmdvd hn_ne_zero
+        · intro q hq
+          have hqdvd : q ∣ n := (Nat.mem_divisors.mp hq).1
+          exact Nat.div_div_self hqdvd hn_ne_zero
+        · intro m hm
+          rfl
+      calc
+        (∑' m : ℕ, P n m) = ∑ m ∈ n.divisors, P n m := by
+          refine tsum_eq_sum (s := n.divisors) ?_
+          intro m hm
+          have hmcond_false : ¬(m ∣ n ∧ m < n) := by
+            intro hcond
+            exact hm (Nat.mem_divisors.mpr ⟨hcond.1, hn_ne_zero⟩)
+          simp [P, hn_one, hmcond_false]
+        _ = ∑ m ∈ n.divisors,
+            ArithmeticFunction.vonMangoldt (n / m) / Real.log (n : ℝ) := by
+          apply Finset.sum_congr rfl
+          intro m hm
+          have hmdvd : m ∣ n := (Nat.mem_divisors.mp hm).1
+          have hm_le : m ≤ n := Nat.le_of_dvd (Nat.pos_of_ne_zero hn_ne_zero) hmdvd
+          by_cases hlt : m < n
+          · have hmcond : m ∣ n ∧ m < n := ⟨hmdvd, hlt⟩
+            simp [P, hn_one, hmcond]
+          · have hm_eq : m = n := by omega
+            subst m
+            have hmcond_false : ¬(n ∣ n ∧ n < n) := by omega
+            simp [P, hn_one, hmcond_false, Nat.div_self (Nat.pos_of_ne_zero hn_ne_zero)]
+        _ = (1 / Real.log (n : ℝ)) *
+            (∑ m ∈ n.divisors, ArithmeticFunction.vonMangoldt (n / m)) := by
+          rw [Finset.mul_sum]
+          apply Finset.sum_congr rfl
+          intro m hm
+          ring
+        _ = (1 / Real.log (n : ℝ)) * Real.log (n : ℝ) := by
+          rw [hdiv_compl, von_mangoldt_divisor_sum n]
+        _ = 1 := by
+          field_simp [hlog_pos.ne']
+  · simp [P]
+  · intro m hm
+    simp [P, hm]
+  · intro n m hn hP
+    have hn_ne_one : n ≠ 1 := by omega
+    by_cases hmcond : m ∣ n ∧ m < n
+    · exact hmcond
+    · exfalso
+      have hzero : P n m = 0 := by simp [P, hn_ne_one, hmcond]
+      exact hP hzero
+
 @[blueprint "lem:mangoldt-adjoint-kernel-package-exists"
-  (statement := /-- There exist a von Mangoldt downward kernel $P$ and its
-  adjoint upward kernel $U$ satisfying the adjoint kernel package
+  (statement := /-- There exist kernels $P,U:\mathbb N\times\mathbb N\to\mathbb R$
+  satisfying the adjoint von Mangoldt kernel package
   \cref{def:mangoldt-adjoint-kernel-package}. -/)
-  (proof := /-- Define $P$ to be the ordinary von Mangoldt downward transition:
-  $P(1,1)=1$, and for $n\geq2$ set
-  $P(n,n/q)=\Lambda(q)/\log n$ when $q>1$ divides $n$, with all remaining
-  transitions zero.  The identity $\sum_{q\mid n}\Lambda(q)=\log n$ gives
-  non-negativity, unit row mass, the absorbing state $1$, and downward
-  divisibility support.  The incoming invariant-weight conjunct is exactly
-  \cref{lem:mangoldt-weight-von-mangoldt-invariant-recurrence}.  Now define
-  $U(n,m)$ off the diagonal by the adjoint formula
-  $\nu_\Lambda(m)\nu_\Lambda(n)^{-1}P(m,n)$ and put $U(n,n)=0$.  The
-  invariant recurrence gives unit mass of each positive upward row; positivity
-  of $\nu_\Lambda$ and the support of $P$ give non-negativity, diagonal
-  vanishing, the adjoint formula, and upward divisibility support.  These are
-  precisely the clauses of
+  (proof := /-- Choose $P$ satisfying the invariant downward-kernel interface by
+  \cref{lem:mangoldt-von-mangoldt-downward-kernel-invariant-exists}.  Define
+  $U(n,m)=\nu_\Lambda(m)\nu_\Lambda(n)^{-1}P(m,n)$ when $n,m\geq1$ and
+  $m\ne n$, and define $U(n,m)=0$ otherwise.  For a fixed $n\geq1$, the support
+  clause for $P$ shows that every non-zero summand in the $n$th row of $U$ has
+  the form $m=nq$ with $q>1$; reindexing the t-sum by this injective map rewrites
+  the row mass as $\nu_\Lambda(n)^{-1}$ times the incoming invariant sum for
+  $P$.  That incoming sum is part of the downward-kernel interface, and
+  \cref{lem:mangoldt-weight-positive} permits cancellation of
+  $\nu_\Lambda(n)$.  The same positivity lemma and non-negativity of $P$ give
+  non-negativity of $U$, while the definition of $U$ gives diagonal vanishing and
+  the adjoint formula, and the support clause for $P$ gives upward divisibility
+  support.  These are exactly the clauses of
   \cref{def:mangoldt-adjoint-kernel-package}. -/)
   (title := /-- Existence of the adjoint von Mangoldt kernel package -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_kernel_package_exists :
     ∃ (P : ℕ → ℕ → ℝ) (U : ℕ → ℕ → ℝ),
       mangoldt_adjoint_kernel_package P U := by
-  sorry_using [mangoldt_weight_von_mangoldt_invariant_recurrence]
+  classical
+  rcases mangoldt_von_mangoldt_downward_kernel_invariant_exists with ⟨P, hPpkg⟩
+  let U : ℕ → ℕ → ℝ := fun n m =>
+    if 1 ≤ n ∧ 1 ≤ m ∧ m ≠ n then
+      mangoldt_weight m / mangoldt_weight n * P m n
+    else 0
+  refine ⟨P, U, ?_⟩
+  unfold mangoldt_adjoint_kernel_package
+  rcases hPpkg with
+    ⟨hP_nonneg, hP_row, hP_one, hP_one_zero, hP_support, hP_rule, hP_incoming⟩
+  have hPpkg' : mangoldt_von_mangoldt_downward_kernel_invariant P := by
+    unfold mangoldt_von_mangoldt_downward_kernel_invariant
+    exact ⟨hP_nonneg, hP_row, hP_one, hP_one_zero, hP_support, hP_rule, hP_incoming⟩
+  have hrow : ∀ n : ℕ, 1 ≤ n -> (∑' m : ℕ, U n m) = 1 := by
+    intro n hn
+    let F : ℕ → ℝ := fun m =>
+      if 1 ≤ m ∧ m ≠ n then mangoldt_weight m / mangoldt_weight n * P m n else 0
+    have hUF : ∀ m : ℕ, U n m = F m := by
+      intro m
+      by_cases hm : 1 ≤ m ∧ m ≠ n
+      · have hcond : 1 ≤ n ∧ 1 ≤ m ∧ m ≠ n := ⟨hn, hm.1, hm.2⟩
+        simp [U, F, hcond, hm]
+      · have hcond : ¬(1 ≤ n ∧ 1 ≤ m ∧ m ≠ n) := by
+          intro h
+          exact hm ⟨h.2.1, h.2.2⟩
+        simp [U, F, hcond, hm]
+    have hsupport : Function.support F ⊆ Set.range (fun q : ℕ => n * q) := by
+      intro m hmF
+      by_cases hmcond : 1 ≤ m ∧ m ≠ n
+      · have hPmn : P m n ≠ 0 := by
+          intro hp
+          apply hmF
+          simp [F, hmcond, hp]
+        have hm_two : 2 ≤ m := by
+          by_cases hm1 : m = 1
+          · subst m
+            have hpzero : P 1 n = 0 := hP_one_zero n (by
+              intro hn1
+              exact hmcond.2 hn1.symm)
+            exact False.elim (hPmn hpzero)
+          · omega
+        have hsupp := hP_support m n hm_two hPmn
+        exact ⟨m / n, Nat.mul_div_cancel' hsupp.1⟩
+      · exfalso
+        apply hmF
+        simp [F, hmcond]
+    have hinj : Function.Injective (fun q : ℕ => n * q) := by
+      intro a b hab
+      exact Nat.mul_left_cancel (by omega : 0 < n) hab
+    have hreindex : (∑' q : ℕ, F (n * q)) = ∑' m : ℕ, F m := by
+      exact Function.Injective.tsum_eq hinj hsupport
+    calc
+      (∑' m : ℕ, U n m) = ∑' m : ℕ, F m := by
+        apply tsum_congr
+        intro m
+        exact hUF m
+      _ = ∑' q : ℕ, F (n * q) := hreindex.symm
+      _ = ∑' q : ℕ, (1 / mangoldt_weight n) *
+          (if 1 < q then mangoldt_weight (n * q) * P (n * q) n else 0) := by
+        apply tsum_congr
+        intro q
+        by_cases hq : 1 < q
+        · rw [if_pos hq]
+          have hnq_pos : 1 ≤ n * q := by
+            have hn_pos : 0 < n := by omega
+            have hq_pos : 0 < q := by omega
+            exact Nat.succ_le_iff.mpr (Nat.mul_pos hn_pos hq_pos)
+          have hnq_ne : n * q ≠ n := by
+            intro hmul
+            have hq_one : q = 1 := by
+              exact Nat.mul_left_cancel (by omega : 0 < n) (by simpa using hmul)
+            omega
+          have hcond : 1 ≤ n * q ∧ n * q ≠ n := ⟨hnq_pos, hnq_ne⟩
+          simp [F, hcond]
+          ring
+        · rw [if_neg hq]
+          have hq_cases : q = 0 ∨ q = 1 := by omega
+          rcases hq_cases with hq0 | hq1
+          · subst q
+            simp [F]
+          · subst q
+            simp [F]
+      _ = (1 / mangoldt_weight n) *
+          (∑' q : ℕ, if 1 < q then mangoldt_weight (n * q) * P (n * q) n else 0) := by
+        rw [tsum_mul_left]
+      _ = (1 / mangoldt_weight n) * mangoldt_weight n := by
+        rw [hP_incoming n hn]
+      _ = 1 := by
+        field_simp [(mangoldt_weight_positive n hn).ne']
+  refine ⟨hPpkg', ?_, hrow, ?_, ?_, ?_⟩
+  · intro n m
+    by_cases hcond : 1 ≤ n ∧ 1 ≤ m ∧ m ≠ n
+    · simp [U, hcond]
+      exact mul_nonneg
+        (div_nonneg (mangoldt_weight_positive m hcond.2.1).le
+          (mangoldt_weight_positive n hcond.1).le)
+        (hP_nonneg m n)
+    · simp [U, hcond]
+  · intro n
+    simp [U]
+  · intro n m hn hm hne
+    simp [U, hn, hm, hne]
+  · intro n m hU
+    by_cases hcond : 1 ≤ n ∧ 1 ≤ m ∧ m ≠ n
+    · have hPmn : P m n ≠ 0 := by
+        intro hp
+        apply hU
+        simp [U, hcond, hp]
+      have hm_two : 2 ≤ m := by
+        by_cases hm1 : m = 1
+        · subst m
+          have hpzero : P 1 n = 0 := hP_one_zero n (by
+            intro hn1
+            exact hcond.2.2 hn1.symm)
+          exact False.elim (hPmn hpzero)
+        · omega
+      have hsupp := hP_support m n hm_two hPmn
+      exact ⟨hsupp.2, hsupp.1⟩
+    · exfalso
+      apply hU
+      simp [U, hcond]
 
 @[blueprint "def:mangoldt-adjoint-kernel-markov-law"
   (statement := /-- For an upward kernel $U$, a measure $\mu$, and a path
