@@ -14150,8 +14150,9 @@ lemma mangoldt_adjoint_second_moment_bound_from_constructed_path_data {Ω : Type
     [MeasurableSpace Ω] {μ : MeasureTheory.Measure Ω} {path : Ω → ℕ → ℕ} :
     mangoldt_adjoint_constructed_path_data μ path ->
       mangoldt_adjoint_second_moment_bound μ path := by
-  sorry_using [mangoldt_adjoint_two_point_divisor_bound_from_constructed_path_data,
-    mangoldt_adjoint_second_moment_bound_from_two_point_divisor_bound]
+  intro hdata
+  exact mangoldt_adjoint_second_moment_bound_from_two_point_divisor_bound
+    (mangoldt_adjoint_two_point_divisor_bound_from_constructed_path_data hdata)
 
 @[blueprint "lem:mangoldt-adjoint-reverse-fatou-extraction-principle-from-constructed-path-data"
   (statement := /-- For every measurable space $\Omega$, measure $\mu$ on
