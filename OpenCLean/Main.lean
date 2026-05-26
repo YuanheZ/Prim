@@ -12872,7 +12872,25 @@ lemma mangoldt_adjoint_second_moment_bound_from_two_point_divisor_bound
     {path : Ω → ℕ → ℕ} :
     mangoldt_adjoint_two_point_divisor_bound μ path ->
       mangoldt_adjoint_second_moment_bound μ path := by
-  sorry_using [mangoldt_adjoint_card_factors_weighted_terminal_sum_bound]
+  intro htwo A
+  rcases htwo A with ⟨C, hC_nonneg, hC_eventually⟩
+  rcases mangoldt_adjoint_card_factors_weighted_terminal_sum_bound A with
+    ⟨K, hK_nonneg, hK_eventually⟩
+  refine ⟨C * K, mul_nonneg hC_nonneg hK_nonneg, ?_⟩
+  filter_upwards [hC_eventually, hK_eventually] with x hx hsum
+  rcases hx with ⟨hloglog_pos, hmoment⟩
+  refine ⟨hloglog_pos, hmoment.trans ?_⟩
+  exact ENNReal.ofReal_le_ofReal <| by
+    calc
+      C * (∑' n : ℕ,
+          (A ∩ real_initial_segment x).indicator
+            (fun n : ℕ =>
+              ((((ArithmeticFunction.cardFactors n : ℕ) + 1 : ℕ) : ℝ) *
+                max (mangoldt_weight n) 0)) n) ≤
+          C * (K * (Real.log (Real.log x)) ^ 2) :=
+            mul_le_mul_of_nonneg_left hsum hC_nonneg
+      _ = (C * K) * (Real.log (Real.log x)) ^ 2 := by
+            ring
 
 @[blueprint "def:mangoldt-adjoint-normalized-hit-expectation-limsup"
   (statement := /-- For a random natural-valued path, this predicate records
