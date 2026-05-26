@@ -9367,14 +9367,13 @@ lemma mangoldt_weight_reciprocal_zeta_integration_by_parts
             (((riemannZeta (s : ℂ)).re) * Real.rpow (n : ℝ) s) := hmain
 
 @[blueprint "lem:mangoldt-weight-reciprocal-zeta-endpoint-evaluation"
-  (statement := /-- For every positive integer $n$, the reciprocal-zeta
-  derivative integral appearing in the incoming-mass computation evaluates to
-  the invariant von Mangoldt weight:
-  $$\int_1^\infty \left({1\over\zeta(s)}\right)' n^{-s}\,ds
-    =\nu_\Lambda(n).$$
-  For $n=1$ this is the endpoint change of $1/\zeta(s)$ from $0$ at $1+$ to
-  $1$ at infinity; for $n>1$ it is the corresponding integration-by-parts
-  identity. -/)
+  (statement := /-- For every natural number $n$ with $1\le n$,
+  $$\int_1^\infty
+      {\frac{d}{ds}\bigl((\operatorname{Re}\zeta(s))^{-1}\bigr)\over n^s}
+      \,ds
+    =\nu_\Lambda(n),$$
+  where $\zeta(s)$ is evaluated on the real axis, $n^s$ denotes the real
+  power, and $\nu_\Lambda$ denotes \cref{def:mangoldt-weight}. -/)
   (proof := /-- Split into the cases $n=1$ and $n\geq2$.  In the first case,
   the denominator $n^s$ is identically $1$, and
   \cref{lem:reciprocal-zeta-derivative-integral-one} evaluates the derivative
@@ -9391,8 +9390,13 @@ lemma mangoldt_weight_reciprocal_zeta_endpoint_evaluation :
       (∫ s : ℝ in Set.Ioi (1 : ℝ),
         deriv (fun t : ℝ => 1 / ((riemannZeta (t : ℂ)).re)) s /
           Real.rpow (n : ℝ) s) = mangoldt_weight n := by
-  sorry_using [reciprocal_zeta_derivative_integral_one,
-    mangoldt_weight_reciprocal_zeta_integration_by_parts]
+  intro n hn
+  by_cases h1 : n = 1
+  · subst n
+    simpa [mangoldt_weight] using reciprocal_zeta_derivative_integral_one
+  · have hn2 : 2 ≤ n := by omega
+    simpa [mangoldt_weight, h1] using
+      mangoldt_weight_reciprocal_zeta_integration_by_parts n hn2
 
 @[blueprint "lem:mangoldt-weight-von-mangoldt-invariant-recurrence"
   (statement := /-- For every positive integer $n$, the von Mangoldt weight
