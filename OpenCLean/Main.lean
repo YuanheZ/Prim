@@ -14587,4 +14587,6 @@ theorem erdos_sarkozy_szemeredi_1217 :
         strictly_increasing_divisibility_chain n ∧
         chain_in_set n A ∧
         upper_chain_density_at_least n (upper_doubly_log_density A) := by
-  sorry_using [probabilistic_dense_ambient_chain, dense_hits_subchain_in_set]
+  intro A hA
+  rcases probabilistic_dense_ambient_chain A hA with ⟨ambient, hambient, hhit⟩
+  exact dense_hits_subchain_in_set A ambient hA hambient hhit
