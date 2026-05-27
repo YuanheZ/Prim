@@ -14425,7 +14425,13 @@ lemma probabilistic_dense_ambient_chain :
       ∃ n : ℕ → ℕ,
         strictly_increasing_divisibility_chain n ∧
         chain_hits_density_at_least n A (upper_doubly_log_density A) := by
-  sorry_using [mangoldt_weight_aggregate_comparison, mangoldt_adjoint_chain_density_selection]
+  intro A hA
+  have hdensity : mangoldt_weight_upper_density A = upper_doubly_log_density A := by
+    simpa [mangoldt_weight_upper_density] using mangoldt_weight_aggregate_comparison A
+  have hpos : 0 < mangoldt_weight_upper_density A := by
+    rwa [hdensity]
+  rcases mangoldt_adjoint_chain_density_selection A hpos with ⟨n, hchain, hhit⟩
+  exact ⟨n, hchain, by simpa [hdensity] using hhit⟩
 
 @[blueprint "lem:dense-hits-subchain-in-set"
   (statement := /-- For every set $A\subseteq\mathbb N$ and every sequence
