@@ -14382,29 +14382,16 @@ lemma mangoldt_adjoint_reverse_fatou_path_extraction {Ω : Type} [MeasurableSpac
   \cref{def:mangoldt-weight-upper-density}, then there is a strictly increasing
   divisibility chain whose visits to $A$ have nonnegative extended upper doubly
   logarithmic density at least that Mangoldt-weight density. -/)
-  (proof := /-- The stochastic path-selection mechanism is supplied by
-  \cref{lem:mangoldt-adjoint-random-model-exists} and
-  \cref{lem:mangoldt-adjoint-reverse-fatou-path-extraction}.  Form the adjoint
-  upward Markov chain to the von Mangoldt
-  downward chain with respect to the invariant weight $\nu_\Lambda$, and start it
-  at $1$.  Invariance gives the exact expected-visit identity: for every natural
-  number $n$, the expected number of visits of the upward path to $n$ is
-  $\nu_\Lambda(n)$.  Hence, for every real height $x$, the expected number of
-  visits to $A\cap[1,x]$ is precisely the truncated sum appearing in
-  \cref{def:mangoldt-weight-upper-density}.  Choose a sequence $x_j\to\infty$
-  along which these normalized expectations converge to the positive limsup.
-  The eventual second-moment estimate for the adjoint chain holds on a tail of
-  this sequence and gives a uniform $L^2$ bound for the corresponding normalized
-  hit counts; removing finitely many earlier variables does not change the
-  limiting upper density, so the tail family is uniformly integrable.
-  The reverse Fatou inequality therefore implies that the expectation of the
-  pathwise nonnegative extended limsup is at least the limsup of the
-  expectations.  Since this lower bound is positive, some realization has
-  normalized hit-count limsup at least
-  \cref{def:mangoldt-weight-upper-density}.  The upward path lies in the
-  supported natural path space and is strictly increasing along divisibility,
-  giving \cref{def:strictly-increasing-divisibility-chain}; its pathwise lower
-  bound is exactly \cref{def:chain-hits-density-at-least}. -/)
+  (proof := /-- Choose a measurable space, measure, and path process satisfying
+  the adjoint von Mangoldt random-model predicate by
+  \cref{lem:mangoldt-adjoint-random-model-exists}.  For this chosen model,
+  apply \cref{lem:mangoldt-adjoint-reverse-fatou-path-extraction}.  This gives,
+  for every set $A\subseteq\mathbb N$ with positive
+  \cref{def:mangoldt-weight-upper-density}, a sequence
+  $n:\mathbb N\to\mathbb N$ satisfying
+  \cref{def:strictly-increasing-divisibility-chain} and
+  \cref{def:chain-hits-density-at-least} with lower bound
+  \cref{def:mangoldt-weight-upper-density}. -/)
   (title := /-- Path selection for the adjoint von Mangoldt chain -/)
   (latexEnv := "lemma")]
 lemma mangoldt_adjoint_chain_density_selection :
@@ -14412,8 +14399,8 @@ lemma mangoldt_adjoint_chain_density_selection :
       ∃ n : ℕ → ℕ,
         strictly_increasing_divisibility_chain n ∧
         chain_hits_density_at_least n A (mangoldt_weight_upper_density A) := by
-  sorry_using [mangoldt_adjoint_random_model_exists,
-    mangoldt_adjoint_reverse_fatou_path_extraction]
+  rcases mangoldt_adjoint_random_model_exists with ⟨Ω, mΩ, μ, path, hmodel⟩
+  exact @mangoldt_adjoint_reverse_fatou_path_extraction Ω mΩ μ path hmodel
 
 @[blueprint "lem:probabilistic-dense-ambient-chain"
   (statement := /-- If $A\subseteq\mathbb N$ has positive upper doubly
