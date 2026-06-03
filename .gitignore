@@ -3,8 +3,8 @@
 
 # Track these
 !.gitignore
-!OpenCLean/
-!OpenCLean/**
+!LeanMarathon/
+!LeanMarathon/**
 !lakefile.toml
 !lake-manifest.json
 !lean-toolchain
