@@ -1,0 +1,17 @@
+\begin{theorem}[\Erdos{}--S\'ark\"ozy--Szemer\'edi, \#1196] \label{conj:1196}
+If $A$ is a primitive set contained in $[x,\infty)$ for some $x \geq 2$, then
+$$f(A) \leq 1 + O\left(\frac{1}{\log x}\right).$$
+\end{theorem}
+
+\begin{theorem}[\Erdos{} primitive set conjecture, \#164] \label{conj:EPS}
+For any primitive $A$, $f(A)\le f(\N_1) = 1.6366\dots$\footnote{The decimal expansion of $f(\N_1)$ is \href{https://oeis.org/A137245}{OEIS A137245}, with the initial digits worked out in \cite[pp.~208--209]{cohen}.}.
+\end{theorem}
+
+\begin{theorem}[\Erdos{}--S\'ark\"ozy--Szemer\'edi, \#1217] \label{conj:1217}
+Let $A \subset \N$ be such that the upper doubly logarithmic density
+$$ \Delta \coloneq \limsup_{x\to\infty}\frac{1}{\log\log x} f(A \cap [1,x])$$
+is positive.  Then there exists a strictly increasing infinite divisibility chain
+$$ n_0 | n_1 | n_2 | \dots$$
+in $A$ such that
+$$ \limsup_{x\to\infty}\frac{1}{\log\log x} \# \{ i: n_i \leq x \} \geq \Delta.$$
+\end{theorem}
