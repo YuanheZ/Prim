@@ -9,10 +9,10 @@ name: verify-blueprint
 # The base branch is checked out at the workspace root (`.`) so that its
 # cache key and path match those of `warmup-cache.yml`. The PR's
 # contribution is applied via a path-restricted `git checkout HEAD_SHA --
-# OpenCLean/`, which overlays ONLY files under `OpenCLean/` — base's
+# LeanMarathon/`, which overlays ONLY files under `LeanMarathon/` — base's
 # `.github/`, `.scripts/`, `lakefile.toml`, `lake-manifest.json`, and
 # `lean-toolchain` remain untouched. The `Enforce path allowlist` step
-# additionally rejects any PR that writes outside `OpenCLean/**/*.lean`.
+# additionally rejects any PR that writes outside `LeanMarathon/**/*.lean`.
 
 on:
   pull_request_target:
@@ -55,7 +55,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: git fetch origin "$HEAD_SHA"
 
-      # 3. Reject any PR that modifies a path outside OpenCLean/**/*.lean.
+      # 3. Reject any PR that modifies a path outside LeanMarathon/**/*.lean.
       - name: Enforce path allowlist
         id: allowlist
         env:
@@ -66,9 +66,9 @@ jobs:
           changed=$(git diff --name-only --diff-filter=ACMRD "$BASE_SHA...$HEAD_SHA" || true)
           echo "=== Changed paths ==="
           printf '%s\n' "$changed"
-          bad=$(printf '%s\n' "$changed" | grep -vE '^OpenCLean/.+\.lean$' | grep -v '^$' || true)
+          bad=$(printf '%s\n' "$changed" | grep -vE '^LeanMarathon/.+\.lean$' | grep -v '^$' || true)
           if [[ -n "$bad" ]]; then
-            echo "::error::Path allowlist violation — only OpenCLean/**/*.lean may be modified."
+            echo "::error::Path allowlist violation — only LeanMarathon/**/*.lean may be modified."
             while IFS= read -r line; do
               echo "::error::  forbidden path: $line"
             done <<< "$bad"
@@ -83,7 +83,7 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          changed=$(git diff --name-only --diff-filter=ACMR "$BASE_SHA...$HEAD_SHA" -- 'OpenCLean/*.lean' 'OpenCLean/**/*.lean' || true)
+          changed=$(git diff --name-only --diff-filter=ACMR "$BASE_SHA...$HEAD_SHA" -- 'LeanMarathon/*.lean' 'LeanMarathon/**/*.lean' || true)
           blueprint_files=()
           while IFS= read -r f; do
             [[ -z "$f" ]] && continue
@@ -103,18 +103,18 @@ jobs:
             cat blueprint-files.txt
           fi
 
-      # 5. Overlay PR's OpenCLean/ — path-restricted checkout only modifies
-      #    files under OpenCLean/. Base's CI, scripts, and lakefile stay.
-      - name: Overlay PR OpenCLean onto base tree
+      # 5. Overlay PR's LeanMarathon/ — path-restricted checkout only modifies
+      #    files under LeanMarathon/. Base's CI, scripts, and lakefile stay.
+      - name: Overlay PR LeanMarathon onto base tree
         if: steps.detect.outputs.is_blueprint == 'true'
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           set -euo pipefail
-          rm -rf OpenCLean
-          git checkout "$HEAD_SHA" -- OpenCLean
-          echo "=== OpenCLean/ contents after overlay ==="
-          find OpenCLean -type f | head -20
+          rm -rf LeanMarathon
+          git checkout "$HEAD_SHA" -- LeanMarathon
+          echo "=== LeanMarathon/ contents after overlay ==="
+          find LeanMarathon -type f | head -20
 
       - name: Read lean-toolchain
         if: steps.detect.outputs.is_blueprint == 'true'
