@@ -1,7 +1,5 @@
-name = "OpenCLean"
-version = "0.1.0"
-keywords = ["math"]
-defaultTargets = ["OpenCLean"]
+name = "Prim"
+defaultTargets = ["Prim"]
 
 [leanOptions]
 relaxedAutoImplicit = false
@@ -24,7 +22,7 @@ scope = "leanprover-community"
 rev = "v4.30.0-rc2"
 
 [[lean_lib]]
-name = "OpenCLean"
+name = "LeanMarathon"
 
 [[lean_exe]]
 name = "checkdecls"
