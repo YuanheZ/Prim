@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verifier for OpenCLean LeanArchitect blueprint files.
+"""Verifier for blueprint files.
 
 Implements the seven algorithmic checks in verification.md. Definitional nodes
 (`def`, `abbrev`, `structure`, `inductive`, `class`, `instance`) are treated as
