@@ -14,3 +14,9 @@ The repo is formalized by [LeanMarathon](https://github.com/YuanheZ/LeanMarathon
 ## Output
 
 - [LeanMarathon/Main.lean](LeanMarathon/Main.lean): completed Lean file
+
+## Proof DAG Evolution
+
+<p align="center">
+  <img src="figs/proof-dag-evolution.gif" alt="Proof DAG Evolution" width="1200">
+</p>
